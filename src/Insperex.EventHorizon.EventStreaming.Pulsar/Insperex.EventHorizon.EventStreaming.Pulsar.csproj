@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <NoWarn>$(NoWarn)</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Insperex.EventHorizon.EventStreaming\Insperex.EventHorizon.EventStreaming.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Pulsar.Client" Version="2.12.0" />
+        <PackageReference Include="Pulsar.Client.Otel" Version="0.1.1" />
+    </ItemGroup>
+
+</Project>
