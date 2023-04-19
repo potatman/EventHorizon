@@ -20,10 +20,10 @@ public class AggregateBuilder<TParent, T>
     private readonly ICrudStore<TParent> _crudStore;
     private readonly ILoggerFactory _loggerFactory;
     private readonly StreamingClient _streamingClient;
+    private bool _isValidatingHandlers = true;
     private bool _isRebuildEnabled;
     private int _retryLimit = 5;
     private Action<Aggregate<T>[]> _beforeSave;
-    private bool _isValidatingHandlers = true;
 
     public AggregateBuilder(
         IServiceProvider serviceProvider,
