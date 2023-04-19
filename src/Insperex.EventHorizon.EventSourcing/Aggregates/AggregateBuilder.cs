@@ -23,6 +23,7 @@ public class AggregateBuilder<TParent, T>
     private bool _isRebuildEnabled;
     private int _retryLimit = 5;
     private Action<Aggregate<T>[]> _beforeSave;
+    private bool _isValidatingHandlers = true;
 
     public AggregateBuilder(
         IServiceProvider serviceProvider,
@@ -42,6 +43,12 @@ public class AggregateBuilder<TParent, T>
         return this;
     }
 
+    public AggregateBuilder<TParent, T> IsValidatingHandlers(bool isValidatingHandlers)
+    {
+        _isValidatingHandlers = isValidatingHandlers;
+        return this;
+    }
+
     public AggregateBuilder<TParent, T> RetryLimit(int retryLimit)
     {
         _retryLimit = retryLimit;
@@ -58,6 +65,7 @@ public class AggregateBuilder<TParent, T>
     {
         var config = new AggregateConfig<T>
         {
+            IsValidatingHandlers = _isValidatingHandlers,
             IsRebuildEnabled = _isRebuildEnabled,
             RetryLimit = _retryLimit,
             BeforeSave = _beforeSave,

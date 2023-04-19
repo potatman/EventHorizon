@@ -27,7 +27,9 @@ public class AggregateHostedService<TParent, TAction, T> : IHostedService
     {
         _aggregator = aggregator;
         
-        validationUtil.Validate<TParent, T>();
+        // Validate Handlers if Enabled
+        if(aggregator.GetConfig().IsValidatingHandlers)
+            validationUtil.Validate<TParent, T>();
         
         _subscription = streamingClient.CreateSubscription<TAction>()
             .SubscriptionName(typeof(T).Name)
