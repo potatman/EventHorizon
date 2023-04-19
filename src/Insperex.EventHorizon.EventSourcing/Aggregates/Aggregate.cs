@@ -10,6 +10,7 @@ using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventSourcing.Util;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Models;
+using Insperex.EventHorizon.EventStreaming.Extensions;
 using OpenTelemetry.Trace;
 
 namespace Insperex.EventHorizon.EventSourcing.Aggregates;

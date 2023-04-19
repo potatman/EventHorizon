@@ -20,8 +20,6 @@ public class Command : ITopicMessage
         Type = payload.GetType().Name;
     }
 
-    public object GetPayload() => JsonSerializer.Deserialize(Payload, AssemblyUtil.TypeDictionary[Type]);
-
     public string Id { get; set; }
     public string StreamId { get; set; }
     public string Type { get; set; }

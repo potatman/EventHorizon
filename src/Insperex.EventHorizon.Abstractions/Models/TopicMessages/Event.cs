@@ -22,8 +22,6 @@ public class Event : ITopicMessage
         SequenceId = sequenceId;
     }
 
-    public object GetPayload() => JsonSerializer.Deserialize(Payload, AssemblyUtil.TypeDictionary[Type]);
-
     public long SequenceId { get; set; }
     public string StreamId { get; set; }
     public string Type { get; set; }

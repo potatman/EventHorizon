@@ -12,9 +12,7 @@ public static class EventStreamingFakers
 
     private static int _sequenceId = 0;
     public static readonly Faker<Event> EventFaker = new Faker<Event>()
-        .RuleFor(x => x.StreamId, x => x.Random.AlphaNumeric(10))
-        .RuleFor(x => x.SequenceId, x => ++_sequenceId)
-        .RuleFor(x => x.Payload, x => JsonSerializer.Serialize(ExampleEventFaker.Generate()));
+        .CustomInstantiator(x => new Event(x.Random.AlphaNumeric(10), ++_sequenceId, ExampleEventFaker.Generate()));
     
     public static readonly Faker<ExampleEvent1> ExampleEventFaker = new Faker<ExampleEvent1>()
         .RuleFor(x => x.StreamId, x => x.Random.Guid().ToString())
