@@ -21,6 +21,7 @@ public static class ServiceCollectionExtensions
         collection.AddSingleton(x => x.GetRequiredService<IStreamFactory>().GetTopicResolver());
         collection.AddSingleton(typeof(EventSourcingClient<>));
         collection.AddSingleton(typeof(AggregatorManager<,>));
+        collection.AddSingleton(typeof(AggregateBuilder<,>));
         collection.AddSingleton<SenderBuilder>();
         collection.AddSingleton<ValidationUtil>();
         
@@ -33,10 +34,10 @@ public static class ServiceCollectionExtensions
     {
         collection.AddSingleton(x =>
         {
-            var crudStore = x.GetRequiredService<ISnapshotStoreFactory<T>>().GetSnapshotStore();
+            var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();
             var loggerFactory = x.GetRequiredService<ILoggerFactory>();
-            var builder = new AggregateBuilder<Snapshot<T>, T>(crudStore, streamingClient, loggerFactory);
+            var builder = new AggregateBuilder<Snapshot<T>, T>(serviceProvider, streamingClient, loggerFactory);
             onBuild?.Invoke(builder);
             return builder.Build();
         });
@@ -54,10 +55,10 @@ public static class ServiceCollectionExtensions
     {
         collection.AddSingleton(x =>
         {
-            var crudStore = x.GetRequiredService<IViewStoreFactory<T>>().GetViewStore();
+            var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();
             var loggerFactory = x.GetRequiredService<ILoggerFactory>();
-            var builder = new AggregateBuilder<View<T>, T>(crudStore, streamingClient, loggerFactory);
+            var builder = new AggregateBuilder<View<T>, T>(serviceProvider, streamingClient, loggerFactory);
             onBuild?.Invoke(builder);
             return builder.Build();
         });

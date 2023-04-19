@@ -2,8 +2,10 @@
 using System.Net.Http;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
+using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Generated;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
+using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Pulsar.Client.Api;
@@ -41,6 +43,9 @@ public static class ServiceCollectionExtensions
         collection.Configure<PulsarConfig>(section);
         collection.AddSingleton(typeof(IStreamFactory), typeof(PulsarStreamFactory));
         collection.AddSingleton(typeof(StreamingClient));
+        collection.AddSingleton(typeof(PublisherBuilder<>));
+        collection.AddSingleton(typeof(Readers.ReaderBuilder<>));
+        collection.AddSingleton(typeof(SubscriptionBuilder<>));
         collection.AddSingleton<AttributeUtil>();
 
         return collection;
