@@ -11,6 +11,7 @@ using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Models;
+using Insperex.EventHorizon.EventStreaming.Interfaces;
 
 namespace Insperex.EventHorizon.EventSourcing.Util;
 
@@ -99,10 +100,18 @@ public class ValidationUtil
         
         // Verify Actions are supported
         var supportedActions =  allStates
+            // Get Handlers
             .Select(state => stateHandlerLookup[state.Name])
             .SelectMany(x => x)
+            // Get Handler First Parameter
             .Select(x => x.Value?.GetParameters()[0].ParameterType).Distinct().ToArray();
-        var allActions = stateTypes.SelectMany(x => stateActionLookup[x.Name]).Distinct().ToArray();
+
+        var allActions = stateTypes.SelectMany(x => stateActionLookup[x.Name])
+            // Ignore those with IUpgradeTo
+            .Where(x => x.GetInterfaces().All(i => i.Name != typeof(IUpgradeTo<>).Name))
+            .Distinct()
+            .ToArray();
+        
         var missing = allActions.Where(x => !supportedActions.Contains(x)).ToArray();
 
         // Return Result
