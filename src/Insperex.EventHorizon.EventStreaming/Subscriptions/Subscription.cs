@@ -7,6 +7,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
+using Insperex.EventHorizon.Abstractions.Util;
+using Insperex.EventHorizon.EventStreaming.Extensions;
+using Insperex.EventHorizon.EventStreaming.Interfaces;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 using Microsoft.Extensions.Logging;
@@ -119,6 +122,12 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
             var batch = await _consumer.NextBatchAsync(cts.Token);
             activity?.SetTag(TraceConstants.Tags.Count, batch?.Length ?? 0);
             activity?.SetStatus(ActivityStatusCode.Ok);
+            
+            // Upgrade Actions
+            if(batch?.Any() == true)
+                foreach (var item in batch)
+                    item.Data = item.Data.Upgrade();
+            
             return batch;
         }
         catch (TaskCanceledException)

@@ -27,8 +27,7 @@ public static class HostExtensions
     {
         var attributeUtil = host.Services.GetRequiredService<AttributeUtil>();
         TestUtil.SetTestBucketIds(attributeUtil, AssemblyUtil.StateDict.Values.ToArray());
-        var actions = AssemblyUtil.ActionToStateDict.Keys.ToArray();
-        TestUtil.SetTestBucketIds(attributeUtil, actions.Select(x => AssemblyUtil.TypeDictionary[x]).ToArray());
+        TestUtil.SetTestBucketIds(attributeUtil, AssemblyUtil.ActionDict.Values.ToArray());
         return host;
     }
 }

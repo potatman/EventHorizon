@@ -29,28 +29,28 @@ public class Aggregate<T>
     public DateTime CreatedDate { get; set; }
     public DateTime UpdatedDate { get; set; }
 
-    public Aggregate(string streamId, AttributeUtil attributeUtil = null)
+    public Aggregate(string streamId)
     {
         Id = streamId;
         SequenceId = 1;
         CreatedDate = UpdatedDate = DateTime.UtcNow;
-        Setup(attributeUtil ?? new AttributeUtil());
+        Setup();
     }
 
-    public Aggregate(IStateParent<T> model, AttributeUtil attributeUtil = null)
+    public Aggregate(IStateParent<T> model)
     {
         Id = model.Id;
         SequenceId = model.SequenceId + 1;
         State = model.State;
         CreatedDate = model.CreatedDate;
         UpdatedDate = model.UpdatedDate;
-        Setup(attributeUtil ?? new AttributeUtil());
+        Setup();
     }
 
-    public Aggregate(MessageContext<Event>[] events, AttributeUtil attributeUtil = null)
+    public Aggregate(MessageContext<Event>[] events)
     {
         // Create
-        Setup(attributeUtil ?? new AttributeUtil());
+        Setup();
         Id = events.Select(x => x.Data.StreamId).FirstOrDefault();
         CreatedDate = DateTime.UtcNow;
 
@@ -131,7 +131,7 @@ public class Aggregate<T>
         }
     }
 
-    private void Setup(AttributeUtil attributeUtil)
+    private void Setup()
     {
         // Initialize Data
         State ??= Activator.CreateInstance<T>();

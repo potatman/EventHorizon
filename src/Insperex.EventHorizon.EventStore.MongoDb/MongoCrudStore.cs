@@ -35,7 +35,7 @@ public class MongoCrudStore<T> : ICrudStore<T>
         SetupAsync().Wait();
     }
 
-    public async Task<T[]> GetAsync(string[] ids, CancellationToken ct)
+    public async Task<T[]> GetAllAsync(string[] ids, CancellationToken ct)
     {
         var objs = await _collection
             .Find(x => ids.Contains(x.Id))

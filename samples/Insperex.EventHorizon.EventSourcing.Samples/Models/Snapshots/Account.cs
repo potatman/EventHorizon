@@ -2,6 +2,7 @@
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.EventSourcing.Interfaces;
+using Insperex.EventHorizon.EventSourcing.Interfaces.State;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
@@ -56,6 +57,7 @@ public class Account : IState,
     #endregion
 }
 
+[EventStream("test_event_bank_account", nameof(Account))]
 public interface IApplyAccountEvents :
     IApplyEvent<AccountOpened>,
     IApplyEvent<AccountDebited>,

@@ -1,6 +1,6 @@
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
-using Insperex.EventHorizon.EventSourcing.Interfaces;
+using Insperex.EventHorizon.EventSourcing.Interfaces.State;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.View;

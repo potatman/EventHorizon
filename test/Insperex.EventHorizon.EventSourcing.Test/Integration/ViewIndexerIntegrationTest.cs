@@ -102,7 +102,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
         await Task.Delay(TimeSpan.FromSeconds(3));
         
         // Assert Account
-        var views = await _accountStore.GetAsync(new [] { streamId }, CancellationToken.None);
+        var views = await _accountStore.GetAllAsync(new [] { streamId }, CancellationToken.None);
         var view = views.FirstOrDefault();
         Assert.Equal(streamId, view.State.Id);
         Assert.Equal(streamId, view.Id);
@@ -111,7 +111,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
         Assert.Equal(100, view.State.Amount);
         
         // Assert UserAccount
-        var views2 = await _userAccountStore.GetAsync(new [] { streamId }, CancellationToken.None);
+        var views2 = await _userAccountStore.GetAllAsync(new [] { streamId }, CancellationToken.None);
         var view2 = views2.FirstOrDefault();
         Assert.Equal(streamId, view2.State.Id);
         Assert.Equal(streamId, view2.Id);

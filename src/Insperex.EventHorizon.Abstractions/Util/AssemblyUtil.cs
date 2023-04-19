@@ -53,9 +53,8 @@ public static class AssemblyUtil
         .ToImmutableDictionary(x => x.Key, x => x.Value.Select(s => s.PropertyType).ToArray());
 
     private static readonly string[] ActionTypes = { nameof(IEvent), nameof(ICommand), nameof(IRequest), nameof(IResponse) };
-    public static readonly ImmutableDictionary<string, Type> ActionToStateDict = TypeDictionary
-        .Select(x => new { x.Key, Value = x.Value.GetInterfaces().FirstOrDefault(i => ActionTypes.Contains(i.Name)) })
-        .Where(x => x.Value != null)
+    public static readonly ImmutableDictionary<string, Type> ActionDict = TypeDictionary
+        .Where(x => x.Value.GetInterfaces().Any(i => ActionTypes.Contains(i.Name)) )
         .ToImmutableDictionary(x => x.Key, x => x.Value);
 
 }

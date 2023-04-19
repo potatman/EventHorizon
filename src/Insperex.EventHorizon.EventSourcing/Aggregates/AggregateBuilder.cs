@@ -14,7 +14,6 @@ public class AggregateBuilder<TParent, T>
     where TParent : class, IStateParent<T>, new()
     where T : class, IState
 {
-    private readonly AttributeUtil _attributeUtil;
     private readonly ICrudStore<TParent> _crudStore;
     private readonly ILoggerFactory _loggerFactory;
     private readonly StreamingClient _streamingClient;
@@ -23,12 +22,10 @@ public class AggregateBuilder<TParent, T>
     private Action<Aggregate<T>[]> _beforeSave;
 
     public AggregateBuilder(
-        AttributeUtil attributeUtil,
         ICrudStore<TParent> crudStore,
         StreamingClient streamingClient,
         ILoggerFactory loggerFactory)
     {
-        _attributeUtil = attributeUtil;
         _crudStore = crudStore;
         _streamingClient = streamingClient;
         _loggerFactory = loggerFactory;
@@ -61,6 +58,6 @@ public class AggregateBuilder<TParent, T>
             BeforeSave = _beforeSave,
         };
         var logger = _loggerFactory.CreateLogger<Aggregator<TParent, T>>();
-        return new Aggregator<TParent, T>(_attributeUtil, _crudStore, _streamingClient, config, logger);
+        return new Aggregator<TParent, T>(_crudStore, _streamingClient, config, logger);
     }
 }

@@ -6,20 +6,17 @@ using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 using Microsoft.Extensions.Logging;
+using Insperex.EventHorizon.EventStreaming.Extensions;
 
 namespace Insperex.EventHorizon.EventStreaming.Readers;
 
-public class Reader<T> : IDisposable where T : ITopicMessage
+public class Reader<T> : IDisposable where T : class, ITopicMessage
 {
-    private readonly ReaderConfig _config;
-    private readonly ILogger<Reader<T>> _logger;
     private readonly ITopicReader<T> _reader;
 
-    public Reader(ITopicReader<T> reader, ReaderConfig config, ILogger<Reader<T>> logger)
+    public Reader(ITopicReader<T> reader)
     {
         _reader = reader;
-        _config = config;
-        _logger = logger;
     }
 
     public void Dispose()
@@ -33,10 +30,15 @@ public class Reader<T> : IDisposable where T : ITopicMessage
         try
         {
             timeout ??= TimeSpan.FromSeconds(10);
-            var events = await _reader.GetNextAsync(batchSize, timeout.Value);
-            activity?.SetTag(TraceConstants.Tags.Count, events.Length);
+            var items = await _reader.GetNextAsync(batchSize, timeout.Value);
+            activity?.SetTag(TraceConstants.Tags.Count, items.Length);
             activity?.SetStatus(ActivityStatusCode.Ok);
-            return events;
+            
+            // Upgrade Actions
+            foreach (var item in items)
+                item.Data = item.Data.Upgrade();
+            
+            return items;
         }
         catch (Exception ex)
         {

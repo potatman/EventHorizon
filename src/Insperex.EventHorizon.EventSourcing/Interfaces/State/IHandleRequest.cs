@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 
-namespace Insperex.EventHorizon.EventSourcing.Interfaces;
+namespace Insperex.EventHorizon.EventSourcing.Interfaces.State;
 
 public interface IHandleRequest<in TReq, out TRes, in TState>
     where TReq : IRequest<TState, TRes>

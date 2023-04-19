@@ -42,7 +42,7 @@ public class AggregatorManager<TParent, T>
 
             // Load Aggregate
             var streamIds = messages.Select(x => x.StreamId).Distinct().ToArray();
-            aggregateDict = await GetAggregatesAsync(streamIds, ct);
+            aggregateDict = await _aggregator.GetAggregatesFromSnapshotsAsync(streamIds, ct);
 
             // Map/Apply Changes
             Handle(messages, aggregateDict);
@@ -67,33 +67,6 @@ public class AggregatorManager<TParent, T>
         await _aggregator.PublishResponseAsync(aggregateDict, true);
     }
 
-    private async Task<Dictionary<string, Aggregate<T>>> GetAggregatesAsync(string[] streamIds, CancellationToken ct) 
-    {
-        try
-        {
-            // Load Snapshots
-            var parentDict = await _aggregator.GetAsync(streamIds);
-
-            // Build Aggregate Dict
-            var aggregateDict = streamIds
-                .Select(x => parentDict.TryGetValue(x, out var value)? new Aggregate<T>(value, _attributeUtil) : new Aggregate<T>(x, _attributeUtil))
-                .ToDictionary(x => x.Id);
-
-            return aggregateDict;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load snapshots");
-            return streamIds
-                .Select(x =>
-                {
-                    var agg = new Aggregate<T>(x, _attributeUtil);
-                    agg.SetStatus(AggregateStatus.LoadSnapshotFailed, ex.Message);
-                    return agg;
-                })
-                .ToDictionary(x => x.Id);
-        }
-    }
 
     private void Handle<TM>(TM[] messages, Dictionary<string, Aggregate<T>> aggregateDict) where TM : ITopicMessage
     {

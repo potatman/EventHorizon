@@ -48,7 +48,7 @@ public class LockDisposable : IDisposable
 
         if (!_ownsLock)
         {
-            var current = (await _crudStore.GetAsync(new[] { _id }, CancellationToken.None)).FirstOrDefault();
+            var current = (await _crudStore.GetAllAsync(new[] { _id }, CancellationToken.None)).FirstOrDefault();
             if (current != null)
                 return current.Expiration < DateTime.UtcNow;
         }

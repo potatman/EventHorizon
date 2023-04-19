@@ -25,7 +25,7 @@ public class InMemoryCrudStore<T> : ICrudStore<T>
         _table = crudDb.CrudEntities[typeName];
     }
 
-    public Task<T[]> GetAsync(string[] ids, CancellationToken ct)
+    public Task<T[]> GetAllAsync(string[] ids, CancellationToken ct)
     {
         var objs = ids
             .Where(x => _table.ContainsKey(x))

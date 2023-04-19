@@ -19,19 +19,16 @@ public class Aggregator<TParent, T>
     where T : class, IState
 {
     private readonly AggregateConfig<T> _config;
-    private readonly AttributeUtil _attributeUtil;
     private readonly ICrudStore<TParent> _crudStore;
     private readonly ILogger<Aggregator<TParent, T>> _logger;
     private readonly StreamingClient _streamingClient;
 
     public Aggregator(
-        AttributeUtil attributeUtil,
         ICrudStore<TParent> crudStore,
         StreamingClient streamingClient,
         AggregateConfig<T> config,
         ILogger<Aggregator<TParent, T>> logger)
     {
-        _attributeUtil = attributeUtil;
         _crudStore = crudStore;
         _streamingClient = streamingClient;
         _config = config;
@@ -59,14 +56,14 @@ public class Aggregator<TParent, T>
 
             var lookup = events.ToLookup(x => x.Data.StreamId);
             var streamIds = lookup.Select(x => x.Key).ToArray();
-            var models = await _crudStore.GetAsync(streamIds, ct);
+            var models = await _crudStore.GetAllAsync(streamIds, ct);
             var modelsDict = models.ToDictionary(x => x.Id);
             var dict = new Dictionary<string, Aggregate<T>>();
             foreach (var streamId in streamIds)
             {
                 var agg = modelsDict.ContainsKey(streamId)
-                    ? new Aggregate<T>(modelsDict[streamId], _attributeUtil)
-                    : new Aggregate<T>(streamId, _attributeUtil);
+                    ? new Aggregate<T>(modelsDict[streamId])
+                    : new Aggregate<T>(streamId);
 
                 foreach (var message in lookup[streamId])
                     agg.Apply(message.Data);
@@ -171,26 +168,49 @@ public class Aggregator<TParent, T>
 
     #region load
 
-    public async Task<TParent> GetAsync(string streamId)
+    public async Task<Aggregate<T>> GetAggregateFromSnapshotAsync(string streamId, CancellationToken ct)
     {
-        var results = await GetAsync(new[] { streamId });
-        return results.GetValueOrDefault(streamId);
+        var result = await GetAggregatesFromSnapshotsAsync(new[] { streamId }, ct);
+        return result.Values.FirstOrDefault();
     }
 
-    public async Task<Dictionary<string, TParent>> GetAsync(string[] streamIds)
+    public async Task<Dictionary<string, Aggregate<T>>> GetAggregatesFromSnapshotsAsync(string[] streamIds, CancellationToken ct) 
     {
-        streamIds = streamIds.Distinct().ToArray();
-        var snapshots = await _crudStore.GetAsync(streamIds, CancellationToken.None);
-        return snapshots.ToDictionary(x => x.Id);
+        try
+        {
+            // Load Snapshots
+            streamIds = streamIds.Distinct().ToArray();
+            var snapshots = await _crudStore.GetAllAsync(streamIds, ct);
+            var parentDict = snapshots.ToDictionary(x => x.Id);
+
+            // Build Aggregate Dict
+            var aggregateDict = streamIds
+                .Select(x => parentDict.TryGetValue(x, out var value)? new Aggregate<T>(value) : new Aggregate<T>(x))
+                .ToDictionary(x => x.Id);
+
+            return aggregateDict;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load snapshots");
+            return streamIds
+                .Select(x =>
+                {
+                    var agg = new Aggregate<T>(x);
+                    agg.SetStatus(AggregateStatus.LoadSnapshotFailed, ex.Message);
+                    return agg;
+                })
+                .ToDictionary(x => x.Id);
+        }
     }
 
-    public async Task<Aggregate<T>> GetFromEventsAsync(string streamId, DateTime? endDateTime = null)
+    public async Task<Aggregate<T>> GetAggregateFromEventsAsync(string streamId, DateTime? endDateTime = null)
     {
-        var results = await GetFromEventsAsync(new[] { streamId }, endDateTime);
+        var results = await GetAggregatesFromEventsAsync(new[] { streamId }, endDateTime);
         return results[streamId];
     }
 
-    public async Task<Dictionary<string, Aggregate<T>>> GetFromEventsAsync(string[] streamIds,
+    public async Task<Dictionary<string, Aggregate<T>>> GetAggregatesFromEventsAsync(string[] streamIds,
         DateTime? endDateTime = null)
     {
         var events = await GetEventsAsync(streamIds, endDateTime);
@@ -199,7 +219,7 @@ public class Aggregator<TParent, T>
             .Select(x =>
             {
                 var e = eventLookup[x].ToArray();
-                return e.Any() ? new Aggregate<T>(e.ToArray(), _attributeUtil) : new Aggregate<T>(x, _attributeUtil);
+                return e.Any() ? new Aggregate<T>(e.ToArray()) : new Aggregate<T>(x);
             })
             .ToDictionary(x => x.Id);
     }

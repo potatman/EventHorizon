@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
-using Insperex.EventHorizon.EventSourcing.Interfaces;
+using Insperex.EventHorizon.EventSourcing.Interfaces.State;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 

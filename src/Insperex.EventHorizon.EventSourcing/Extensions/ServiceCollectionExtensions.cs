@@ -36,8 +36,7 @@ public static class ServiceCollectionExtensions
             var crudStore = x.GetRequiredService<ISnapshotStoreFactory<T>>().GetSnapshotStore();
             var streamingClient = x.GetRequiredService<StreamingClient>();
             var loggerFactory = x.GetRequiredService<ILoggerFactory>();
-            var bucketUtil = x.GetRequiredService<AttributeUtil>();
-            var builder = new AggregateBuilder<Snapshot<T>, T>(bucketUtil, crudStore, streamingClient, loggerFactory);
+            var builder = new AggregateBuilder<Snapshot<T>, T>(crudStore, streamingClient, loggerFactory);
             onBuild?.Invoke(builder);
             return builder.Build();
         });
@@ -58,8 +57,7 @@ public static class ServiceCollectionExtensions
             var crudStore = x.GetRequiredService<IViewStoreFactory<T>>().GetViewStore();
             var streamingClient = x.GetRequiredService<StreamingClient>();
             var loggerFactory = x.GetRequiredService<ILoggerFactory>();
-            var bucketUtil = x.GetRequiredService<AttributeUtil>();
-            var builder = new AggregateBuilder<View<T>, T>(bucketUtil, crudStore, streamingClient, loggerFactory);
+            var builder = new AggregateBuilder<View<T>, T>(crudStore, streamingClient, loggerFactory);
             onBuild?.Invoke(builder);
             return builder.Build();
         });

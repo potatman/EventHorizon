@@ -66,11 +66,10 @@ public class ReaderBuilder<T> where T : class, ITopicMessage, new()
             IsBeginning = _isBeginning
         };
         var consumer = _factory.CreateReader<T>(config);
-        var logger = _loggerFactory.CreateLogger<Reader<T>>();
         
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         _factory.CreateAdmin().RequireTopicAsync(_topic, cts.Token).Wait(cts.Token);
         
-        return new Reader<T>(consumer, config, logger);
+        return new Reader<T>(consumer);
     }
 }

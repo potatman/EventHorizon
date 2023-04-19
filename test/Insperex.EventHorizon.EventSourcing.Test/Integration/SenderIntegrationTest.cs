@@ -9,6 +9,7 @@ using Insperex.EventHorizon.EventSourcing.Extensions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 using Insperex.EventHorizon.EventSourcing.Senders;
 using Insperex.EventHorizon.EventSourcing.Test.Fakers;
+using Insperex.EventHorizon.EventStore.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
 using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
@@ -32,8 +33,8 @@ public class SenderIntegrationTest : IAsyncLifetime
     private readonly Sender _sender;
     private Stopwatch _stopwatch;
     private readonly IStreamFactory _streamFactory;
-    private readonly ICrudStore<Snapshot<Account>> _snapshotStore;
     private readonly Sender _sender2;
+    private readonly EventSourcingClient<Account> _eventSourcingClient;
 
     public SenderIntegrationTest(ITestOutputHelper output)
     {
@@ -89,8 +90,8 @@ public class SenderIntegrationTest : IAsyncLifetime
             })
             .Build();
 
+        _eventSourcingClient = _host.Services.GetRequiredService<EventSourcingClient<Account>>();
         _streamFactory = _host.Services.GetRequiredService<IStreamFactory>();
-        _snapshotStore = _host.Services.GetRequiredService<ISnapshotStoreFactory<Account>>().GetSnapshotStore();
     }
     
     public async Task InitializeAsync()
@@ -102,7 +103,7 @@ public class SenderIntegrationTest : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _output.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        await _snapshotStore.DropDatabaseAsync(CancellationToken.None);
+        await _eventSourcingClient.GetSnapshotStore().DropDatabaseAsync(CancellationToken.None);
         foreach (var topic in _streamFactory.GetTopicResolver().GetTopics<Event>(typeof(Account)))
             await _streamFactory.CreateAdmin().DeleteTopicAsync(topic, CancellationToken.None);
         await _host.StopAsync();
@@ -124,8 +125,7 @@ public class SenderIntegrationTest : IAsyncLifetime
         Assert.Equal(AccountResponseStatus.Success, result1.Result.Status);
 
         // Assert Account
-        var store = _host.Services.GetRequiredService<Aggregator<Snapshot<Account>, Account>>();
-        var aggregate  = await store.GetAsync(streamId);
+        var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
         Assert.Equal(streamId, aggregate.State.Id);
         Assert.Equal(streamId, aggregate.Id);
         Assert.NotEqual(DateTime.MinValue, aggregate.CreatedDate);

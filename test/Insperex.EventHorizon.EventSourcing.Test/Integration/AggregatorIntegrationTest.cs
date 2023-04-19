@@ -11,6 +11,7 @@ using Insperex.EventHorizon.EventSourcing.Extensions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 using Insperex.EventHorizon.EventSourcing.Test.Fakers;
+using Insperex.EventHorizon.EventStore.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
 using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
@@ -40,6 +41,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
     private readonly Aggregator<Snapshot<Account>, Account> _accountAggregator;
     private readonly AggregatorManager<Snapshot<User>, User> _userAggregateManager;
     private readonly Aggregator<Snapshot<User>, User> _userAggregator;
+    private readonly EventSourcingClient<Account> _eventSourcingClient;
 
     public AggregatorIntegrationTest(ITestOutputHelper output)
     {
@@ -66,6 +68,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
             .Build()
             .AddTestBucketIds();
 
+        _eventSourcingClient = _host.Services.GetRequiredService<EventSourcingClient<Account>>();
         _accountAggregator = _host.Services.GetRequiredService<Aggregator<Snapshot<Account>, Account>>();
         _accountAggregatorManager = _host.Services.GetRequiredService<AggregatorManager<Snapshot<Account>, Account>>();
         _userAggregator = _host.Services.GetRequiredService<Aggregator<Snapshot<User>, User>>();
@@ -103,10 +106,10 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         await publisher.PublishAsync(new Event(streamId, new AccountOpened(100)));
 
         // Refresh Snapshots
-        await _accountAggregator.RebuildAllAsync(CancellationToken.None);
+        await _eventSourcingClient.Aggregator().Build().RebuildAllAsync(CancellationToken.None);
         
         // Assert
-        var aggregate  = await _accountAggregator.GetAsync(streamId);
+        var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
         Assert.Equal(streamId, aggregate.State.Id);
         Assert.Equal(streamId, aggregate.Id);
         Assert.NotEqual(DateTime.MinValue, aggregate.CreatedDate);
@@ -125,7 +128,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         await _userAggregateManager.Handle(new [] {command}, 0, CancellationToken.None);
 
         // Assert Account
-        var aggregate1  = await _userAggregator.GetAsync(streamId);
+        var aggregate1  = await _userAggregator.GetAggregateFromSnapshotAsync(streamId, CancellationToken.None);
         Assert.Equal(streamId, aggregate1.State.Id);
         Assert.Equal(streamId, aggregate1.Id);
         Assert.NotEqual(DateTime.MinValue, aggregate1.CreatedDate);
@@ -145,7 +148,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         await _accountAggregatorManager.Handle(new [] {@event}, 0, CancellationToken.None);
 
         // Assert Account
-        var aggregate1  = await _accountAggregator.GetAsync(streamId);
+        var aggregate1  = await _accountAggregator.GetAggregateFromSnapshotAsync(streamId, CancellationToken.None);
         Assert.Equal(streamId, aggregate1.State.Id);
         Assert.Equal(streamId, aggregate1.Id);
         Assert.NotEqual(DateTime.MinValue, aggregate1.CreatedDate);

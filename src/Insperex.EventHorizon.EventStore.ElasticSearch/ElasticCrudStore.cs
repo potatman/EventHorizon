@@ -23,7 +23,7 @@ public class ElasticCrudStore<T> : ICrudStore<T>
         Setup().Wait();
     }
 
-    public async Task<T[]> GetAsync(string[] ids, CancellationToken ct)
+    public async Task<T[]> GetAllAsync(string[] ids, CancellationToken ct)
     {
         if (ids?.Any() != true)
             return Array.Empty<T>();

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 
-namespace Insperex.EventHorizon.EventSourcing.Interfaces;
+namespace Insperex.EventHorizon.EventSourcing.Interfaces.State;
 
 public interface IHandleCommand<in TCommand, in TState>
     where TCommand : ICommand<TState>

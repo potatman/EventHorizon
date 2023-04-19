@@ -56,7 +56,7 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
         var now = DateTime.UtcNow;
         var snapshot = new Snapshot<ExampleStoreState>("MultipleSnapshots", 1, _states.First(), past, now);
         var result = await _snapshotStore.UpsertAsync(new [] {snapshot}, _cts.Token);
-        var snapshots = await _snapshotStore.GetAsync(new [] {snapshot.Id}, _cts.Token);
+        var snapshots = await _snapshotStore.GetAllAsync(new [] {snapshot.Id}, _cts.Token);
         
         // Assert
         var expected = snapshot;
@@ -92,7 +92,7 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
         var snapshot = new Snapshot<ExampleStoreState>("MultipleSnapshots", 1, _states.First(), past, now);
         var result = await _snapshotStore.UpsertAsync(new [] {snapshot}, _cts.Token);
         await _snapshotStore.DeleteAsync(new [] {snapshot.Id}, _cts.Token);
-        var snapshots = await _snapshotStore.GetAsync(new [] {snapshot.Id}, _cts.Token);
+        var snapshots = await _snapshotStore.GetAllAsync(new [] {snapshot.Id}, _cts.Token);
         
         // Assert
         Assert.Null(snapshots.FirstOrDefault());
