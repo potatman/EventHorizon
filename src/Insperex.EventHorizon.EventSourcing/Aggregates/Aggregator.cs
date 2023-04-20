@@ -111,7 +111,7 @@ public class Aggregator<TParent, T>
     {
         var events = aggregateDict.Values
             .Where(x => x.Status == AggregateStatus.Ok)
-            .SelectMany(x => x.GetEvents())
+            .SelectMany(x => x.Events)
             .ToArray();
 
         if (events.Any() != true)
@@ -157,7 +157,8 @@ public class Aggregator<TParent, T>
     {
         foreach (var aggregate in aggregateDict.Values)
         {
-            aggregate.ClearAll();
+            aggregate.Events.Clear();
+            aggregate.Responses.Clear();
             if (aggregate.Status == AggregateStatus.Ok)
                 aggregate.SequenceId++;
             aggregate.SetStatus(AggregateStatus.Ok);

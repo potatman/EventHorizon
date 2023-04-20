@@ -66,7 +66,7 @@ public class AggregateUnitTests
         Assert.Equal(expected.Amount, agg.State.Amount);
 
         // Assert Event
-        Assert.Single(agg.GetEvents());
+        Assert.Single(agg.Events);
     }
     
     [Fact]
@@ -85,7 +85,7 @@ public class AggregateUnitTests
         Assert.Equal(expected.Amount, agg.State.Account.Amount);
 
         // Assert Event
-        Assert.Single(agg.GetEvents());
+        Assert.Single(agg.Events);
     }
     
     [Fact]
@@ -104,7 +104,7 @@ public class AggregateUnitTests
         Assert.Equal(expected.Name, agg.State.Name);
     
         // Assert Event
-        var @event = agg.GetEvents().First();
+        var @event = agg.Events.First();
         var actual = JsonSerializer.Deserialize<AccountOpened>(@event.Payload);
         Assert.Equal(_streamId, @event.StreamId);
         Assert.Equal(1, @event.SequenceId);
@@ -127,7 +127,7 @@ public class AggregateUnitTests
         Assert.Equal(expected.Amount, agg.State.Amount);
 
         // Assert Event
-        var @event = agg.GetEvents().First();
+        var @event = agg.Events.First();
         var actual = JsonSerializer.Deserialize<AccountOpened>(@event.Payload);
         Assert.Equal(_streamId, @event.StreamId);
         Assert.Equal(1, @event.SequenceId);
@@ -153,7 +153,7 @@ public class AggregateUnitTests
         Assert.Equal(0, agg.State.Amount);
 
         // Assert Event
-        Assert.Empty(agg.GetEvents());
+        Assert.Empty(agg.Events);
 
         // Assert Results
         var result = agg.GetResponses().First();
@@ -177,7 +177,7 @@ public class AggregateUnitTests
         Assert.Equal(expected.Amount, agg.State.Account.Amount);
 
         // Assert Event
-        var @event = agg.GetEvents().First();
+        var @event = agg.Events.First();
         var actual = JsonSerializer.Deserialize<AccountOpened>(@event.Payload);
         Assert.Equal(_streamId, @event.StreamId);
         Assert.Equal(1, @event.SequenceId);

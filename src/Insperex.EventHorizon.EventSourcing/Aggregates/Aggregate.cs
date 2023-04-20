@@ -18,8 +18,8 @@ namespace Insperex.EventHorizon.EventSourcing.Aggregates;
 public class Aggregate<T>
     where T : class, IState
 {
-    private readonly List<Event> _events = new();
-    private readonly List<Response> _responses = new();
+    internal readonly List<Event> Events = new();
+    internal readonly List<Response> Responses = new();
     private readonly Type _type = typeof(T);
     private Dictionary<string, object> AllStates { get; set; }
     public AggregateStatus Status { get; private set; }
@@ -86,7 +86,7 @@ public class Aggregate<T>
             var list = new List<IEvent>();
             var method = AggregateAssemblyUtil.StateToRequestHandlersDict.GetValueOrDefault(state.Key)?.GetValueOrDefault(request.Type);
             var result = method?.Invoke(state.Value, parameters: new [] { payload, state.Value, list } );
-            _responses.Add(new Response(Id, request.Id, request.SenderId, result) { Status = Status, Error = Error});
+            Responses.Add(new Response(Id, request.Id, request.SenderId, result) { Status = Status, Error = Error});
             foreach(var item in list)
                 Apply((dynamic)new Event(Id, SequenceId, item));
         }
@@ -111,7 +111,7 @@ public class Aggregate<T>
         if (isFirstTime)
         {
             @event.SequenceId = SequenceId;
-            _events.Add(@event);
+            Events.Add(@event);
         }
         else
         {
@@ -125,7 +125,7 @@ public class Aggregate<T>
     {
         Status = status;
         Error = error;
-        foreach (var response in _responses)
+        foreach (var response in Responses)
         {
             response.Status = status;
             response.Error = error;
@@ -148,19 +148,9 @@ public class Aggregate<T>
             });
         AllStates[_type.Name] = State;
     }
+    public Response[] GetResponses() => Responses.ToArray();
 
-    public Event[] GetEvents() => _events.ToArray();
-
-    public void ClearEvents() => _events.Clear();
-    public Response[] GetResponses() => _responses.ToArray();
-
-    public void ClearResponses() => _responses.Clear();
-
-    public void ClearAll()
-    {
-        ClearEvents();
-        ClearResponses();
-    }
+    public void ClearResponses() => Responses.Clear();
 
     public Snapshot<T> GetSnapshot() => new(Id, SequenceId, State, CreatedDate, UpdatedDate);
     public View<T> GetView() => new(Id, SequenceId, State, CreatedDate, UpdatedDate);
