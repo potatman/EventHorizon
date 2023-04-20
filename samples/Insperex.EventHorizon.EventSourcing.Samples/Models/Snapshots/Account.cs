@@ -19,30 +19,30 @@ public class Account : IState,
     public string Id { get; set; }
     public int Amount { get; set; }
 
-    #region Commands
+    #region Requests
 
-    public AccountResponse Handle(OpenAccount command, Account state, List<IEvent> events)
+    public AccountResponse Handle(OpenAccount request, Account state, List<IEvent> events)
     {
         if(state.Amount == default)
-            events.Add(new AccountOpened(command.Amount));
+            events.Add(new AccountOpened(request.Amount));
             
         return new AccountResponse();
     }
 
-    public AccountResponse Handle(Withdrawal command, Account state, List<IEvent> events)
+    public AccountResponse Handle(Withdrawal request, Account state, List<IEvent> events)
     {
-        if(state.Amount < command.Amount)
+        if(state.Amount < request.Amount)
             return new AccountResponse(AccountResponseStatus.WithdrawalDenied);
         
-        if(command.Amount != 0 && state.Amount >= command.Amount)
-            events.Add(new AccountDebited(command.Amount));
+        if(request.Amount != 0 && state.Amount >= request.Amount)
+            events.Add(new AccountDebited(request.Amount));
 
         return new AccountResponse();
     }
 
-    public AccountResponse Handle(Deposit command, Account state, List<IEvent> events)
+    public AccountResponse Handle(Deposit request, Account state, List<IEvent> events)
     {
-        events.Add(new AccountCredited(command.Amount));
+        events.Add(new AccountCredited(request.Amount));
         return new AccountResponse();
     } 
 

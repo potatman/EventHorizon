@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.EventSourcing.Interfaces.State;
@@ -36,6 +37,7 @@ public record CreateUser(string Name) : ICommand<User>;
 public record UserCreatedV2(string Name) : IEvent<User>;
 
 // Legacy Events
+[Obsolete]
 public record UserCreated(string Name) : IEvent<User>, IUpgradeTo<UserCreatedV2>
 {
     public UserCreatedV2 Upgrade()
