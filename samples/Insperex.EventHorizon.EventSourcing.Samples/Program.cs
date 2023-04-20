@@ -33,9 +33,9 @@ class Program
                         .IsRebuildEnabled(true));
                 services.AddHostedViewIndexer<SearchAccountView>(x => x
                     .RetryLimit(5)
-                    .BeforeSave(i =>
+                    .BeforeSave(batch =>
                     {
-                        
+                        // Additional logic
                     }));
 
                 services.AddHostedSubscription<AccountSubscription, Event>();
