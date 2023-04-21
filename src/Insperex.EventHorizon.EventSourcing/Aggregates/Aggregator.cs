@@ -140,7 +140,7 @@ public class Aggregator<TParent, T>
                 .Where(x => !forFailed? 
                     x.Status == AggregateStatus.Ok 
                     : x.Status != AggregateStatus.Ok)
-                .SelectMany(x => x.GetResponses())
+                .SelectMany(x => x.Responses)
                 .ToLookup(x => x.SenderId);
             foreach (var group in responsesLookup)
             {

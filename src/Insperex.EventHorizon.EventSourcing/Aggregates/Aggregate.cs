@@ -150,9 +150,6 @@ public class Aggregate<T>
             });
         AllStates[_type.Name] = State;
     }
-    public Response[] GetResponses() => Responses.ToArray();
-
-    public void ClearResponses() => Responses.Clear();
 
     public Snapshot<T> GetSnapshot() => new(Id, SequenceId, State, CreatedDate, UpdatedDate);
     public View<T> GetView() => new(Id, SequenceId, State, CreatedDate, UpdatedDate);

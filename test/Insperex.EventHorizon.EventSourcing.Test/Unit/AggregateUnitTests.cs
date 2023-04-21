@@ -134,7 +134,7 @@ public class AggregateUnitTests
         Assert.Equal(actual.Amount, actual!.Amount);
 
         // Assert Results
-        var result = JsonSerializer.Deserialize<AccountResponse>(agg.GetResponses().First().Payload);
+        var result = JsonSerializer.Deserialize<AccountResponse>(agg.Responses.First().Payload);
         Assert.Equal(AccountResponseStatus.Success, result!.Status);
     }
     
@@ -156,7 +156,7 @@ public class AggregateUnitTests
         Assert.Empty(agg.Events);
 
         // Assert Results
-        var result = agg.GetResponses().First();
+        var result = agg.Responses.First();
         var actual = JsonSerializer.Deserialize<AccountResponse>(result.Payload);
         Assert.Equal(AccountResponseStatus.WithdrawalDenied, actual!.Status);
     }
