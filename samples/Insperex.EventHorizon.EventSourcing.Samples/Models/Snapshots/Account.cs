@@ -9,9 +9,9 @@ namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 [SnapshotStore("test_snapshot_bank_account", nameof(Account))]
 [EventStream("test_event_bank_account", nameof(Account))]
 public class Account : IState, 
-    IHandleRequest<OpenAccount, AccountResponse, Account>, 
-    IHandleRequest<Withdrawal, AccountResponse, Account>, 
-    IHandleRequest<Deposit, AccountResponse, Account>,
+    IHandleRequest<OpenAccount, AccountResponse>, 
+    IHandleRequest<Withdrawal, AccountResponse>, 
+    IHandleRequest<Deposit, AccountResponse>,
     IApplyEvent<AccountOpened>,
     IApplyEvent<AccountDebited>,
     IApplyEvent<AccountCredited>
@@ -21,26 +21,26 @@ public class Account : IState,
 
     #region Requests
 
-    public AccountResponse Handle(OpenAccount request, Account state, List<IEvent> events)
+    public AccountResponse Handle(OpenAccount request, List<IEvent> events)
     {
-        if(state.Amount == default)
+        if(Amount == default)
             events.Add(new AccountOpened(request.Amount));
             
         return new AccountResponse();
     }
 
-    public AccountResponse Handle(Withdrawal request, Account state, List<IEvent> events)
+    public AccountResponse Handle(Withdrawal request, List<IEvent> events)
     {
-        if(state.Amount < request.Amount)
+        if(Amount < request.Amount)
             return new AccountResponse(AccountResponseStatus.WithdrawalDenied);
         
-        if(request.Amount != 0 && state.Amount >= request.Amount)
+        if(request.Amount != 0 && Amount >= request.Amount)
             events.Add(new AccountDebited(request.Amount));
 
         return new AccountResponse();
     }
 
-    public AccountResponse Handle(Deposit request, Account state, List<IEvent> events)
+    public AccountResponse Handle(Deposit request, List<IEvent> events)
     {
         events.Add(new AccountCredited(request.Amount));
         return new AccountResponse();

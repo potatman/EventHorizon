@@ -12,8 +12,8 @@ namespace Insperex.EventHorizon.EventSourcing.Util;
 
 public static class AggregateAssemblyUtil
 {
-    public static readonly ImmutableDictionary<string, Dictionary<string, MethodInfo>> StateToCommandHandlersDict = GetStateActionHandlerDict(typeof(IHandleCommand<,>), "Handle");
-    public static readonly ImmutableDictionary<string, Dictionary<string, MethodInfo>> StateToRequestHandlersDict = GetStateActionHandlerDict(typeof(IHandleRequest<,,>), "Handle");
+    public static readonly ImmutableDictionary<string, Dictionary<string, MethodInfo>> StateToCommandHandlersDict = GetStateActionHandlerDict(typeof(IHandleCommand<>), "Handle");
+    public static readonly ImmutableDictionary<string, Dictionary<string, MethodInfo>> StateToRequestHandlersDict = GetStateActionHandlerDict(typeof(IHandleRequest<,>), "Handle");
     public static readonly ImmutableDictionary<string, Dictionary<string, MethodInfo>> StateToEventHandlersDict = GetStateActionHandlerDict(typeof(IApplyEvent<>), "Apply");
     
     public static readonly ILookup<string, Type> StateToCommandsLookup = GetStatesToActionLookup(typeof(ICommand<>));

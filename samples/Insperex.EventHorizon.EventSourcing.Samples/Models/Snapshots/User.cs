@@ -10,7 +10,7 @@ namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 [SnapshotStore("test_snapshot_bank_user", nameof(User))]
 [EventStream("test_event_bank_user", nameof(User))]
 public class User : IState, 
-    IHandleCommand<CreateUser, User>,
+    IHandleCommand<CreateUser>,
     IApplyEvent<UserCreatedV2>
 {
     public string Id { get; set; }
@@ -18,7 +18,7 @@ public class User : IState,
     
     public User() { }
     
-    public void Handle(CreateUser command, User state, List<IEvent> events)
+    public void Handle(CreateUser command, List<IEvent> events)
     {
         if(Name == default)
             events.Add(new UserCreatedV2(command.Name));
