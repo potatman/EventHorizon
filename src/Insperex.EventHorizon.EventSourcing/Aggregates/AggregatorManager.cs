@@ -67,7 +67,6 @@ public class AggregatorManager<TParent, T>
         await _aggregator.PublishResponseAsync(aggregateDict, true);
     }
 
-
     private void Handle<TM>(TM[] messages, Dictionary<string, Aggregate<T>> aggregateDict) where TM : ITopicMessage
     {
         foreach (var message in messages)
@@ -111,12 +110,7 @@ public class AggregatorManager<TParent, T>
         var aggStatusLookup = aggregateDict.Values.ToLookup(x => x.Status);
         foreach (var group in aggStatusLookup)
         {
-            if (group.Key == AggregateStatus.Ok)
-            {
-                // _logger.LogInformation("{State} Handled {Count} {Type} (Retry {RetryCount})",
-                //     typeof(T).Name, group.Count(), typeof(TM).Name, retryCount);
-                continue;
-            }
+            if (group.Key == AggregateStatus.Ok) continue;
             var first = group.First();
             _logger.LogError("{State} {Count} had {Status} => {Error}", 
                 typeof(T).Name, group.Count(), first.Status, first.Error);
