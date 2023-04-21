@@ -23,6 +23,7 @@ public class Aggregate<T>
     private readonly Type _type = typeof(T);
     private Dictionary<string, object> AllStates { get; set; }
     public AggregateStatus Status { get; private set; }
+    public bool IsDirty { get; private set; }
     public string Error { get; private set; }
     public string Id { get; set; }
     public long SequenceId { get; set; }
@@ -118,6 +119,7 @@ public class Aggregate<T>
             SequenceId = @event.SequenceId;
         }
 
+        IsDirty = true;
         UpdatedDate = DateTime.UtcNow;
     }
 

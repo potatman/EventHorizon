@@ -87,6 +87,7 @@ public class Aggregator<TParent, T>
             // Save Snapshots and then track failures
             var parents = aggregateDict.Values
                 .Where(x => x.Status == AggregateStatus.Ok)
+                .Where(x => x.IsDirty)
                 .Select(x => new TParent
                 {
                     Id = x.Id,
