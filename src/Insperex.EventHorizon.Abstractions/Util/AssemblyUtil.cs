@@ -31,30 +31,28 @@ public static class AssemblyUtil
     public static readonly Version AssemblyVersion = Assembly.GetName().Version;
     public static readonly string AssemblyNameAndVersion = $"{AssemblyName}-{AssemblyVersion}";
 
-    public static readonly ImmutableDictionary<Type, string> TypeNameToAssemblyName = AllAssemblies
-        .SelectMany(x => x.GetTypes())
-        .ToLookup(x => x)
-        .ToImmutableDictionary(x => x.Key, x => x.Last().Assembly.GetName().Name);
-
     public static readonly ImmutableDictionary<string, Type> TypeDictionary = AllAssemblies
         .SelectMany(x => x.GetTypes())
         .ToLookup(x => x.Name)
         .ToImmutableDictionary(x => x.Key, x => x.Last());
     
+    public static readonly ImmutableDictionary<string, PropertyInfo[]> PropertyDict = TypeDictionary
+        .Where(x => x.Value.GetInterface(nameof(IState)) != null || x.Value.GetInterface(nameof(IAction)) != null)
+        .ToImmutableDictionary(x => x.Key, x => x.Value.GetProperties());
+    
     public static readonly ImmutableDictionary<string, Type> StateDict = TypeDictionary
         .Where(x => x.Value.GetInterface(nameof(IState)) != null)
         .ToImmutableDictionary(x => x.Key, x => x.Value);
     
-    public static readonly ImmutableDictionary<string, PropertyInfo[]> StateToSubStatesPropertyDict = StateDict
-        .ToImmutableDictionary(x => x.Key, x => x.Value.GetProperties()
+    public static readonly ImmutableDictionary<string, PropertyInfo[]> PropertyDictOfStates = PropertyDict
+        .ToImmutableDictionary(x => x.Key, x => x.Value
             .Where(p => p.PropertyType.GetInterface(nameof(IState)) != null).ToArray());
     
-    public static readonly ImmutableDictionary<string, Type[]> SubStateDict = StateToSubStatesPropertyDict
+    public static readonly ImmutableDictionary<string, Type[]> SubStateDict = PropertyDictOfStates
         .ToImmutableDictionary(x => x.Key, x => x.Value.Select(s => s.PropertyType).ToArray());
 
-    private static readonly string[] ActionTypes = { nameof(IEvent), nameof(ICommand), nameof(IRequest), nameof(IResponse) };
     public static readonly ImmutableDictionary<string, Type> ActionDict = TypeDictionary
-        .Where(x => x.Value.GetInterfaces().Any(i => ActionTypes.Contains(i.Name)) )
+        .Where(x => x.Value.GetInterface(nameof(IAction)) != null)
         .ToImmutableDictionary(x => x.Key, x => x.Value);
 
 }

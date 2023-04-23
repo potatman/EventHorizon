@@ -17,6 +17,8 @@ public class Account : IState,
     IApplyEvent<AccountCredited>
 {
     public string Id { get; set; }
+    [EventStreamKey]
+    public string BankAccount { get; set; }
     public int Amount { get; set; }
 
     #region Requests

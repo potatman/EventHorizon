@@ -72,7 +72,7 @@ public class Aggregate<T>
         {
             var list = new List<IEvent>();
             var method = AggregateAssemblyUtil.StateToCommandHandlersDict.GetValueOrDefault(state.Key)?.GetValueOrDefault(command.Type);
-            method?.Invoke(state.Value, parameters: new [] { payload, state.Value, list } );
+            method?.Invoke(state.Value, parameters: new [] { payload, list } );
             foreach(var item in list)
                 Apply((dynamic)new Event(Id, SequenceId, item));
         }
@@ -86,7 +86,7 @@ public class Aggregate<T>
         {
             var list = new List<IEvent>();
             var method = AggregateAssemblyUtil.StateToRequestHandlersDict.GetValueOrDefault(state.Key)?.GetValueOrDefault(request.Type);
-            var result = method?.Invoke(state.Value, parameters: new [] { payload, state.Value, list } );
+            var result = method?.Invoke(state.Value, parameters: new [] { payload, list } );
             Responses.Add(new Response(Id, request.Id, request.SenderId, result) { Status = Status, Error = Error});
             foreach(var item in list)
                 Apply((dynamic)new Event(Id, SequenceId, item));
@@ -139,7 +139,7 @@ public class Aggregate<T>
         // Initialize Data
         State ??= Activator.CreateInstance<T>();
         State.Id = Id;
-        var properties = AssemblyUtil.StateToSubStatesPropertyDict[_type.Name];
+        var properties = AssemblyUtil.PropertyDictOfStates[_type.Name];
         AllStates = properties
             .ToDictionary(x => x.Name, x =>
             {

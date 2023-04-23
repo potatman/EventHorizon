@@ -42,7 +42,7 @@ public class PulsarStreamFactory : IStreamFactory
 
     public ITopicReader<T> CreateReader<T>(ReaderConfig config) where T : class, ITopicMessage, new()
     {
-        return new PulsarTopicReader<T>(_client, config, _loggerFactory.CreateLogger<PulsarTopicReader<T>>());
+        return new PulsarTopicReader<T>(_client, config);
     }
 
     public ITopicAdmin CreateAdmin()

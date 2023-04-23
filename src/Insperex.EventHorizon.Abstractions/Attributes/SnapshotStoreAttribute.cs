@@ -3,9 +3,9 @@
 namespace Insperex.EventHorizon.Abstractions.Attributes;
 
 [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
-public class SnapshotStoreAttribute : Attribute
+public sealed class SnapshotStoreAttribute : Attribute
 {
-    public virtual string BucketId { get; set; }
+    public string BucketId { get; set; }
     public string Type { get; set; }
     public bool ValidateCommandHandlers { get; set; }
     public bool ValidateRequestHandlers { get; set; }

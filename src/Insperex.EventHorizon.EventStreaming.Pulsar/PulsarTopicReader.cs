@@ -20,14 +20,12 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
 {
     private readonly PulsarClient _client;
     private readonly ReaderConfig _config;
-    private readonly ILogger<PulsarTopicReader<T>> _logger;
     private IReader<T> _reader;
 
-    public PulsarTopicReader(PulsarClient client, ReaderConfig config, ILogger<PulsarTopicReader<T>> logger)
+    public PulsarTopicReader(PulsarClient client, ReaderConfig config)
     {
         _client = client;
         _config = config;
-        _logger = logger;
         _reader = GetReaderAsync().Result;
     }
 

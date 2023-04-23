@@ -1,10 +1,15 @@
 ﻿using System;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
+using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 using Insperex.EventHorizon.EventStreaming.Util;
+using Insperex.EventHorizon.EventStreaming.Extensions;
 using Microsoft.Extensions.Logging;
 using Pulsar.Client.Api;
 using Pulsar.Client.Common;
@@ -13,7 +18,7 @@ using Pulsar.Client.Otel;
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
 public class PulsarTopicProducer<T> : ITopicProducer<T>
-    where T : ITopicMessage
+    where T : class, ITopicMessage
 {
     private readonly PulsarClient _client;
     private readonly PublisherConfig _config;
@@ -33,9 +38,8 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         _config = config;
         _logger = logger;
         _publisherName = NameUtil.AssemblyNameWithGuid;
-        _intercept =
-            new OTelProducerInterceptor.OTelProducerInterceptor<T>(TraceConstants.ActivitySourceName,
-                PulsarClient.Logger);
+        _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<T>(
+            TraceConstants.ActivitySourceName, PulsarClient.Logger);
         _producer = GetProducerAsync().Result;
         TrackStats();
     }
@@ -44,7 +48,11 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     {
         foreach (var message in messages)
         {
-            var msg = _producer.NewMessage(message, message.StreamId);
+            var func = AssemblyUtil.PropertyDict[message.Type]
+                .FirstOrDefault(x => x.GetCustomAttribute<EventStreamKey>(true) != null);
+
+            var key = func?.GetValue(message)?.ToString() ?? message.StreamId;
+            var msg = _producer.NewMessage(message, key);
             await _producer.SendAndForgetAsync(msg);
         }
     }
