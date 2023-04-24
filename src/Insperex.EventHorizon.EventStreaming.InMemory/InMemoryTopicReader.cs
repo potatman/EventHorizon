@@ -24,7 +24,7 @@ public class InMemoryTopicReader<T> : ITopicReader<T> where T : class, ITopicMes
 
     public Task<MessageContext<T>[]> GetNextAsync(int batchSize, TimeSpan timeout)
     {
-        var messages = _messageDatabase.GetMessages<T>(_config.Topic, _config.StreamIds);
+        var messages = _messageDatabase.GetMessages<T>(_config.Topic, _config.Keys);
         var results = messages.SkipLast(_index).Take(batchSize).ToArray();
         _index += batchSize;
         return Task.FromResult(results);

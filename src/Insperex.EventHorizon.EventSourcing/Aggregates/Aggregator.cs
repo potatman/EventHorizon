@@ -228,7 +228,7 @@ public class Aggregator<TParent, T>
 
     public Task<MessageContext<Event>[]> GetEventsAsync(string[] streamIds, DateTime? endDateTime = null)
     {
-        var reader = _streamingClient.CreateReader<Event>().AddTopic<T>().StreamIds(streamIds).EndDateTime(endDateTime).Build();
+        var reader = _streamingClient.CreateReader<Event>().AddTopic<T>().Keys(streamIds).EndDateTime(endDateTime).Build();
         return reader.GetNextAsync(10000);
     }
 

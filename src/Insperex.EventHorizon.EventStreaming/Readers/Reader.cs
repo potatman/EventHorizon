@@ -5,7 +5,6 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Tracing;
-using Microsoft.Extensions.Logging;
 using Insperex.EventHorizon.EventStreaming.Extensions;
 
 namespace Insperex.EventHorizon.EventStreaming.Readers;

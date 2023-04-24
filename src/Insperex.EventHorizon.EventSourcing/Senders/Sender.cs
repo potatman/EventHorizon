@@ -77,7 +77,7 @@ public class Sender
         {
             // Get Batch Results
             var resultReader = _streamingClient.CreateReader<Response>().AddTopic<T>(_senderId)
-                .StreamIds(requests.Select(x => x.StreamId).ToArray()).IsBeginning(true).Build();
+                .Keys(requests.Select(x => x.StreamId).ToArray()).IsBeginning(true).Build();
             var results = await resultReader.GetNextAsync(requests.Length);
 
             // Check Results

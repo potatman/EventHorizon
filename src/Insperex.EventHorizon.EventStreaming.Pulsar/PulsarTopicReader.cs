@@ -58,7 +58,7 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
                 continue;
 
             // Note: reader key hashing isn't perfect, need to check here.
-            if (_config.StreamIds != null && !_config.StreamIds.Contains(message?.Key))
+            if (_config.Keys != null && !_config.Keys.Contains(message?.Key))
                 continue;
 
             // Stop at EndDateTime
@@ -97,8 +97,8 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
                     ? MessageId.Earliest
                     : MessageId.Latest);
 
-        if (_config.StreamIds?.Any() == true)
-            builder = builder.KeyHashRange(_config.StreamIds
+        if (_config.Keys?.Any() == true)
+            builder = builder.KeyHashRange(_config.Keys
                 .Select(x => MurmurHash3.Hash(x) % 65536)
                 .Select(x => new Range(x, x))
                 .ToArray());

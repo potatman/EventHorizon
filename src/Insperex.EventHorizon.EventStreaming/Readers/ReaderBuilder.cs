@@ -15,7 +15,7 @@ public class ReaderBuilder<T> where T : class, ITopicMessage, new()
     private DateTime? _endDateTime;
     private bool _isBeginning = true;
     private DateTime? _startDateTime;
-    private string[] _streamIds;
+    private string[] _keys;
     private string _topic;
 
     public ReaderBuilder(IStreamFactory factory, ILoggerFactory loggerFactory)
@@ -31,9 +31,9 @@ public class ReaderBuilder<T> where T : class, ITopicMessage, new()
         return this;
     }
 
-    public ReaderBuilder<T> StreamIds(params string[] streamIds)
+    public ReaderBuilder<T> Keys(params string[] keys)
     {
-        _streamIds = streamIds;
+        _keys = keys;
         return this;
     }
 
@@ -60,7 +60,7 @@ public class ReaderBuilder<T> where T : class, ITopicMessage, new()
         var config = new ReaderConfig
         {
             Topic = _topic,
-            StreamIds = _streamIds,
+            Keys = _keys,
             StartDateTime = _startDateTime,
             EndDateTime = _endDateTime,
             IsBeginning = _isBeginning

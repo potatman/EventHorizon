@@ -69,7 +69,7 @@ public class PulsarSingleton : IDisposable
 
         Readers[type] = StreamClient.Value.CreateReader<Event>()
             .AddTopic<T>()
-            .StreamIds("5")
+            .Keys("5")
             .Build();
         
         return Readers[type];

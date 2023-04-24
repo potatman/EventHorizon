@@ -59,7 +59,7 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
     [Fact]
     public async Task TestReaderGetStreamId()
     {
-        using var reader = _streamingClient.CreateReader<Event>().AddTopic<ExampleEvent1>().StreamIds(_streamId).Build();
+        using var reader = _streamingClient.CreateReader<Event>().AddTopic<ExampleEvent1>().Keys(_streamId).Build();
         
         var events = await reader.GetNextAsync(_events.Length);
         
