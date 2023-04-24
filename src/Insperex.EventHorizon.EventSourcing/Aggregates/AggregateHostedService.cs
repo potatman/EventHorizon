@@ -44,10 +44,12 @@ public class AggregateHostedService<TParent, TAction, T> : IHostedService
 
     public async Task StartAsync(CancellationToken ct)
     {
+        await _aggregator.SetupAsync();
+
         // Try to Refresh any Missing or Outdated Snapshots
         if (_aggregator.GetConfig().IsRebuildEnabled)
             await _aggregator.RebuildAllAsync(ct);
-
+        
         // Start Command Subscription 
         await _subscription.StartAsync();
     }

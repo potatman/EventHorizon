@@ -24,6 +24,11 @@ public class IgniteCrudStore<T> : ICrudStore<T>
         _cache = client.GetOrCreateCache<string, T>($"{bucketId}-{typeof(T).Name}");
     }
 
+    public Task Setup(CancellationToken ct)
+    {
+        return Task.CompletedTask;
+    }
+
     public async Task<T[]> GetAllAsync(string[] ids, CancellationToken ct)
     {
         var keys = ids.Select(x => x).ToArray();

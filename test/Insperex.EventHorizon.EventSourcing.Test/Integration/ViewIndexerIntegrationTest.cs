@@ -9,6 +9,7 @@ using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventSourcing.Extensions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
+using Insperex.EventHorizon.EventStore.ElasticSearch.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
 using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
@@ -44,10 +45,10 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
             {
                 services.AddInMemorySnapshotStore();
                 services.AddInMemoryEventStream();
-                services.AddInMemoryViewStore();
+                // services.AddInMemoryViewStore();
                 // services.AddMongoDbSnapshotStore(hostContext.Configuration);
                 // services.AddPulsarEventStream(hostContext.Configuration);
-                // services.AddElasticViewStore(hostContext.Configuration);
+                services.AddElasticViewStore(hostContext.Configuration);
                 
                 services.AddEventSourcing();
                 services.AddHostedViewIndexer<AccountView>();

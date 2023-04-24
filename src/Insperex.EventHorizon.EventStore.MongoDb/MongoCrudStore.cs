@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,7 +33,11 @@ public class MongoCrudStore<T> : ICrudStore<T>
         var database = client.GetDatabase(bucketId);
         var typeName = typeof(T).Name.Replace(Tilda1, string.Empty);
         _collection = database.GetCollection<T>(typeName);
-        SetupAsync().Wait();
+    }
+
+    public async Task Setup(CancellationToken ct)
+    {
+        await AddIndex(UpdatedDate1, Builders<T>.IndexKeys.Ascending(x => x.UpdatedDate));
     }
 
     public async Task<T[]> GetAllAsync(string[] ids, CancellationToken ct)
@@ -135,14 +140,9 @@ public class MongoCrudStore<T> : ICrudStore<T>
         return _client.DropDatabaseAsync(_bucketId, ct);
     }
 
-    private async Task SetupAsync()
-    {
-        await AddIndex(UpdatedDate1, Builders<T>.IndexKeys.Ascending(x => x.UpdatedDate));
-    }
-
     private async Task AddIndex(string name, IndexKeysDefinition<T> definition)
     {
-        var names = (await _collection.Indexes.ListAsync()).ToList().Select(x => x[Name.ToLower()]).ToArray();
+        var names = (await _collection.Indexes.ListAsync()).ToList().Select(x => x[Name.ToLower(CultureInfo.InvariantCulture)]).ToArray();
         if (!names.Contains(name))
             await _collection.Indexes.CreateOneAsync(new CreateIndexModel<T>(definition));
     }
