@@ -40,9 +40,9 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
             cfg.Map<TE>(map => map.AutoMap())
                 .Settings(x =>
                 {
-                    if (_elasticAttr?.RefreshIntervalMs > 0) x.RefreshInterval(_elasticAttr?.RefreshIntervalMs);
                     if (_elasticAttr?.Shards > 0) x.NumberOfShards(_elasticAttr?.Shards);
                     if (_elasticAttr?.Replicas > 0) x.NumberOfReplicas(_elasticAttr?.Replicas);
+                    if (_elasticAttr?.RefreshIntervalMs > 0) x.RefreshInterval(_elasticAttr?.RefreshIntervalMs);
                     if (_elasticAttr?.MaxResultWindow > 0) x.Setting("max_result_window", _elasticAttr?.MaxResultWindow);
                     return x;
                 });
