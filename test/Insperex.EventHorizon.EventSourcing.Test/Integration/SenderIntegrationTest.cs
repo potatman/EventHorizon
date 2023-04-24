@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
@@ -41,27 +42,27 @@ public class SenderIntegrationTest : IAsyncLifetime
     public SenderIntegrationTest(ITestOutputHelper output)
     {
         _output = output;
-        _host = Host.CreateDefaultBuilder(new string[] { })
+        _host = Host.CreateDefaultBuilder(Array.Empty<string>())
             .ConfigureServices((hostContext, services) =>
             {
-                // services.AddInMemorySnapshotStore();
-                // services.AddInMemoryEventStream();
-                services.AddPulsarEventStream(hostContext.Configuration);
-                services.AddMongoDbSnapshotStore(hostContext.Configuration);
-                
+                services.AddInMemorySnapshotStore();
+                services.AddInMemoryEventStream();
+                // services.AddPulsarEventStream(hostContext.Configuration);
+                // services.AddMongoDbSnapshotStore(hostContext.Configuration);
+
                 services.AddEventSourcing();
                 services.AddHostedAggregate<Account>();
                 // services.AddHostedAggregate<UserAccount>();
             })
             .UseSerilog((_, config) =>
             {
-                config.WriteTo.Console()
-                    .WriteTo.TestOutput(output, LogEventLevel.Information);
+                config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                    .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture);
             })
             .UseEnvironment("test")
             .Build()
             .AddTestBucketIds();
-        
+
         _sender = _host.Services.GetRequiredService<SenderBuilder>()
             .Timeout(TimeSpan.FromSeconds(30))
             .GetErrorResult((status, error) =>
@@ -76,7 +77,7 @@ public class SenderIntegrationTest : IAsyncLifetime
                 };
             })
             .Build();
-        
+
         _sender2 = _host.Services.GetRequiredService<SenderBuilder>()
             .Timeout(TimeSpan.FromSeconds(30))
             .GetErrorResult((status, error) =>
@@ -95,7 +96,7 @@ public class SenderIntegrationTest : IAsyncLifetime
         _eventSourcingClient = _host.Services.GetRequiredService<EventSourcingClient<Account>>();
         _streamFactory = _host.Services.GetRequiredService<IStreamFactory>();
     }
-    
+
     public async Task InitializeAsync()
     {
         await _host.StartAsync();
@@ -133,7 +134,7 @@ public class SenderIntegrationTest : IAsyncLifetime
         Assert.NotEqual(DateTime.MinValue, aggregate.CreatedDate);
         Assert.NotEqual(DateTime.MinValue, aggregate.UpdatedDate);
         Assert.Equal(command.Amount, aggregate.State.Amount);
-        
+
         // // Assert User Account
         // var store2 = _host.Services.GetRequiredService<Aggregator<Snapshot<UserAccount>, UserAccount>>();
         // var aggregate2  = await store2.GetAsync(streamId);
@@ -173,7 +174,7 @@ public class SenderIntegrationTest : IAsyncLifetime
                 };
             })
             .Build();
-        
+
         // Send Command
         var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(10);
         var command = new OpenAccount(100);

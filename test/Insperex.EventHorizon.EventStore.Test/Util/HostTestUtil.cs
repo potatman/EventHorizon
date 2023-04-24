@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Globalization;
+using System.Reflection;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Testing;
@@ -25,7 +26,7 @@ public static class HostTestUtil
             .Build()
             .AddTestBucketIds();
     }
-    
+
     public static IHost GetIgniteHost(ITestOutputHelper output)
     {
         return GetHostBase(output)
@@ -36,7 +37,7 @@ public static class HostTestUtil
             .Build()
             .AddTestBucketIds();
     }
-    
+
     public static IHost GetInMemoryHost(ITestOutputHelper output)
     {
         return GetHostBase(output)
@@ -47,7 +48,7 @@ public static class HostTestUtil
             .Build()
             .AddTestBucketIds();
     }
-    
+
     public static IHost GetMongoDbHost(ITestOutputHelper output)
     {
         return GetHostBase(output)
@@ -61,13 +62,13 @@ public static class HostTestUtil
 
     private static IHostBuilder GetHostBase(ITestOutputHelper output)
     {
-        return Host.CreateDefaultBuilder(new string[] { })
+        return Host.CreateDefaultBuilder(System.Array.Empty<string>())
             .UseSerilog((_, config) =>
             {
-                config.WriteTo.Console();
-                    
+                config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture);
+
                 if(output != null)
-                    config.WriteTo.TestOutput(output, LogEventLevel.Information);
+                    config.WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture);
             })
             .UseEnvironment("test");
     }

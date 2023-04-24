@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Globalization;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventSourcing.Extensions;
@@ -20,7 +22,7 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        var host = Host.CreateDefaultBuilder(new string[] { })
+        var host = Host.CreateDefaultBuilder(Array.Empty<string>())
             .ConfigureServices((hostContext, services) =>
             {
                 services.AddPulsarEventStream(hostContext.Configuration);
@@ -40,7 +42,7 @@ class Program
 
                 services.AddHostedSubscription<AccountSubscription, Event>();
             })
-            .UseSerilog((_, config) => { config.WriteTo.Console(); })
+            .UseSerilog((_, config) => { config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture); })
             .UseEnvironment("local")
             .Build();
 
@@ -64,7 +66,7 @@ class Program
             })
             .Build()
             .SendAndReceiveAsync("123", new OpenAccount(100));
-        
+
     }
 }
-    
+

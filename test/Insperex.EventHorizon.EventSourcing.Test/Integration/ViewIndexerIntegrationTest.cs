@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -49,15 +50,15 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
                 // services.AddMongoDbSnapshotStore(hostContext.Configuration);
                 // services.AddPulsarEventStream(hostContext.Configuration);
                 services.AddElasticViewStore(hostContext.Configuration);
-                
+
                 services.AddEventSourcing();
                 services.AddHostedViewIndexer<AccountView>();
                 services.AddHostedViewIndexer<SearchAccountView>();
             })
             .UseSerilog((_, config) =>
             {
-                config.WriteTo.Console()
-                    .WriteTo.TestOutput(output, LogEventLevel.Information);
+                config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                    .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture);
             })
             .UseEnvironment("test")
             .Build()
@@ -68,7 +69,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
         _accountStore = _host.Services.GetRequiredService<IViewStoreFactory<AccountView>>().GetViewStore();
         _userAccountStore = _host.Services.GetRequiredService<IViewStoreFactory<SearchAccountView>>().GetViewStore();
     }
-    
+
     public async Task InitializeAsync()
     {
         await _host.StartAsync();
@@ -101,7 +102,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
 
         // Wait for Subscription
         await Task.Delay(TimeSpan.FromSeconds(3));
-        
+
         // Assert Account
         var views = await _accountStore.GetAllAsync(new [] { streamId }, CancellationToken.None);
         var view = views.FirstOrDefault();
@@ -110,7 +111,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
         Assert.NotEqual(DateTime.MinValue, view.CreatedDate);
         Assert.NotEqual(DateTime.MinValue, view.UpdatedDate);
         Assert.Equal(100, view.State.Amount);
-        
+
         // Assert UserAccount
         var views2 = await _userAccountStore.GetAllAsync(new [] { streamId }, CancellationToken.None);
         var view2 = views2.FirstOrDefault();

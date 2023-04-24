@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Attributes;
@@ -46,14 +47,14 @@ public class AggregatorIntegrationTest : IAsyncLifetime
     public AggregatorIntegrationTest(ITestOutputHelper output)
     {
         _output = output;
-        _host = Host.CreateDefaultBuilder(new string[] { })
+        _host = Host.CreateDefaultBuilder(Array.Empty<string>())
             .ConfigureServices((hostContext, services) =>
             {
                 services.AddInMemorySnapshotStore();
                 services.AddInMemoryEventStream();
                 // services.Stream(hostContext.Configuration);
                 // services.AddMongoDbEventStore(hostContext.Configuration);
-                
+
                 services.AddEventSourcing();
                 services.AddHostedAggregate<Account>();
                 services.AddHostedAggregate<User>();
@@ -61,8 +62,8 @@ public class AggregatorIntegrationTest : IAsyncLifetime
             })
             .UseSerilog((_, config) =>
             {
-                config.WriteTo.Console()
-                    .WriteTo.TestOutput(output, LogEventLevel.Information);
+                config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                    .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture);
             })
             .UseEnvironment("test")
             .Build()
@@ -74,12 +75,12 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         _userAggregator = _host.Services.GetRequiredService<Aggregator<Snapshot<User>, User>>();
         _userAggregateManager = _host.Services.GetRequiredService<AggregatorManager<Snapshot<User>, User>>();
 
-        
+
         _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
         _streamFactory = _host.Services.GetRequiredService<IStreamFactory>();
         _snapshotStore = _host.Services.GetRequiredService<ISnapshotStoreFactory<Account>>().GetSnapshotStore();
     }
-    
+
     public async Task InitializeAsync()
     {
         await _host.StartAsync();
@@ -107,7 +108,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
 
         // Refresh Snapshots
         await _eventSourcingClient.Aggregator().Build().RebuildAllAsync(CancellationToken.None);
-        
+
         // Assert
         var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
         Assert.Equal(streamId, aggregate.State.Id);
@@ -135,7 +136,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         Assert.NotEqual(DateTime.MinValue, aggregate1.UpdatedDate);
         Assert.Equal("Bob", aggregate1.State.Name);
     }
-    
+
 
     [Fact]
     public async Task TestEvents()

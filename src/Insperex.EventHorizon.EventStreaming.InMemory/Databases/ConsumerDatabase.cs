@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -32,11 +33,11 @@ public class ConsumerDatabase
 
     public void DeleteTopic(string str)
     {
-        var consumers = _consumers.Where(x => x.StartsWith(str)).ToArray();
+        var consumers = _consumers.Where(x => x.StartsWith(str, StringComparison.InvariantCulture)).ToArray();
         foreach (var consumer in consumers)
             _consumers.Remove(consumer);
 
-        var keys = _sharedKeys.Keys.Where(x => x.StartsWith(str)).ToArray();
+        var keys = _sharedKeys.Keys.Where(x => x.StartsWith(str, StringComparison.InvariantCulture)).ToArray();
         foreach (var key in keys)
             _sharedKeys.Remove(key, out var value);
     }
