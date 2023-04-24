@@ -21,21 +21,9 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
     private readonly SubscriptionConfig<T> _config;
     private readonly ILogger<Subscription<T>> _logger;
     private readonly ITopicConsumer<T> _consumer;
-    private bool _running;
-    private bool _stopped;
-    private readonly object _boolLock = new object();
     private bool _disposed;
-
-    public bool Running 
-    {
-        get { lock (_boolLock) return _running; }
-        set { lock (_boolLock) _running = value; }
-    }
-    public bool Stopped 
-    {
-        get { lock (_boolLock) return _stopped; }
-        set { lock (_boolLock) _stopped = value; }
-    }
+    private bool Running { get; set; }
+    private bool Stopped { get; set; }
 
     public Subscription(IStreamFactory factory, SubscriptionConfig<T> config, ILogger<Subscription<T>> logger)
     {
@@ -62,23 +50,20 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
         return Task.FromResult(this);
     }
 
-    public Task<Subscription<T>> StopAsync()
+    public async Task<Subscription<T>> StopAsync()
     {
-        if (Running != true) return Task.FromResult(this);
+        if (Running != true) return this;
         
         // Cancel
         Running = false;
-        // while (!Stopped)
-        // {
-        //     _logger.LogInformation("Stop is {value}", Stopped);
-        //     await Task.Delay(TimeSpan.FromSeconds(1));
-        // }
+        while (!Stopped)
+            await Task.Delay(TimeSpan.FromSeconds(1));
 
         // Cleanup
         _consumer.Dispose();
         _logger.LogInformation("Stopped Subscription with config {@Config}", _config);
 
-        return Task.FromResult(this);
+        return this;
     }
 
     private async void Loop()

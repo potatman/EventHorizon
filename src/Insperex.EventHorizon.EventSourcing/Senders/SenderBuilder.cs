@@ -2,21 +2,24 @@
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming;
+using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventSourcing.Senders;
 
 public class SenderBuilder
 {
+    private readonly SenderSubscriptionTracker _subscriptionTracker;
     private readonly StreamingClient _streamingClient;
-    private readonly ILoggerFactory _loggerFactory;
+    private readonly ITopicResolver _topicResolver;
     private Func<AggregateStatus, string, IResponse> _getErrorResult;
     private TimeSpan _timeout;
 
-    public SenderBuilder(StreamingClient streamingClient, ILoggerFactory loggerFactory)
+    public SenderBuilder(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient, ITopicResolver topicResolver)
     {
+        _subscriptionTracker = subscriptionTracker;
         _streamingClient = streamingClient;
-        _loggerFactory = loggerFactory;
+        _topicResolver = topicResolver;
     }
 
     public SenderBuilder Timeout(TimeSpan timeout)
@@ -39,7 +42,6 @@ public class SenderBuilder
             GetErrorResult = _getErrorResult
         };
 
-        var logger = _loggerFactory.CreateLogger<Sender>();
-        return new Sender(_streamingClient, config, logger);
+        return new Sender(_subscriptionTracker, _streamingClient, config);
     }
 }

@@ -58,8 +58,8 @@ public class PulsarTopicAdmin : ITopicAdmin
         }
         catch (ApiException ex)
         {
-            // 404 - ApiException
-            if (ex.StatusCode != 409) 
+            // 404 - Namespace or topic does not exist
+            if (ex.StatusCode != 404) 
                 throw;
         }
     }
@@ -72,7 +72,14 @@ public class PulsarTopicAdmin : ITopicAdmin
         {
             var clusters = await _clustersBaseClient.GetClustersAsync(ct);
             var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
-            await _tenantsBaseClient.CreateTenantAsync(tenant, tenantInfo, ct);
+            try
+            {
+                await _tenantsBaseClient.CreateTenantAsync(tenant, tenantInfo, ct);
+            }
+            catch (Exception)
+            {
+                // Ignore race conditions
+            }
         }
 
         // Ensure Namespace Exists
@@ -90,7 +97,14 @@ public class PulsarTopicAdmin : ITopicAdmin
                         RetentionSizeInMB = retentionInMinutes ?? -1
                     }
                 };
-            await _namespacesClient.CreateNamespaceAsync(tenant, nameSpace, policies, ct);
+            try
+            {
+                await _namespacesClient.CreateNamespaceAsync(tenant, nameSpace, policies, ct);
+            }
+            catch (Exception)
+            {
+                // Ignore race conditions
+            }
         }
     }
 }

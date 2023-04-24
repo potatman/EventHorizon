@@ -16,17 +16,14 @@ public class AggregatorManager<TParent, T>
     where TParent : class, IStateParent<T>, new()
     where T : class, IState
 {
-    private readonly AttributeUtil _attributeUtil;
     private readonly Aggregator<TParent, T> _aggregator;
     private readonly AggregateConfig<T> _config;
     private readonly ILogger<AggregatorManager<TParent, T>> _logger;
 
     public AggregatorManager(
-        AttributeUtil attributeUtil,
         Aggregator<TParent, T> aggregator,
         ILogger<AggregatorManager<TParent, T>> logger)
     {
-        _attributeUtil = attributeUtil;
         _aggregator = aggregator;
         _config = aggregator.GetConfig();
         _logger = logger;
@@ -59,7 +56,8 @@ public class AggregatorManager<TParent, T>
                 .ToArray();
             retryCount = ++retryCount;
 
-            _aggregator.ResetAll(aggregateDict);
+            // if(_config.RetryLimit != retryCount)
+            //     _aggregator.ResetAll(aggregateDict);
 
         } while (_config.RetryLimit != retryCount && messages.Any());
         
@@ -97,7 +95,6 @@ public class AggregatorManager<TParent, T>
             foreach (var agg in aggregateDict.Values)
                 agg.SetStatus(AggregateStatus.BeforeSaveFailed, e.Message);
         }
-        
     }
 
     private async Task SaveAllAsync(Dictionary<string, Aggregate<T>> aggregateDict)

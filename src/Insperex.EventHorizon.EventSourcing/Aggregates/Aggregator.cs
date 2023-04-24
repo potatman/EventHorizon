@@ -102,6 +102,10 @@ public class Aggregator<TParent, T>
                     UpdatedDate = x.UpdatedDate
                 })
                 .ToArray();
+
+            if (parents.Any() != true)
+                return;
+            
             var results = await _crudStore.UpsertAsync(parents, CancellationToken.None);
             foreach (var failedId in results.FailedIds)
                 aggregateDict[failedId].SetStatus(AggregateStatus.SaveSnapshotFailed);

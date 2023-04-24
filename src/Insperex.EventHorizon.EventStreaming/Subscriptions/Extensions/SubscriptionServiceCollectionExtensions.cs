@@ -18,7 +18,8 @@ public static class SubscriptionServiceCollectionExtensions
             using var scope = x.CreateScope();
             var handler = scope.ServiceProvider.GetRequiredService<TH>();
             var client = scope.ServiceProvider.GetRequiredService<StreamingClient>();
-            var builder = client.CreateSubscription<TM>();
+            var builder = client.CreateSubscription<TM>()
+                .SubscriptionName(typeof(TH).Name);
             action?.Invoke(builder);
 
             return new SubscriptionHostedService<TM>(builder.OnBatch(handler.OnBatch).Build());

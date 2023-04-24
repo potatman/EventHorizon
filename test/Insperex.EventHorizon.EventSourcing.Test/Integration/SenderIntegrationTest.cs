@@ -14,8 +14,10 @@ using Insperex.EventHorizon.EventStore.InMemory.Extensions;
 using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
+using Insperex.EventHorizon.EventStore.MongoDb.Extensions;
 using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
+using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -42,10 +44,10 @@ public class SenderIntegrationTest : IAsyncLifetime
         _host = Host.CreateDefaultBuilder(new string[] { })
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddInMemorySnapshotStore();
-                services.AddInMemoryEventStream();
-                // services.AddPulsarEventStream(hostContext.Configuration);
-                // services.AddMongoDbSnapshotStore(hostContext.Configuration);
+                // services.AddInMemorySnapshotStore();
+                // services.AddInMemoryEventStream();
+                services.AddPulsarEventStream(hostContext.Configuration);
+                services.AddMongoDbSnapshotStore(hostContext.Configuration);
                 
                 services.AddEventSourcing();
                 services.AddHostedAggregate<Account>();

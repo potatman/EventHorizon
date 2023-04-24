@@ -3,28 +3,27 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming;
+using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Util;
-using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventSourcing.Senders;
 
 public class Sender
 {
     private readonly SenderConfig _config;
-    private readonly ILogger<Sender> _logger;
+    private readonly SenderSubscriptionTracker _subscriptionTracker;
     private readonly StreamingClient _streamingClient;
-    private readonly string _senderId;
 
-    public Sender(StreamingClient streamingClient, SenderConfig config, ILogger<Sender> logger)
+    public Sender(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient, SenderConfig config)
     {
+        _subscriptionTracker = subscriptionTracker;
         _streamingClient = streamingClient;
         _config = config;
-        _logger = logger;
-        _senderId = NameUtil.AssemblyNameWithGuid;
     }
 
     public Task SendAsync<T>(string streamId, params ICommand<T>[] objs) where T : IState
@@ -59,45 +58,39 @@ public class Sender
 
     private async Task<Response[]> SendAndReceiveAsync<T>(Request[] requests) where T : IState
     {
+        // Ensure subscription is ready
+        await _subscriptionTracker.TrackSubscription<T>();
+        
         // Sent SenderId to respond to
         foreach (var request in requests)
-            request.SenderId = _senderId;
-
+            request.SenderId = _subscriptionTracker.GetSenderId();
+        
         // Send requests
+        var requestDict = requests.ToDictionary(x => x.Id);
         await _streamingClient.CreatePublisher<Request>().AddTopic<T>().Build().PublishAsync(requests);
 
-        // Setup 2
-        var responseDict = new Dictionary<string, Response>();
-        var requestDict = requests.ToDictionary(x => x.Id);
-
-        // Wait Until Results or Count is Finished
+        // Wait for messages
         var sw = Stopwatch.StartNew();
+        var responseDict = new Dictionary<string, Response>();
+        var requestIds = requestDict.Values.Select(x => x.Id).ToArray();
         while (responseDict.Count != requestDict.Count
                && sw.ElapsedMilliseconds < _config.Timeout.TotalMilliseconds)
         {
-            // Get Batch Results
-            var resultReader = _streamingClient.CreateReader<Response>().AddTopic<T>(_senderId)
-                .Keys(requests.Select(x => x.StreamId).ToArray()).IsBeginning(true).Build();
-            var results = await resultReader.GetNextAsync(requests.Length);
-
-            // Check Results
-            foreach (var result in results)
-            {
-                _logger.LogInformation("Found Result");
-                var requestId = result.Data.RequestId;
-                responseDict[requestId] = result.Data.Status != AggregateStatus.Ok
-                    ? new Response(result.Data.StreamId, requestId, _senderId,
-                        _config.GetErrorResult(result.Data.Status, result.Data.Error)) { Status = result.Data.Status }
-                    : result.Data;
-            }
+            var responses = _subscriptionTracker.GetResponses(requestIds, _config.GetErrorResult);
+            foreach (var response in responses)
+                responseDict[response.RequestId] = response;
+            await Task.Delay(200);
         }
+
+        // await subscription.StopAsync();
 
         // Add Timed Out Results
         foreach (var request in requestDict.Values)
             if (!responseDict.ContainsKey(request.Id))
-                responseDict[request.Id] = new Response(request.StreamId, request.Id, _senderId,
+                responseDict[request.Id] = new Response(request.StreamId, request.Id, _subscriptionTracker.GetSenderId(),
                     _config.GetErrorResult(AggregateStatus.CommandTimedOut, string.Empty)) { Status = AggregateStatus.CommandTimedOut};
 
         return responseDict.Values.ToArray();
     }
+
 }
