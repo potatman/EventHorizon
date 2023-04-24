@@ -32,8 +32,8 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
 
     public async Task Setup(CancellationToken ct)
     {
-        // var getReq = await _client.Indices.GetAsync(new GetIndexRequest(_dbName), ct);
-        // if (getReq.IsValid) return;
+        var getReq = await _client.Indices.GetAsync(new GetIndexRequest(_dbName), ct);
+        if (getReq.IsValid) return;
 
         var createReq = await _client.Indices.CreateAsync(_dbName, cfg =>
         {
