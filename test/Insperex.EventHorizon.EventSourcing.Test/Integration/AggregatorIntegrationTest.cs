@@ -123,27 +123,29 @@ public class AggregatorIntegrationTest : IAsyncLifetime
     {
         // Setup
         var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(9);
-        var command = new Command(streamId, new CreateUser("Bob"));
+        var command1 = new Command(streamId, new ChangeUserName("Bob"));
+        var command2 = new Command(streamId, new ChangeUserName("Joe"));
 
         // Act
-        await _userAggregateManager.Handle(new [] {command}, 0, CancellationToken.None);
+        await _userAggregateManager.Handle(new [] {command1}, 0, CancellationToken.None);
+        await _userAggregateManager.Handle(new [] {command2}, 0, CancellationToken.None);
 
         // Assert Account
         var aggregate1  = await _userAggregator.GetAggregateFromSnapshotAsync(streamId, CancellationToken.None);
         Assert.Equal(streamId, aggregate1.State.Id);
         Assert.Equal(streamId, aggregate1.Id);
+        Assert.Equal(3, aggregate1.SequenceId);
         Assert.NotEqual(DateTime.MinValue, aggregate1.CreatedDate);
         Assert.NotEqual(DateTime.MinValue, aggregate1.UpdatedDate);
-        Assert.Equal("Bob", aggregate1.State.Name);
+        Assert.Equal("Joe", aggregate1.State.Name);
     }
-
 
     [Fact]
     public async Task TestEvents()
     {
         // Setup
         var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(9);
-        var @event = new Event(streamId, new AccountOpened(100));
+        var @event = new Event(streamId, 1, new AccountOpened(100));
 
         // Act
         await _accountAggregatorManager.Handle(new [] {@event}, 0, CancellationToken.None);
@@ -152,6 +154,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         var aggregate1  = await _accountAggregator.GetAggregateFromSnapshotAsync(streamId, CancellationToken.None);
         Assert.Equal(streamId, aggregate1.State.Id);
         Assert.Equal(streamId, aggregate1.Id);
+        Assert.Equal(2, aggregate1.SequenceId);
         Assert.NotEqual(DateTime.MinValue, aggregate1.CreatedDate);
         Assert.NotEqual(DateTime.MinValue, aggregate1.UpdatedDate);
         Assert.Equal(100, aggregate1.State.Amount);

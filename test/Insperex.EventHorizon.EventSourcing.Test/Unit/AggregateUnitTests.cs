@@ -21,7 +21,7 @@ public class AggregateUnitTests
     {
         _streamId = "123";
     }
-    
+
     [Fact]
     public void TestAggregateFromEvents()
     {
@@ -30,26 +30,26 @@ public class AggregateUnitTests
         var messages = eventWrappers.Select(x => new MessageContext<Event>
             { Data = x, TopicData = new TopicData(Guid.NewGuid().ToString(), "topic", DateTime.UtcNow) }).ToArray();
         var aggregate = new Aggregate<Account>(messages);
-        
+
         Assert.Equal(eventWrappers.Last().StreamId, aggregate.Id);
         Assert.Equal(eventWrappers.Last().SequenceId, aggregate.SequenceId);
         Assert.Equal(events.Sum(x => x.Amount), aggregate.State.Amount);
     }
-    
+
     [Fact]
     public void TestAggregateFromSnapshot()
     {
         var state = new Account { Id = _streamId, Amount = 100 };
         var snapshotWrapper = new Snapshot<Account>(state.Id, 1, state, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow);
         var aggregate = new Aggregate<Account>(snapshotWrapper);
-        
+
         Assert.Equal(snapshotWrapper.Id, aggregate.Id);
         Assert.Equal(snapshotWrapper.SequenceId+1, aggregate.SequenceId);
         Assert.Equal(snapshotWrapper.CreatedDate, aggregate.CreatedDate);
         Assert.Equal(snapshotWrapper.UpdatedDate, aggregate.UpdatedDate);
         Assert.Equal(state.Amount, aggregate.State.Amount);
     }
-    
+
     [Fact]
     public void TestApplyEventBasicView()
     {
@@ -57,7 +57,7 @@ public class AggregateUnitTests
         var @event = new Event(_streamId, 1, new AccountOpened(100));
         var agg = new Aggregate<AccountView>(_streamId);
         agg.Apply(@event);
-        
+
         // Assert State and Agg
         var expected = JsonSerializer.Deserialize<OpenAccount>(@event.Payload);
         Assert.Equal(_streamId, agg.Id);
@@ -68,7 +68,7 @@ public class AggregateUnitTests
         // Assert Event
         Assert.Single(agg.Events);
     }
-    
+
     [Fact]
     public void TestApplyEventAdvancedView()
     {
@@ -76,7 +76,7 @@ public class AggregateUnitTests
         var @event = new Event(_streamId, 1, new AccountOpened(100));
         var agg = new Aggregate<SearchAccountView>(_streamId);
         agg.Apply(@event);
-        
+
         // Assert State and Agg
         var expected = JsonSerializer.Deserialize<OpenAccount>(@event.Payload);
         Assert.Equal(_streamId, agg.Id);
@@ -87,22 +87,22 @@ public class AggregateUnitTests
         // Assert Event
         Assert.Single(agg.Events);
     }
-    
+
     [Fact]
     public void TestHandleCommand()
     {
         // Create Aggregate and Apply
-        var command = new Command(_streamId, new CreateUser("Bob")).Upgrade();
+        var command = new Command(_streamId, new ChangeUserName("Bob")).Upgrade();
         var agg = new Aggregate<User>(_streamId);
         agg.Handle(command);
-        
+
         // Assert State and Agg
-        var expected = JsonSerializer.Deserialize<CreateUser>(command.Payload);
+        var expected = JsonSerializer.Deserialize<ChangeUserName>(command.Payload);
         Assert.Equal(_streamId, agg.Id);
         Assert.Equal(_streamId, agg.State.Id);
         Assert.Equal(1, agg.SequenceId);
         Assert.Equal(expected.Name, agg.State.Name);
-    
+
         // Assert Event
         var @event = agg.Events.First();
         var actual = JsonSerializer.Deserialize<AccountOpened>(@event.Payload);
@@ -110,7 +110,7 @@ public class AggregateUnitTests
         Assert.Equal(1, @event.SequenceId);
         Assert.Equal(actual.Amount, actual!.Amount);
     }
-    
+
     [Fact]
     public void TestHandleRequestResponse()
     {
@@ -118,7 +118,7 @@ public class AggregateUnitTests
         var request = new Request(_streamId, new OpenAccount(100));
         var agg = new Aggregate<Account>(_streamId);
         agg.Handle(request);
-        
+
         // Assert State and Agg
         var expected = JsonSerializer.Deserialize<OpenAccount>(request.Payload);
         Assert.Equal(_streamId, agg.Id);
@@ -137,7 +137,7 @@ public class AggregateUnitTests
         var result = JsonSerializer.Deserialize<AccountResponse>(agg.Responses.First().Payload);
         Assert.Equal(AccountResponseStatus.Success, result!.Status);
     }
-    
+
     [Fact]
     public void TestHandleRequestResponseFailedResult()
     {
@@ -145,7 +145,7 @@ public class AggregateUnitTests
         var request = new Request(_streamId, new Withdrawal(100));
         var agg = new Aggregate<Account>(_streamId);
         agg.Handle(request);
-        
+
         // Assert State and Agg
         Assert.Equal(_streamId, agg.Id);
         Assert.Equal(_streamId, agg.State.Id);
@@ -168,7 +168,7 @@ public class AggregateUnitTests
         var request = new Request(_streamId, new OpenAccount(100));
         var agg = new Aggregate<BankAccount>(_streamId);
         agg.Handle(request);
-        
+
         // Assert State and Agg
         var expected = JsonSerializer.Deserialize<OpenAccount>(request.Payload);
         Assert.Equal(_streamId, agg.Id);

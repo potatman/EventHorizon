@@ -43,24 +43,20 @@ public class AggregatorManager<TParent, T>
 
             // Map/Apply Changes
             Handle(messages, aggregateDict);
-            
+
             // Save Successful Aggregates
             await SaveAllAsync(aggregateDict);
-            
+
             // Publish Successful Responses
             await _aggregator.PublishResponseAsync(aggregateDict, false);
-            
+
             // Setup for Next Iteration, If Any Failures
             messages = messages
                 .Where(x => aggregateDict[x.StreamId].Status != AggregateStatus.Ok)
                 .ToArray();
             retryCount = ++retryCount;
-
-            // if(_config.RetryLimit != retryCount)
-            //     _aggregator.ResetAll(aggregateDict);
-
         } while (_config.RetryLimit != retryCount && messages.Any());
-        
+
         // Publish Failed Responses - After all retry's
         await _aggregator.PublishResponseAsync(aggregateDict, true);
     }
@@ -85,7 +81,7 @@ public class AggregatorManager<TParent, T>
             }
         }
 
-        // OnCompleted Hook 
+        // OnCompleted Hook
         try
         {
             _config.BeforeSave?.Invoke(aggregateDict.Values.ToArray());
@@ -109,7 +105,7 @@ public class AggregatorManager<TParent, T>
         {
             if (group.Key == AggregateStatus.Ok) continue;
             var first = group.First();
-            _logger.LogError("{State} {Count} had {Status} => {Error}", 
+            _logger.LogError("{State} {Count} had {Status} => {Error}",
                 typeof(T).Name, group.Count(), first.Status, first.Error);
         }
     }

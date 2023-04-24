@@ -9,39 +9,39 @@ namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
 [SnapshotStore("test_snapshot_bank_user", nameof(User))]
 [EventStream("test_event_bank_user", nameof(User))]
-public class User : IState, 
-    IHandleCommand<CreateUser>,
-    IApplyEvent<UserCreatedV2>
+public class User : IState,
+    IHandleCommand<ChangeUserName>,
+    IApplyEvent<UserNameChangedV2>
 {
     public string Id { get; set; }
     public string Name { get; set; }
-    
+
     public User() { }
-    
-    public void Handle(CreateUser command, List<IEvent> events)
+
+    public void Handle(ChangeUserName command, List<IEvent> events)
     {
-        if(Name == default)
-            events.Add(new UserCreatedV2(command.Name));
+        if(Name != command.Name)
+            events.Add(new UserNameChangedV2(command.Name));
     }
 
-    public void Apply(UserCreatedV2 payload)
+    public void Apply(UserNameChangedV2 payload)
     {
         Name = payload.Name;
     }
 }
 
 // Commands
-public record CreateUser(string Name) : ICommand<User>;
+public record ChangeUserName(string Name) : ICommand<User>;
 
 // Events
-public record UserCreatedV2(string Name) : IEvent<User>;
+public record UserNameChangedV2(string Name) : IEvent<User>;
 
 // Legacy Events
 [Obsolete]
-public record UserCreated(string Name) : IEvent<User>, IUpgradeTo<UserCreatedV2>
+public record UserNameChanged(string Name) : IEvent<User>, IUpgradeTo<UserNameChangedV2>
 {
-    public UserCreatedV2 Upgrade()
+    public UserNameChangedV2 Upgrade()
     {
-        return new UserCreatedV2(Name);
+        return new UserNameChangedV2(Name);
     }
 }
