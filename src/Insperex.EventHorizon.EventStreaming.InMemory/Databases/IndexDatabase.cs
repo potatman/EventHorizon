@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,7 +35,7 @@ public class IndexDatabase
 
     public void DeleteTopic(string str)
     {
-        var keys = _indexes.Keys.Where(x => x.StartsWith(str)).ToArray();
+        var keys = _indexes.Keys.Where(x => x.StartsWith(str, StringComparison.InvariantCulture)).ToArray();
         foreach (var key in keys)
             _indexes.Remove(key, out var value);
     }

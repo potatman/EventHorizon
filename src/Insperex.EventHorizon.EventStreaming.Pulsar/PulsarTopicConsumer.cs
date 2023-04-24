@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -42,9 +43,9 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                 await Task.Delay(_config.NoBatchDelay, ct);
                 return null;
             }
-            
+
             _messageIdDict = messages
-                .Select((x, i) => new { Key = i.ToString(), Value = x.MessageId })
+                .Select((x, i) => new { Key = i.ToString(CultureInfo.InvariantCulture), Value = x.MessageId })
                 .ToDictionary(x => x.Key, x => x.Value);
 
             var topic = _config.Topics.Length == 1 ? _config.Topics.First() : null;
@@ -52,10 +53,10 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                 .Select((x,i) => new MessageContext<T>
                 {
                     Data = x.GetValue(),
-                    TopicData = PulsarMessageMapper.MapTopicData(i.ToString(), x, topic ?? x.MessageId.TopicName)
+                    TopicData = PulsarMessageMapper.MapTopicData(i.ToString(CultureInfo.InvariantCulture), x, topic ?? x.MessageId.TopicName)
                 })
                 .ToArray();
-        
+
             return contexts;
         }
         catch (AlreadyClosedException)

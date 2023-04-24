@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -68,7 +69,7 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
             list.Add(new MessageContext<T>
             {
                 Data = message.GetValue(),
-                TopicData = PulsarMessageMapper.MapTopicData(list.Count.ToString(), message, _config.Topic)
+                TopicData = PulsarMessageMapper.MapTopicData(list.Count.ToString(CultureInfo.InvariantCulture), message, _config.Topic)
             });
         } while (message != null && list.Count < batchSize && await _reader.HasMessageAvailableAsync());
 
