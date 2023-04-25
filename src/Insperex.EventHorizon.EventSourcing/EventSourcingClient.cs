@@ -16,8 +16,6 @@ public class EventSourcingClient<T> where T : class, IState, new()
 {
     private readonly AggregateBuilder<Snapshot<T>, T> _aggregateBuilder;
     private readonly IServiceProvider _serviceProvider;
-    private readonly ISnapshotStoreFactory<T> _snapshotStoreFactory;
-    private readonly IViewStoreFactory<T> _viewStoreFactory;
     private readonly ReaderBuilder<Event> _readerBuilder;
     private readonly SubscriptionBuilder<Event> _subscriberBuilder;
     private readonly SenderBuilder _senderBuilder;
