@@ -53,11 +53,11 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
     public async Task<Subscription<T>> StopAsync()
     {
         if (Running != true) return this;
-        
+
         // Cancel
         Running = false;
-        while (!Stopped)
-            await Task.Delay(TimeSpan.FromSeconds(1));
+        // while (!Stopped)
+        //     await Task.Delay(TimeSpan.FromSeconds(1));
 
         // Cleanup
         _consumer.Dispose();
@@ -107,12 +107,12 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
             var batch = await _consumer.NextBatchAsync(cts.Token);
             activity?.SetTag(TraceConstants.Tags.Count, batch?.Length ?? 0);
             activity?.SetStatus(ActivityStatusCode.Ok);
-            
+
             // Upgrade Actions
             if(batch?.Any() == true)
                 foreach (var item in batch)
                     item.Data = item.Data.Upgrade();
-            
+
             return batch;
         }
         catch (TaskCanceledException)
@@ -124,7 +124,7 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
         {
             // ignore disposed
             if (!_disposed) return Array.Empty<MessageContext<T>>();
-            
+
             // log error
             _logger.LogError(ex, "Failed to load events => {Error}", ex.Message);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
@@ -154,7 +154,7 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
             // Logging
             var min = batch.Min(x => x.TopicData.CreatedDate);
             var max = batch.Max(x => x.TopicData.CreatedDate);
-            _logger.LogInformation("Processed {Type}(s) {Count}, from {Start}-{End}", 
+            _logger.LogInformation("Processed {Type}(s) {Count}, from {Start}-{End}",
                 typeof(T).Name, batch.Length, min, max);
             activity?.SetTag(TraceConstants.Tags.Count, batch.Length);
             activity?.SetTag(TraceConstants.Tags.Start, min);
