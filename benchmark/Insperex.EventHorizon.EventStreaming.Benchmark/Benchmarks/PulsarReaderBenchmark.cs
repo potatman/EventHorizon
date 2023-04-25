@@ -11,7 +11,6 @@ public class PulsarReaderBenchmark
 {
     private Counter _counter;
     private Reader<Event> _reader;
-    private const string Topic = "persistent://test/benchmark/reader-benchmark";
 
     [PerfSetup]
     public void Setup(BenchmarkContext context)
@@ -19,7 +18,7 @@ public class PulsarReaderBenchmark
         var publisher = PulsarSingleton.Instance.GetPublisher<ExampleEvent>();
         var events = PulsarSingleton.Instance.FakeEvents(1000);
         publisher.PublishAsync(events).ConfigureAwait(false).GetAwaiter().GetResult();
-        
+
         // Setup
         _reader = PulsarSingleton.Instance.GetReader<ExampleEvent>();
         _counter = context.GetCounter("TestCounter");
@@ -31,7 +30,7 @@ public class PulsarReaderBenchmark
     //     _reader.Dispose();
     // }
 
-    [PerfBenchmark(Description = "Test Pulsar Reader throughput", 
+    [PerfBenchmark(Description = "Test Pulsar Reader throughput",
         NumberOfIterations = 3, RunMode = RunMode.Throughput, RunTimeMilliseconds = 1000, TestMode = TestMode.Test)]
     [CounterThroughputAssertion("TestCounter", MustBe.GreaterThan, 1.0d)]
     public void BenchmarkBulk()

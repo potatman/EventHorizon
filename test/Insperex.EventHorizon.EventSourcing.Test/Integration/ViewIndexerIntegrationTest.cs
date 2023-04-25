@@ -41,7 +41,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
     public ViewIndexerIntegrationTest(ITestOutputHelper output)
     {
         _output = output;
-        _host = Host.CreateDefaultBuilder(new string[] { })
+        _host = Host.CreateDefaultBuilder(Array.Empty<string>())
             .ConfigureServices((hostContext, services) =>
             {
                 services.AddInMemorySnapshotStore();

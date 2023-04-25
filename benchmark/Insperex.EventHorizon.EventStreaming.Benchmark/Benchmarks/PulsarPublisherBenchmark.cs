@@ -13,7 +13,6 @@ public class PulsarPublisherBenchmark
     private Counter _counter;
     private Publisher<Event> _publisher;
     private Event[] _bulkList;
-    private const string Topic = "persistent://test/benchmark/publisher-benchmark";
 
     [PerfSetup]
     public void Setup(BenchmarkContext context)
@@ -29,8 +28,8 @@ public class PulsarPublisherBenchmark
     //     _publisher.Dispose();
     //     _publisher = null;
     // }
-    
-    [PerfBenchmark(Description = "Test Pulsar Publisher throughput", 
+
+    [PerfBenchmark(Description = "Test Pulsar Publisher throughput",
         NumberOfIterations = 3, RunMode = RunMode.Throughput, RunTimeMilliseconds = 1000, TestMode = TestMode.Test)]
     [CounterThroughputAssertion("TestCounter", MustBe.GreaterThan, 15.0d)]
     public void Benchmark()
