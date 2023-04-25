@@ -16,7 +16,7 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        await Host.CreateDefaultBuilder(System.Array.Empty<string>())
+        await Host.CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) =>
             {
                 // Feeds that Generate Data

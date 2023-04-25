@@ -20,6 +20,13 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
         _loggerFactory = loggerFactory;
     }
 
+    internal PublisherBuilder<T> AddTopic(string topicName = null)
+    {
+        if (_topic != null) throw new MultiTopicNotSupportedException<PublisherBuilder<T>>();
+        _topic = topicName;
+        return this;
+    }
+
     public PublisherBuilder<T> AddTopic<TS>(string topicName = null)
     {
         if (_topic != null) throw new MultiTopicNotSupportedException<PublisherBuilder<T>>();

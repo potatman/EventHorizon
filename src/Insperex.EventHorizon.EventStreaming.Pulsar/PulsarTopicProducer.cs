@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -48,7 +49,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     {
         foreach (var message in messages)
         {
-            var func = AssemblyUtil.PropertyDict[message.Type]
+            var func = AssemblyUtil.PropertyDict.GetValueOrDefault(message.Type)?
                 .FirstOrDefault(x => x.GetCustomAttribute<EventStreamKey>(true) != null);
 
             var key = func?.GetValue(message)?.ToString() ?? message.StreamId;

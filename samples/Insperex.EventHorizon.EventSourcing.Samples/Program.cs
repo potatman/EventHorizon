@@ -22,7 +22,7 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        var host = Host.CreateDefaultBuilder(Array.Empty<string>())
+        var host = Host.CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) =>
             {
                 services.AddPulsarEventStream(hostContext.Configuration);

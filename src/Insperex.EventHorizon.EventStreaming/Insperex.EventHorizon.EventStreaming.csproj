@@ -18,4 +18,8 @@
         <ProjectReference Include="..\Insperex.EventHorizon.Abstractions\Insperex.EventHorizon.Abstractions.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="Insperex.EventHorizon.Tool.LegacyMigration" />
+    </ItemGroup>
+
 </Project>
