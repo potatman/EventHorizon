@@ -25,16 +25,16 @@ public class MongoStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactory<
 
     public ICrudStore<Lock> GetLockStore()
     {
-        return new MongoCrudStore<Lock>(_client, _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId);
+        return new MongoCrudStore<Lock>(_client, _attributeUtil, _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId);
     }
 
     public ICrudStore<Snapshot<T>> GetSnapshotStore()
     {
-        return new MongoCrudStore<Snapshot<T>>(_client, _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId);
+        return new MongoCrudStore<Snapshot<T>>(_client, _attributeUtil, _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId);
     }
 
     public ICrudStore<View<T>> GetViewStore()
     {
-        return new MongoCrudStore<View<T>>(_client, _attributeUtil.GetOne<ViewStoreAttribute>(_type).BucketId);
+        return new MongoCrudStore<View<T>>(_client, _attributeUtil, _attributeUtil.GetOne<ViewStoreAttribute>(_type).BucketId);
     }
 }
