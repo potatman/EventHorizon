@@ -139,7 +139,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         var @event = new Event(streamId, 1, new AccountOpened(100));
 
         // Act
-        await _userAggregator.Handle(new [] {@event}, 0, CancellationToken.None);
+        await _accountAggregator.Handle(new [] {@event}, 0, CancellationToken.None);
 
         // Assert Account
         var aggregate1  = await _accountAggregator.GetAggregateFromSnapshotAsync(streamId, CancellationToken.None);
