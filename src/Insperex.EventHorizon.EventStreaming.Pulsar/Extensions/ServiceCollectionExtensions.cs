@@ -4,12 +4,12 @@ using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Admins;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
-using Insperex.EventHorizon.EventStreaming.Pulsar.Generated;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Pulsar.Client.Api;
+using SharpPulsar.Admin.v2;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
 
@@ -31,11 +31,8 @@ public static class ServiceCollectionExtensions
             .Result);
 
         // Add Pulsar Admin
-        collection.AddSingleton(x => new NonPersistentTopicsClient($"{config.AdminUrl}/admin/v2/", new HttpClient()));
-        collection.AddSingleton(x => new PersistentTopicsClient($"{config.AdminUrl}/admin/v2/", new HttpClient()));
-        collection.AddSingleton(x => new ClustersBaseClient($"{config.AdminUrl}/admin/v2/", new HttpClient()));
-        collection.AddSingleton(x => new TenantsBaseClient($"{config.AdminUrl}/admin/v2/", new HttpClient()));
-        collection.AddSingleton(x => new NamespacesClient($"{config.AdminUrl}/admin/v2/", new HttpClient()));
+        collection.AddSingleton<IPulsarAdminRESTAPIClient>(x =>
+            new PulsarAdminRESTAPIClient(new HttpClient { BaseAddress = new Uri($"{config.AdminUrl}/admin/v2/") }));
 
         // Add Admin
         collection.AddSingleton<ITopicAdmin, PulsarTopicAdmin>();

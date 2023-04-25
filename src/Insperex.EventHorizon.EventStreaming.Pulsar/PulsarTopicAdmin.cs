@@ -1,35 +1,23 @@
 ﻿using System;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
-using Insperex.EventHorizon.EventStreaming.Pulsar.Generated;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using SharpPulsar.Admin.v2;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
 public class PulsarTopicAdmin : ITopicAdmin
 {
+    private readonly IPulsarAdminRESTAPIClient _admin;
     private readonly ILogger<PulsarTopicAdmin> _logger;
-    private readonly ClustersBaseClient _clustersBaseClient;
-    private readonly TenantsBaseClient _tenantsBaseClient;
-    private readonly NamespacesClient _namespacesClient;
-    private readonly PersistentTopicsClient _persistentTopicsClient;
-    private readonly NonPersistentTopicsClient _nonPersistentTopicsClient;
 
-    public PulsarTopicAdmin(IOptions<PulsarConfig> options, ILogger<PulsarTopicAdmin> logger)
+    public PulsarTopicAdmin(IPulsarAdminRESTAPIClient admin, ILogger<PulsarTopicAdmin> logger)
     {
+        _admin = admin;
         _logger = logger;
-        var baseUrl = $"{options.Value.AdminUrl}/admin/v2/";
-        var httpClient = new HttpClient();
-        _clustersBaseClient = new ClustersBaseClient(baseUrl, httpClient);
-        _tenantsBaseClient = new TenantsBaseClient(baseUrl, httpClient);
-        _namespacesClient = new NamespacesClient(baseUrl, httpClient);
-        _persistentTopicsClient = new PersistentTopicsClient(baseUrl, httpClient);
-        _nonPersistentTopicsClient = new NonPersistentTopicsClient(baseUrl, httpClient);
     }
 
     public async Task RequireTopicAsync(string str, CancellationToken ct)
@@ -55,9 +43,9 @@ public class PulsarTopicAdmin : ITopicAdmin
         try
         {
             if (topic.IsPersisted)
-                await _persistentTopicsClient.DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
+                await _admin.DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
             else
-                await _nonPersistentTopicsClient.UnloadTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, ct);
+                await _admin.UnloadTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, ct);
             _logger.LogInformation("Deleted Topic {Topic}", topic);
         }
         catch (ApiException ex)
@@ -71,14 +59,14 @@ public class PulsarTopicAdmin : ITopicAdmin
     private async Task RequireNamespace(string tenant, string nameSpace, int? retentionInMb, int? retentionInMinutes, CancellationToken ct)
     {
         // Ensure Tenant Exists
-        var tenants = await _tenantsBaseClient.GetTenantsAsync(ct);
+        var tenants = await _admin.GetTenantsAsync(ct);
         if (!tenants.Contains(tenant))
         {
-            var clusters = await _clustersBaseClient.GetClustersAsync(ct);
+            var clusters = await _admin.GetClustersAsync(ct);
             var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
             try
             {
-                await _tenantsBaseClient.CreateTenantAsync(tenant, tenantInfo, ct);
+                await _admin.CreateTenantAsync(tenant, tenantInfo, ct);
             }
             catch (Exception)
             {
@@ -87,7 +75,7 @@ public class PulsarTopicAdmin : ITopicAdmin
         }
 
         // Ensure Namespace Exists
-        var namespaces = await _namespacesClient.GetTenantNamespacesAsync(tenant, ct);
+        var namespaces = await _admin.GetTenantNamespacesAsync(tenant, ct);
         if (!namespaces.Contains($"{tenant}/{nameSpace}"))
         {
             // Add Retention Policy if namespace == Events
@@ -103,7 +91,7 @@ public class PulsarTopicAdmin : ITopicAdmin
                 };
             try
             {
-                await _namespacesClient.CreateNamespaceAsync(tenant, nameSpace, policies, ct);
+                await _admin.CreateNamespaceAsync(tenant, nameSpace, policies, ct);
             }
             catch (Exception)
             {

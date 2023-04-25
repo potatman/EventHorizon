@@ -8,26 +8,27 @@ using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Pulsar.Client.Api;
+using SharpPulsar.Admin.v2;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
 public class PulsarStreamFactory : IStreamFactory
 {
     private readonly PulsarClient _client;
+    private readonly IPulsarAdminRESTAPIClient _admin;
     private readonly AttributeUtil _attributeUtil;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly IOptions<PulsarConfig> _options;
 
     public PulsarStreamFactory(
         PulsarClient client,
+        IPulsarAdminRESTAPIClient admin,
         AttributeUtil attributeUtil,
-        ILoggerFactory loggerFactory,
-        IOptions<PulsarConfig> options)
+        ILoggerFactory loggerFactory)
     {
         _client = client;
+        _admin = admin;
         _attributeUtil = attributeUtil;
         _loggerFactory = loggerFactory;
-        _options = options;
     }
 
     public ITopicProducer<T> CreateProducer<T>(PublisherConfig config) where T : class, ITopicMessage, new()
@@ -47,7 +48,7 @@ public class PulsarStreamFactory : IStreamFactory
 
     public ITopicAdmin CreateAdmin()
     {
-        return new PulsarTopicAdmin(_options, _loggerFactory.CreateLogger<PulsarTopicAdmin>());
+        return new PulsarTopicAdmin(_admin, _loggerFactory.CreateLogger<PulsarTopicAdmin>());
     }
 
     public ITopicResolver GetTopicResolver()
