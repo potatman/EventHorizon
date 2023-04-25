@@ -21,7 +21,7 @@ public class PulsarStreamFactory : IStreamFactory
     public PulsarStreamFactory(
         PulsarClient client,
         AttributeUtil attributeUtil,
-        ILoggerFactory loggerFactory, 
+        ILoggerFactory loggerFactory,
         IOptions<PulsarConfig> options)
     {
         _client = client;
@@ -47,7 +47,7 @@ public class PulsarStreamFactory : IStreamFactory
 
     public ITopicAdmin CreateAdmin()
     {
-        return new PulsarTopicAdmin(_options);
+        return new PulsarTopicAdmin(_options, _loggerFactory.CreateLogger<PulsarTopicAdmin>());
     }
 
     public ITopicResolver GetTopicResolver()

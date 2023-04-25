@@ -6,20 +6,23 @@ using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Generated;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
 public class PulsarTopicAdmin : ITopicAdmin
 {
+    private readonly ILogger<PulsarTopicAdmin> _logger;
     private readonly ClustersBaseClient _clustersBaseClient;
     private readonly TenantsBaseClient _tenantsBaseClient;
     private readonly NamespacesClient _namespacesClient;
     private readonly PersistentTopicsClient _persistentTopicsClient;
     private readonly NonPersistentTopicsClient _nonPersistentTopicsClient;
 
-    public PulsarTopicAdmin(IOptions<PulsarConfig> options)
+    public PulsarTopicAdmin(IOptions<PulsarConfig> options, ILogger<PulsarTopicAdmin> logger)
     {
+        _logger = logger;
         var baseUrl = $"{options.Value.AdminUrl}/admin/v2/";
         var httpClient = new HttpClient();
         _clustersBaseClient = new ClustersBaseClient(baseUrl, httpClient);
@@ -41,7 +44,7 @@ public class PulsarTopicAdmin : ITopicAdmin
         // catch (ApiException ex)
         // {
         //     // 409 - Partitioned topic already exist
-        //     if (ex.StatusCode != 409) 
+        //     if (ex.StatusCode != 409)
         //         throw;
         // }
     }
@@ -55,11 +58,12 @@ public class PulsarTopicAdmin : ITopicAdmin
                 await _persistentTopicsClient.DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
             else
                 await _nonPersistentTopicsClient.UnloadTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, ct);
+            _logger.LogInformation("Deleted Topic {Topic}", topic);
         }
         catch (ApiException ex)
         {
             // 404 - Namespace or topic does not exist
-            if (ex.StatusCode != 404) 
+            if (ex.StatusCode != 404)
                 throw;
         }
     }
