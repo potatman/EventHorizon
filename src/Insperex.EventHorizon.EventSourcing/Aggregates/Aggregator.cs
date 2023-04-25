@@ -245,7 +245,7 @@ public class Aggregator<TParent, T>
         }
     }
 
-    internal void ResetAll(Dictionary<string, Aggregate<T>> aggregateDict)
+    private static void ResetAll(Dictionary<string, Aggregate<T>> aggregateDict)
     {
         foreach (var aggregate in aggregateDict.Values)
         {

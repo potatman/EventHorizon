@@ -50,9 +50,9 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
         return Task.FromResult(this);
     }
 
-    public async Task<Subscription<T>> StopAsync()
+    public Task<Subscription<T>> StopAsync()
     {
-        if (!Running) return this;
+        if (!Running) return Task.FromResult(this);
 
         // Cancel
         Running = false;
@@ -63,7 +63,7 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
         _consumer.Dispose();
         _logger.LogInformation("Stopped Subscription with config {@Config}", _config);
 
-        return this;
+        return Task.FromResult(this);
     }
 
     private async void Loop()
