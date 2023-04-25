@@ -17,13 +17,13 @@ public static class TestUtil
             var eventAttrs = attributeUtil.GetAll<EventStreamAttribute>(type);
 
             if (snapAttr != null) snapAttr.BucketId += iteration;
-            if(viewAttr != null) viewAttr.BucketId += iteration;
+            if (viewAttr != null) viewAttr.BucketId += iteration;
             foreach (var eventAttr in eventAttrs)
                 eventAttr.BucketId += iteration;
 
             // Update All
-            if(snapAttr != null) attributeUtil.Set(type, snapAttr);
-            if(viewAttr != null) attributeUtil.Set(type, viewAttr);
+            if (snapAttr != null) attributeUtil.Set(type, snapAttr);
+            if (viewAttr != null) attributeUtil.Set(type, viewAttr);
             foreach (var eventAttr in eventAttrs)
                 attributeUtil.Set(type, eventAttr);
         }
