@@ -118,11 +118,12 @@ public class SenderIntegrationTest : IAsyncLifetime
     {
         // Send Command
         var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(10);
-        var command = new OpenAccount(100);
-        var result1 = _sender2.SendAndReceiveAsync(streamId, command);
-        var result2 = _sender.SendAndReceiveAsync("ABC", command);
-        var result3 = _sender2.SendAndReceiveAsync("DFG", command);
-        await Task.WhenAll(result1, result2, result3);
+        var result1 = _sender2.SendAndReceiveAsync(streamId, new OpenAccount(100));
+        var result2 = _sender2.SendAndReceiveAsync(streamId, new Withdrawal(100));
+        var result3 = _sender2.SendAndReceiveAsync(streamId, new Deposit(100));
+        var result4 = _sender.SendAndReceiveAsync("ABC", new OpenAccount(100));
+        var result5 = _sender.SendAndReceiveAsync("DFG", new OpenAccount(100));
+        await Task.WhenAll(result1, result2, result3, result4, result5);
 
         // Assert Status
         Assert.Equal(AccountResponseStatus.Success, result1.Result.Status);
@@ -133,7 +134,7 @@ public class SenderIntegrationTest : IAsyncLifetime
         Assert.Equal(streamId, aggregate.Id);
         Assert.NotEqual(DateTime.MinValue, aggregate.CreatedDate);
         Assert.NotEqual(DateTime.MinValue, aggregate.UpdatedDate);
-        Assert.Equal(command.Amount, aggregate.State.Amount);
+        Assert.Equal(100, aggregate.State.Amount);
 
         // // Assert User Account
         // var store2 = _host.Services.GetRequiredService<Aggregator<Snapshot<UserAccount>, UserAccount>>();
