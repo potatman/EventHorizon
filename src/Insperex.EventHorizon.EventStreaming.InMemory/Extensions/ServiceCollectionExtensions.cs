@@ -1,4 +1,5 @@
 ﻿using Insperex.EventHorizon.Abstractions.Util;
+using Insperex.EventHorizon.EventStreaming.Admins;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Readers;
@@ -21,6 +22,7 @@ public static class ServiceCollectionExtensions
         collection.AddSingleton(typeof(PublisherBuilder<>));
         collection.AddSingleton(typeof(ReaderBuilder<>));
         collection.AddSingleton(typeof(SubscriptionBuilder<>));
+        collection.AddSingleton(typeof(Admin<>));
         collection.AddSingleton<AttributeUtil>();
 
         return collection;

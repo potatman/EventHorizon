@@ -1,4 +1,5 @@
 ﻿using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
+using Insperex.EventHorizon.EventStreaming.Admins;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Readers;
@@ -33,8 +34,8 @@ public class StreamingClient
         return new SubscriptionBuilder<T>(_streamFactory, _loggerFactory);
     }
 
-    public ITopicAdmin GetAdmin()
+    public Admin<T> GetAdmin<T>() where T : class, ITopicMessage, new()
     {
-        return _streamFactory.CreateAdmin();
+        return new Admin<T>(_streamFactory.CreateAdmin(), _streamFactory.GetTopicResolver());
     }
 }

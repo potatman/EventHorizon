@@ -16,6 +16,7 @@ using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStore.MongoDb.Extensions;
+using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
@@ -35,9 +36,9 @@ public class SenderIntegrationTest : IAsyncLifetime
     private readonly IHost _host;
     private readonly Sender _sender;
     private Stopwatch _stopwatch;
-    private readonly IStreamFactory _streamFactory;
     private readonly Sender _sender2;
     private readonly EventSourcingClient<Account> _eventSourcingClient;
+    private readonly StreamingClient _streamingClient;
 
     public SenderIntegrationTest(ITestOutputHelper output)
     {
@@ -94,7 +95,7 @@ public class SenderIntegrationTest : IAsyncLifetime
             .Build();
 
         _eventSourcingClient = _host.Services.GetRequiredService<EventSourcingClient<Account>>();
-        _streamFactory = _host.Services.GetRequiredService<IStreamFactory>();
+        _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
     }
 
     public async Task InitializeAsync()
@@ -107,8 +108,7 @@ public class SenderIntegrationTest : IAsyncLifetime
     {
         _output.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _eventSourcingClient.GetSnapshotStore().DropDatabaseAsync(CancellationToken.None);
-        foreach (var topic in _streamFactory.GetTopicResolver().GetTopics<Event>(typeof(Account)))
-            await _streamFactory.CreateAdmin().DeleteTopicAsync(topic, CancellationToken.None);
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Account));
         await _host.StopAsync();
         _host.Dispose();
     }

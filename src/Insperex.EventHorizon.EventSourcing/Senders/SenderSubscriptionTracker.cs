@@ -37,7 +37,7 @@ public class SenderSubscriptionTracker : IDisposable
         var type = typeof(T);
         if(_subscriptionDict.ContainsKey(type))
             return;
-        
+
         _responseTopics.AddRange(_topicResolver.GetTopics<Response>(typeof(T), _senderId));
         var subscription = await _streamingClient.CreateSubscription<Response>()
             .OnBatch(x =>
@@ -51,7 +51,7 @@ public class SenderSubscriptionTracker : IDisposable
             .IsBeginning(true)
             .Build()
             .StartAsync();
-        
+
         _subscriptionDict[type] = subscription;
     }
 
@@ -66,11 +66,11 @@ public class SenderSubscriptionTracker : IDisposable
                     ? new Response(value.Data.StreamId, value.Data.RequestId, _senderId,
                         configGetErrorResult(value.Data.Status, value.Data.Error)) { Status = value.Data.Status }
                     : value.Data);
-            }     
-        
+            }
+
         return responses.ToArray();
     }
-    
+
     public void Dispose()
     {
         OnExit(Dispose, null);
@@ -78,12 +78,13 @@ public class SenderSubscriptionTracker : IDisposable
 
     private void OnExit(object sender, EventArgs e)
     {
-        foreach (var subscription in _subscriptionDict.Values)
-            subscription.StopAsync().Wait();
-        
-        // Send requests
-        var admin = _streamingClient.GetAdmin();
-        foreach (var topic in _responseTopics)
-            admin.DeleteTopicAsync(topic, CancellationToken.None).Wait();
+        foreach (var group in _subscriptionDict)
+        {
+            // Stop Subscription
+            group.Value.StopAsync().Wait();
+
+            // Delete Topic
+            _streamingClient.GetAdmin<Response>().DeleteTopicAsync(group.Key, _senderId).Wait();
+        }
     }
 }

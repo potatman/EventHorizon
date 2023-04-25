@@ -39,7 +39,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _events = EventStreamingFakers.EventFaker.Generate(1000).ToArray();
-        
+
         // Setup
         using var publisher1 = _streamingClient.CreatePublisher<Event>().AddTopic<ExampleEvent1>().Build();
         using var publisher2 = _streamingClient.CreatePublisher<Event>().AddTopic<ExampleEvent2>().Build();
@@ -47,19 +47,17 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
         await publisher1.PublishAsync(_events.Take(_events.Length/2).ToArray());
         await publisher2.PublishAsync(_events.Skip(_events.Length/2).ToArray());
         await Task.Delay(2000);
-        
+
         _stopwatch = Stopwatch.StartNew();
     }
 
     public async Task DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        foreach (var topic in _streamFactory.GetTopicResolver().GetTopics<Event>(typeof(ExampleEvent1)))
-            await _streamFactory.CreateAdmin().DeleteTopicAsync(topic, CancellationToken.None);
-        foreach (var topic in _streamFactory.GetTopicResolver().GetTopics<Event>(typeof(ExampleEvent2)))
-            await _streamFactory.CreateAdmin().DeleteTopicAsync(topic, CancellationToken.None);
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(ExampleEvent1));
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(ExampleEvent2));
     }
-    
+
     [Fact]
     public async Task SubscribeToMultipleTopics()
     {
@@ -71,19 +69,19 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
             .OnBatch(_handler.OnBatch)
             .Build()
             .StartAsync();
-        
+
         // Assert
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);
         AssertUtil.AssertEventsValid(_events, _handler.List.ToArray());
     }
-    
+
     [Fact]
     public async Task SubscribeToTopicsSeparately()
     {
         // Consume
         var builder = _streamingClient.CreateSubscription<Event>()
             .BatchSize(_events.Length / 10);
-        
+
         using var subscription1 = await builder.AddActionTopic<ExampleEvent1>().OnBatch(_handler.OnBatch).Build().StartAsync();
         using var subscription2 = await builder.AddActionTopic<ExampleEvent2>().OnBatch(_handler.OnBatch).Build().StartAsync();
 

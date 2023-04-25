@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Testing;
-using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventSourcing.Extensions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
@@ -17,7 +16,6 @@ using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
-using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -34,7 +32,6 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
     private readonly IHost _host;
     private readonly StreamingClient _streamingClient;
     private Stopwatch _stopwatch;
-    private readonly IStreamFactory _streamFactory;
     private readonly ICrudStore<View<AccountView>> _accountStore;
     private readonly ICrudStore<View<SearchAccountView>> _userAccountStore;
 
@@ -65,7 +62,6 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
             .AddTestBucketIds();
 
         _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
-        _streamFactory = _host.Services.GetRequiredService<IStreamFactory>();
         _accountStore = _host.Services.GetRequiredService<IViewStoreFactory<AccountView>>().GetViewStore();
         _userAccountStore = _host.Services.GetRequiredService<IViewStoreFactory<SearchAccountView>>().GetViewStore();
     }
@@ -81,12 +77,11 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
         _output.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _accountStore.DropDatabaseAsync(CancellationToken.None);
         await _userAccountStore.DropDatabaseAsync(CancellationToken.None);
-        foreach (var topic in _streamFactory.GetTopicResolver().GetTopics<Event>(typeof(SearchAccountView)))
-            await _streamFactory.CreateAdmin().DeleteTopicAsync(topic, CancellationToken.None);
-        foreach (var topic in _streamFactory.GetTopicResolver().GetTopics<Event>(typeof(User)))
-            await _streamFactory.CreateAdmin().DeleteTopicAsync(topic, CancellationToken.None);
-        foreach (var topic in _streamFactory.GetTopicResolver().GetTopics<Event>(typeof(Account)))
-            await _streamFactory.CreateAdmin().DeleteTopicAsync(topic, CancellationToken.None);
+
+        // Delete Event Dbs
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Account));
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(User));
+
         await _host.StopAsync();
         _host.Dispose();
     }

@@ -35,7 +35,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         _streamFactory = provider.GetRequiredService<IStreamFactory>();
         _handler = new ListTopicHandler<Event>();
     }
-    
+
     public Task InitializeAsync()
     {
         // Publish
@@ -47,10 +47,9 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        foreach (var topic in _streamFactory.GetTopicResolver().GetTopics<Event>(typeof(ExampleEvent1)))
-            await _streamFactory.CreateAdmin().DeleteTopicAsync(topic, CancellationToken.None);
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(ExampleEvent1));
     }
-    
+
     [Fact]
     public async Task TestSingleConsumer()
     {
@@ -61,7 +60,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
             .OnBatch(_handler.OnBatch)
             .Build()
             .StartAsync();
-        
+
         using var publisher = await _streamingClient.CreatePublisher<Event>()
             .AddTopic<ExampleEvent1>()
             .Build()
@@ -69,11 +68,11 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
 
         // Wait for List
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);
-        
+
         // Assert
         AssertUtil.AssertEventsValid(_events, _handler.List.ToArray());
     }
-        
+
     [Fact]
     public async Task TestKeySharedConsumers()
     {
@@ -81,16 +80,16 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
             .AddActionTopic<ExampleEvent1>()
             .BatchSize(_events.Length / 10)
             .OnBatch(_handler.OnBatch);
-        
+
         using var publisher = await _streamingClient.CreatePublisher<Event>()
             .AddTopic<ExampleEvent1>()
             .Build()
             .PublishAsync(_events);
-        
+
         // Consume
         using var subscription1 = await builder.Build().StartAsync();
         using var subscription2 = await builder.Build().StartAsync();
-    
+
         // Assert
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);
         AssertUtil.AssertEventsValid(_events, _handler.List.ToArray());

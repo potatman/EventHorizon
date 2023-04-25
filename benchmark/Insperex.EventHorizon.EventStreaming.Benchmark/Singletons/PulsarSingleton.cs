@@ -21,17 +21,16 @@ namespace Insperex.EventHorizon.EventStreaming.Benchmark.Singletons;
 public class PulsarSingleton : IDisposable
 {
     public static readonly PulsarSingleton Instance = new();
-    
+
     public static readonly IHost Host = HostTestUtil.GetPulsarHost(null);
-    
+
     public static readonly Lazy<IStreamFactory> Factory = new(() => Host.Services.GetRequiredService<IStreamFactory>());
     public static readonly Lazy<StreamingClient> StreamClient = new(() => Host.Services.GetRequiredService<StreamingClient>());
-    public readonly Lazy<ITopicAdmin> Admin = new(() => Factory.Value.CreateAdmin());
 
     private readonly Dictionary<Type, Publisher<Event>> Publishers = new();
     private readonly Dictionary<Type, ITopicConsumer<Event>> Consumers = new();
     private readonly Dictionary<Type, Reader<Event>> Readers = new();
-    
+
     public Publisher<Event> GetPublisher<T>()
     {
         var type = typeof(T);
@@ -41,7 +40,7 @@ public class PulsarSingleton : IDisposable
         Publishers[type] = StreamClient.Value.CreatePublisher<Event>()
             .AddTopic<T>()
             .Build();
-        
+
         return Publishers[type];
     }
     public ITopicConsumer<Event> GetConsumer<T>()
@@ -57,7 +56,7 @@ public class PulsarSingleton : IDisposable
             SubscriptionName = "Test-Benchmark",
             BatchSize = 1000
         });
-        
+
         return Consumers[type];
     }
 
@@ -71,12 +70,12 @@ public class PulsarSingleton : IDisposable
             .AddTopic<T>()
             .Keys("5")
             .Build();
-        
+
         return Readers[type];
     }
-    
+
     public Event[] FakeEvents(int count)
-    {   
+    {
         var faker = new Faker();
         var list = new List<Event>();
         for (var i = 0; i < count; i++)
@@ -104,18 +103,14 @@ public class PulsarSingleton : IDisposable
             .Concat(Publishers.Select(x => x.Key))
             .Distinct()
             .ToArray();
-        
+
         // Dispose All
         foreach (var key in Readers.Keys) Readers[key]?.Dispose();
         foreach (var key in Consumers.Keys) Consumers[key]?.Dispose();
         foreach (var key in Publishers.Keys) Publishers[key]?.Dispose();
-        
+
         // Delete Topics
         foreach (var type in types)
-        {
-            var topics = Factory.Value.GetTopicResolver().GetTopics<Event>(type);
-            foreach (var topic in topics)
-                Admin.Value.DeleteTopicAsync(topic, CancellationToken.None).Wait();
-        }
+            StreamClient.Value.GetAdmin<Event>().DeleteTopicAsync(type, ct: CancellationToken.None).Wait();
     }
 }

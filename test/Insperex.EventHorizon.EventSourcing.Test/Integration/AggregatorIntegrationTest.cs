@@ -89,8 +89,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
     {
         _output.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _snapshotStore.DropDatabaseAsync(CancellationToken.None);
-        foreach (var topic in _streamFactory.GetTopicResolver().GetTopics<Event>(typeof(Account)))
-            await _streamFactory.CreateAdmin().DeleteTopicAsync(topic, CancellationToken.None);
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Account));
         await _host.StopAsync();
         _host.Dispose();
     }

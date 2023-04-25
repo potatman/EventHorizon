@@ -37,13 +37,13 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
         // Note: uncomment for large dbs
         // var preEvents =_dataClassFixture.GetMessages(100000);
         // await publisher.PublishAsync(preEvents);
-        
+
         // Publish Events
         _events = EventStreamingFakers.EventFaker.Generate(1000).ToArray();
         using var publisher = _streamingClient.CreatePublisher<Event>().AddTopic<ExampleEvent1>().Build();
         await publisher.PublishAsync(_events);
         await Task.Delay(2000);
-        
+
         // Setup
         _streamId = _events.Last().StreamId;
         _stopwatch = Stopwatch.StartNew();
@@ -52,17 +52,16 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        foreach (var topic in _streamFactory.GetTopicResolver().GetTopics<Event>(typeof(ExampleEvent1)))
-            await _streamFactory.CreateAdmin().DeleteTopicAsync(topic, CancellationToken.None);
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(ExampleEvent1));
     }
-    
+
     [Fact]
     public async Task TestReaderGetStreamId()
     {
         using var reader = _streamingClient.CreateReader<Event>().AddTopic<ExampleEvent1>().Keys(_streamId).Build();
-        
+
         var events = await reader.GetNextAsync(_events.Length);
-        
+
         // Assert
         var expected = _events.Where(x => x.StreamId == _streamId).ToArray();
         AssertUtil.AssertEventsValid(expected, events);
