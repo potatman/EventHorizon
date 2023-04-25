@@ -10,6 +10,6 @@ public interface ITopicConsumer<T> : IDisposable
     where T : ITopicMessage
 {
     Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct);
-    Task AckAsync(params MessageContext<T>[] events);
-    Task NackAsync(params MessageContext<T>[] events);
+    Task AckAsync(params MessageContext<T>[] messages);
+    Task NackAsync(params MessageContext<T>[] messages);
 }

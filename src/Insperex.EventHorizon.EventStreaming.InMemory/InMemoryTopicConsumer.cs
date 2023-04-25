@@ -88,9 +88,9 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
         return list.ToArray();
     }
 
-    public Task AckAsync(params MessageContext<T>[] message)
+    public Task AckAsync(params MessageContext<T>[] messages)
     {
-        var topics = message.GroupBy(x => x.TopicData.Topic).ToArray();
+        var topics = messages.GroupBy(x => x.TopicData.Topic).ToArray();
         foreach (var topic in topics)
             _indexDatabase.Increment(topic.Key, _config.SubscriptionName, _consumers[topic.Key], topic.Count());
 
