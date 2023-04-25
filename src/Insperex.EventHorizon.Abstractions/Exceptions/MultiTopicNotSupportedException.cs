@@ -2,6 +2,7 @@
 
 namespace Insperex.EventHorizon.Abstractions.Exceptions;
 
+[Serializable]
 public class MultiTopicNotSupportedException<T> : Exception
 {
     public MultiTopicNotSupportedException()
