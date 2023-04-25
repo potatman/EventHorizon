@@ -150,7 +150,7 @@ public class Aggregator<TParent, T>
 
     #region Save
 
-    internal async Task SaveAllAsync(Dictionary<string, Aggregate<T>> aggregateDict)
+    private async Task SaveAllAsync(Dictionary<string, Aggregate<T>> aggregateDict)
     {
         // Save Snapshots, Events, and Publish Responses for Successful Saves
         await SaveSnapshotsAsync(aggregateDict);
@@ -167,7 +167,7 @@ public class Aggregator<TParent, T>
         }
     }
 
-    internal async Task SaveSnapshotsAsync(Dictionary<string, Aggregate<T>> aggregateDict)
+    private async Task SaveSnapshotsAsync(Dictionary<string, Aggregate<T>> aggregateDict)
     {
         try
         {
@@ -199,7 +199,7 @@ public class Aggregator<TParent, T>
         }
     }
 
-    internal async Task PublishEventsAsync(Dictionary<string, Aggregate<T>> aggregateDict)
+    private async Task PublishEventsAsync(Dictionary<string, Aggregate<T>> aggregateDict)
     {
         var events = aggregateDict.Values
             .Where(x => x.Status == AggregateStatus.Ok)
@@ -223,7 +223,7 @@ public class Aggregator<TParent, T>
         }
     }
 
-    internal async Task PublishResponseAsync(Dictionary<string, Aggregate<T>> aggregateDict, bool forFailed)
+    private async Task PublishResponseAsync(Dictionary<string, Aggregate<T>> aggregateDict, bool forFailed)
     {
         try
         {
