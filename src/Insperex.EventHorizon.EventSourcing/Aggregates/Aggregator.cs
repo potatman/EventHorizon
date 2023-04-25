@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces;
+using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Util;
@@ -83,7 +84,88 @@ public class Aggregator<TParent, T>
         }
     }
 
+    public async Task Handle<TM>(TM[] messages, int retryCount, CancellationToken ct) where TM : ITopicMessage
+    {
+        Dictionary<string, Aggregate<T>> aggregateDict;
+        do
+        {
+            _logger.LogInformation("{State} Handling {Count} {Type} (Retry {RetryCount})",
+                typeof(T).Name, messages.Length, typeof(TM).Name, retryCount);
+
+            // Load Aggregate
+            var streamIds = messages.Select(x => x.StreamId).Distinct().ToArray();
+            aggregateDict = await GetAggregatesFromSnapshotsAsync(streamIds, ct);
+
+            // Map/Apply Changes
+            TriggerHandle(messages, aggregateDict);
+
+            // Save Successful Aggregates
+            await SaveAllAsync(aggregateDict);
+
+            // Publish Successful Responses
+            await PublishResponseAsync(aggregateDict, false);
+
+            // Setup for Next Iteration, If Any Failures
+            messages = messages
+                .Where(x => aggregateDict[x.StreamId].Status != AggregateStatus.Ok)
+                .ToArray();
+            retryCount = ++retryCount;
+        } while (_config.RetryLimit != retryCount && messages.Any());
+
+        // Publish Failed Responses - After all retry's
+        await PublishResponseAsync(aggregateDict, true);
+    }
+
+    private void TriggerHandle<TM>(TM[] messages, Dictionary<string, Aggregate<T>> aggregateDict) where TM : ITopicMessage
+    {
+        foreach (var message in messages)
+        {
+            var agg = aggregateDict.GetValueOrDefault(message.StreamId);
+            try
+            {
+                switch (message)
+                {
+                    case Command command: agg.Handle(command); break;
+                    case Request request: agg.Handle(request); break;
+                    case Event @event: agg.Apply(@event, false); break;
+                }
+            }
+            catch (Exception e)
+            {
+                agg.SetStatus(AggregateStatus.HandlerFailed, e.Message);
+            }
+        }
+
+        // OnCompleted Hook
+        try
+        {
+            _config.BeforeSave?.Invoke(aggregateDict.Values.ToArray());
+        }
+        catch (Exception e)
+        {
+            foreach (var agg in aggregateDict.Values)
+                agg.SetStatus(AggregateStatus.BeforeSaveFailed, e.Message);
+        }
+    }
+
     #region Save
+
+    internal async Task SaveAllAsync(Dictionary<string, Aggregate<T>> aggregateDict)
+    {
+        // Save Snapshots, Events, and Publish Responses for Successful Saves
+        await SaveSnapshotsAsync(aggregateDict);
+        await PublishEventsAsync(aggregateDict);
+
+        // Log Groups of failed snapshots
+        var aggStatusLookup = aggregateDict.Values.ToLookup(x => x.Status);
+        foreach (var group in aggStatusLookup)
+        {
+            if (group.Key == AggregateStatus.Ok) continue;
+            var first = group.First();
+            _logger.LogError("{State} {Count} had {Status} => {Error}",
+                typeof(T).Name, group.Count(), first.Status, first.Error);
+        }
+    }
 
     internal async Task SaveSnapshotsAsync(Dictionary<string, Aggregate<T>> aggregateDict)
     {
@@ -105,7 +187,7 @@ public class Aggregator<TParent, T>
 
             if (parents.Any() != true)
                 return;
-            
+
             var results = await _crudStore.UpsertAsync(parents, CancellationToken.None);
             foreach (var failedId in results.FailedIds)
                 aggregateDict[failedId].SetStatus(AggregateStatus.SaveSnapshotFailed);
@@ -126,7 +208,7 @@ public class Aggregator<TParent, T>
 
         if (events.Any() != true)
             return;
-        
+
         try
         {
             var publisher = _streamingClient.CreatePublisher<Event>().AddTopic<T>().Build();
@@ -146,8 +228,8 @@ public class Aggregator<TParent, T>
         try
         {
             var responsesLookup = aggregateDict.Values
-                .Where(x => !forFailed? 
-                    x.Status == AggregateStatus.Ok 
+                .Where(x => !forFailed?
+                    x.Status == AggregateStatus.Ok
                     : x.Status != AggregateStatus.Ok)
                 .SelectMany(x => x.Responses)
                 .ToLookup(x => x.SenderId);
@@ -174,7 +256,7 @@ public class Aggregator<TParent, T>
             aggregate.SetStatus(AggregateStatus.Ok);
         }
     }
-    
+
     #endregion
 
     #region load
@@ -185,7 +267,7 @@ public class Aggregator<TParent, T>
         return result.Values.FirstOrDefault();
     }
 
-    public async Task<Dictionary<string, Aggregate<T>>> GetAggregatesFromSnapshotsAsync(string[] streamIds, CancellationToken ct) 
+    public async Task<Dictionary<string, Aggregate<T>>> GetAggregatesFromSnapshotsAsync(string[] streamIds, CancellationToken ct)
     {
         try
         {

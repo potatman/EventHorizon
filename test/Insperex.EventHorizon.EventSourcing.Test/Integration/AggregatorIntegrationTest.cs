@@ -34,11 +34,8 @@ public class AggregatorIntegrationTest : IAsyncLifetime
     private readonly IHost _host;
     private readonly StreamingClient _streamingClient;
     private Stopwatch _stopwatch;
-    private readonly IStreamFactory _streamFactory;
     private readonly ICrudStore<Snapshot<Account>> _snapshotStore;
-    private readonly AggregatorManager<Snapshot<Account>, Account> _accountAggregatorManager;
     private readonly Aggregator<Snapshot<Account>, Account> _accountAggregator;
-    private readonly AggregatorManager<Snapshot<User>, User> _userAggregateManager;
     private readonly Aggregator<Snapshot<User>, User> _userAggregator;
     private readonly EventSourcingClient<Account> _eventSourcingClient;
 
@@ -69,13 +66,10 @@ public class AggregatorIntegrationTest : IAsyncLifetime
 
         _eventSourcingClient = _host.Services.GetRequiredService<EventSourcingClient<Account>>();
         _accountAggregator = _host.Services.GetRequiredService<Aggregator<Snapshot<Account>, Account>>();
-        _accountAggregatorManager = _host.Services.GetRequiredService<AggregatorManager<Snapshot<Account>, Account>>();
         _userAggregator = _host.Services.GetRequiredService<Aggregator<Snapshot<User>, User>>();
-        _userAggregateManager = _host.Services.GetRequiredService<AggregatorManager<Snapshot<User>, User>>();
 
 
         _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
-        _streamFactory = _host.Services.GetRequiredService<IStreamFactory>();
         _snapshotStore = _host.Services.GetRequiredService<ISnapshotStoreFactory<Account>>().GetSnapshotStore();
     }
 
@@ -124,8 +118,8 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         var command2 = new Command(streamId, new ChangeUserName("Joe"));
 
         // Act
-        await _userAggregateManager.Handle(new [] {command1}, 0, CancellationToken.None);
-        await _userAggregateManager.Handle(new [] {command2}, 0, CancellationToken.None);
+        await _userAggregator.Handle(new [] {command1}, 0, CancellationToken.None);
+        await _userAggregator.Handle(new [] {command2}, 0, CancellationToken.None);
 
         // Assert Account
         var aggregate1  = await _userAggregator.GetAggregateFromSnapshotAsync(streamId, CancellationToken.None);
@@ -145,7 +139,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         var @event = new Event(streamId, 1, new AccountOpened(100));
 
         // Act
-        await _accountAggregatorManager.Handle(new [] {@event}, 0, CancellationToken.None);
+        await _userAggregator.Handle(new [] {@event}, 0, CancellationToken.None);
 
         // Assert Account
         var aggregate1  = await _accountAggregator.GetAggregateFromSnapshotAsync(streamId, CancellationToken.None);

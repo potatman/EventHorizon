@@ -20,12 +20,11 @@ public static class ServiceCollectionExtensions
     {
         collection.AddSingleton(x => x.GetRequiredService<IStreamFactory>().GetTopicResolver());
         collection.AddSingleton(typeof(EventSourcingClient<>));
-        collection.AddSingleton(typeof(AggregatorManager<,>));
         collection.AddSingleton(typeof(AggregateBuilder<,>));
         collection.AddSingleton<SenderBuilder>();
         collection.AddSingleton<SenderSubscriptionTracker>();
         collection.AddSingleton<ValidationUtil>();
-        
+
         return collection;
     }
 
