@@ -60,11 +60,11 @@ public class Sender
     {
         // Ensure subscription is ready
         await _subscriptionTracker.TrackSubscription<T>();
-        
+
         // Sent SenderId to respond to
         foreach (var request in requests)
             request.SenderId = _subscriptionTracker.GetSenderId();
-        
+
         // Send requests
         var requestDict = requests.ToDictionary(x => x.Id);
         await _streamingClient.CreatePublisher<Request>().AddTopic<T>().Build().PublishAsync(requests);
@@ -81,8 +81,6 @@ public class Sender
                 responseDict[response.RequestId] = response;
             await Task.Delay(200);
         }
-
-        // await subscription.StopAsync();
 
         // Add Timed Out Results
         foreach (var request in requestDict.Values)
