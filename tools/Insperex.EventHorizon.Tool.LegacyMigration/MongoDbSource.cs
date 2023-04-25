@@ -12,7 +12,7 @@ using MongoDB.Driver;
 
 namespace Insperex.EventHorizon.Tool.LegacyMigration
 {
-    public class MongoDbSource
+    public class MongoDbSource : IDataSource
     {
         private readonly IMongoClient _client;
         private readonly string _bucketId;

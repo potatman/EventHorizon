@@ -19,6 +19,7 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration
         private readonly ILoggerFactory _loggerFactory;
         private readonly string _bucketId;
         private readonly string _topic;
+        private readonly IDataSource _dataSource;
 
         public MigrationHostedService(IMongoClient mongoClient, StreamingClient streamingClient, IStreamFactory streamFactory, ILoggerFactory loggerFactory)
         {
@@ -28,34 +29,31 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration
             _loggerFactory = loggerFactory;
             _bucketId = "tec_event_firm";
             _topic = $"persistent://legacy/events/{_bucketId}";
+            _dataSource = new MongoDbSource(_mongoClient, _bucketId, _loggerFactory.CreateLogger<MongoDbSource>());
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            var mongodbSource = new MongoDbSource(_mongoClient, _bucketId, _loggerFactory.CreateLogger<MongoDbSource>());
-
             // TEMP: Delete Existing Topic
             await _streamFactory.CreateAdmin().DeleteTopicAsync(_topic, stoppingToken);
-            await mongodbSource.DeleteState(stoppingToken);
+            await _dataSource.DeleteState(stoppingToken);
             await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
 
             while (true)
             {
-                if (!await mongodbSource.AnyAsync(stoppingToken))
+                if (!await _dataSource.AnyAsync(stoppingToken))
                 {
                     await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
                     continue;
                 }
 
                 using var publisher = _streamingClient.CreatePublisher<Event>().AddTopic(_topic).Build();
-                await foreach (var item in mongodbSource.GetAsyncEnumerator(stoppingToken))
+                await foreach (var item in _dataSource.GetAsyncEnumerator(stoppingToken))
                 {
-
-                    // await publisher.PublishAsync(item);
-                    await mongodbSource.SaveState(stoppingToken);
+                    await publisher.PublishAsync(item);
+                    await _dataSource.SaveState(stoppingToken);
                 }
             }
-
         }
     }
 }
