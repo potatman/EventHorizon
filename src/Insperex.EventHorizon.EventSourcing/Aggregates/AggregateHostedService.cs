@@ -20,15 +20,10 @@ public class AggregateHostedService<TParent, TAction, T> : IHostedService
     private readonly Subscription<TAction> _subscription;
 
     public AggregateHostedService(
-        ValidationUtil validationUtil,
         StreamingClient streamingClient,
         Aggregator<TParent, T> aggregator)
     {
         _aggregator = aggregator;
-
-        // Validate Handlers if Enabled
-        if(aggregator.GetConfig().IsValidatingHandlers)
-            validationUtil.Validate<TParent, T>();
 
         _subscription = streamingClient.CreateSubscription<TAction>()
             .SubscriptionName(typeof(T).Name)

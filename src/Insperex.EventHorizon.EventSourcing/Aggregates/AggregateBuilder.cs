@@ -3,6 +3,7 @@ using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Util;
+using Insperex.EventHorizon.EventSourcing.Util;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
@@ -19,6 +20,7 @@ public class AggregateBuilder<TParent, T>
 {
     private readonly ICrudStore<TParent> _crudStore;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly ValidationUtil _validationUtil;
     private readonly StreamingClient _streamingClient;
     private bool _isValidatingHandlers = true;
     private bool _isRebuildEnabled;
@@ -33,6 +35,7 @@ public class AggregateBuilder<TParent, T>
         _crudStore = typeof(TParent).Name == typeof(Snapshot<>).Name?
             (ICrudStore<TParent>)serviceProvider.GetRequiredService<ISnapshotStoreFactory<T>>().GetSnapshotStore() :
             (ICrudStore<TParent>)serviceProvider.GetRequiredService<IViewStoreFactory<T>>().GetViewStore();
+        _validationUtil = serviceProvider.GetRequiredService<ValidationUtil>();
         _streamingClient = streamingClient;
         _loggerFactory = loggerFactory;
     }
@@ -70,6 +73,11 @@ public class AggregateBuilder<TParent, T>
             RetryLimit = _retryLimit,
             BeforeSave = _beforeSave,
         };
+
+        // Validate Handlers if Enabled
+        if(config.IsValidatingHandlers)
+            _validationUtil.Validate<TParent, T>();
+
         var logger = _loggerFactory.CreateLogger<Aggregator<TParent, T>>();
         return new Aggregator<TParent, T>(_crudStore, _streamingClient, config, logger);
     }

@@ -15,4 +15,8 @@
         <InternalsVisibleTo Include="Insperex.EventHorizon.EventSourcing.Test" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="MassTransit" Version="8.0.15" />
+    </ItemGroup>
+
 </Project>
