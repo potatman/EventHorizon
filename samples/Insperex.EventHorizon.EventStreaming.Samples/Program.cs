@@ -12,7 +12,7 @@ using Serilog;
 
 namespace Insperex.EventHorizon.EventStreaming.Samples;
 
-class Program
+public class Program
 {
     static async Task Main(string[] args)
     {

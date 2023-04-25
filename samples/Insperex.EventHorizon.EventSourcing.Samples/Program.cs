@@ -18,7 +18,7 @@ using Serilog;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples;
 
-class Program
+public class Program
 {
     static async Task Main(string[] args)
     {

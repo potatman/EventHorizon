@@ -2,7 +2,7 @@
 
 namespace Insperex.EventHorizon.EventStore.Benchmark;
 
-class Program
+public class Program
 {
     static int Main(string[] args)
     {
