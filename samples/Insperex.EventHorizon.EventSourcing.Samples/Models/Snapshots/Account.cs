@@ -3,14 +3,18 @@ using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.EventSourcing.Interfaces;
 using Insperex.EventHorizon.EventSourcing.Interfaces.State;
+using Insperex.EventHorizon.EventStore.MongoDb.Attributes;
+using Insperex.EventHorizon.EventStore.MongoDb.Models;
+using MongoDB.Driver;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
 [SnapshotStore("test_snapshot_bank_account", nameof(Account))]
 [EventStream("test_event_bank_account", nameof(Account))]
-public class Account : IState, 
-    IHandleRequest<OpenAccount, AccountResponse>, 
-    IHandleRequest<Withdrawal, AccountResponse>, 
+[MongoConfig(ReadPreferenceMode = ReadPreferenceMode.SecondaryPreferred, ReadConcernLevel = ReadConcernLevel.Majority, WriteConcernLevel = WriteConcernLevel.Majority)]
+public class Account : IState,
+    IHandleRequest<OpenAccount, AccountResponse>,
+    IHandleRequest<Withdrawal, AccountResponse>,
     IHandleRequest<Deposit, AccountResponse>,
     IApplyEvent<AccountOpened>,
     IApplyEvent<AccountDebited>,
@@ -27,7 +31,7 @@ public class Account : IState,
     {
         if(Amount == default)
             events.Add(new AccountOpened(request.Amount));
-            
+
         return new AccountResponse();
     }
 
@@ -35,7 +39,7 @@ public class Account : IState,
     {
         if(Amount < request.Amount)
             return new AccountResponse(AccountResponseStatus.WithdrawalDenied);
-        
+
         if(request.Amount != 0 && Amount >= request.Amount)
             events.Add(new AccountDebited(request.Amount));
 
@@ -46,16 +50,16 @@ public class Account : IState,
     {
         events.Add(new AccountCredited(request.Amount));
         return new AccountResponse();
-    } 
+    }
 
     #endregion
 
     #region Applys
-    
+
     public void Apply(AccountDebited payload) => Amount -= payload.Amount;
     public void Apply(AccountCredited payload) => Amount += payload.Amount;
     public void Apply(AccountOpened payload) => Amount = payload.Amount;
-    
+
     #endregion
 }
 
@@ -65,7 +69,7 @@ public interface IApplyAccountEvents :
     IApplyEvent<AccountDebited>,
     IApplyEvent<AccountCredited>
 {
-    
+
 }
 
 // Request

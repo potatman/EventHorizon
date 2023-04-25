@@ -9,6 +9,7 @@ using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStore.MongoDb.Attributes;
+using Insperex.EventHorizon.EventStore.MongoDb.Models;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -44,9 +45,20 @@ public class MongoCrudStore<T> : ICrudStore<T>
     public async Task Setup(CancellationToken ct)
     {
         var mongoAttr = _attributeUtil.GetOne<MongoConfigAttribute>(typeof(T));
-        if (mongoAttr?.ReadConcern != null) _collection.WithReadConcern(mongoAttr.ReadConcern);
-        if (mongoAttr?.ReadPreference != null) _collection.WithReadPreference(mongoAttr.ReadPreference);
-        if (mongoAttr?.WriteConcern != null) _collection.WithWriteConcern(mongoAttr.WriteConcern);
+        if (mongoAttr?.ReadConcernLevel != null) _collection.WithReadConcern(new ReadConcern(mongoAttr.ReadConcernLevel));
+        if (mongoAttr?.ReadPreferenceMode != null) _collection.WithReadPreference(new ReadPreference(mongoAttr.ReadPreferenceMode));
+        if (mongoAttr?.WriteConcernLevel != null)
+        {
+            switch (mongoAttr.WriteConcernLevel)
+            {
+                case WriteConcernLevel.Acknowledged: _collection.WithWriteConcern(WriteConcern.Acknowledged); break;
+                case WriteConcernLevel.Unacknowledged: _collection.WithWriteConcern(WriteConcern.Unacknowledged); break;
+                case WriteConcernLevel.W1: _collection.WithWriteConcern(WriteConcern.W1); break;
+                case WriteConcernLevel.W2: _collection.WithWriteConcern(WriteConcern.W2); break;
+                case WriteConcernLevel.W3: _collection.WithWriteConcern(WriteConcern.W3); break;
+                case WriteConcernLevel.Majority: _collection.WithWriteConcern(WriteConcern.WMajority); break;
+            }
+        }
 
         if (mongoAttr?.TimeToLiveMs != null)
             await AddIndex(CreatedDate1, Builders<T>.IndexKeys.Ascending(x => x.CreatedDate), TimeSpan.FromMilliseconds(mongoAttr.TimeToLiveMs));
