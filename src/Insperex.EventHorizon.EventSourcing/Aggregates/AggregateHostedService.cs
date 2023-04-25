@@ -41,19 +41,19 @@ public class AggregateHostedService<TParent, TAction, T> : IHostedService
             .Build();
     }
 
-    public async Task StartAsync(CancellationToken ct)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         await _aggregator.SetupAsync();
 
         // Try to Refresh any Missing or Outdated Snapshots
         if (_aggregator.GetConfig().IsRebuildEnabled)
-            await _aggregator.RebuildAllAsync(ct);
+            await _aggregator.RebuildAllAsync(cancellationToken);
 
         // Start Command Subscription
         await _subscription.StartAsync();
     }
 
-    public Task StopAsync(CancellationToken ct)
+    public Task StopAsync(CancellationToken cancellationToken)
     {
         return _subscription.StopAsync();
     }
