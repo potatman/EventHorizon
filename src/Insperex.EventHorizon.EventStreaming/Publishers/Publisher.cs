@@ -34,7 +34,7 @@ public class Publisher<T> : IDisposable
     public async Task<Publisher<T>> PublishAsync(params T[] messages)
     {
         // Defensive
-        if (messages.Any() != true) return this;
+        if (!messages.Any()) return this;
 
         // Get topic
         using var activity = TraceConstants.ActivitySource.StartActivity();

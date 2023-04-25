@@ -52,7 +52,7 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
 
     public async Task<Subscription<T>> StopAsync()
     {
-        if (Running != true) return this;
+        if (!Running) return this;
 
         // Cancel
         Running = false;

@@ -2,7 +2,7 @@
 
 namespace Insperex.EventHorizon.EventStreaming.Tracing;
 
-public class TraceConstants
+public static class TraceConstants
 {
     public const string ActivitySourceName = "Insperex.EventHorizon";
     public static readonly ActivitySource ActivitySource = new(ActivitySourceName);
