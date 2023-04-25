@@ -1,14 +1,12 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Microsoft.Extensions.Hosting;
-using MongoDB.Bson;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 
 namespace Insperex.EventHorizon.Tool.LegacyMigration
@@ -18,74 +16,46 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration
         private readonly IMongoClient _mongoClient;
         private readonly StreamingClient _streamingClient;
         private readonly IStreamFactory _streamFactory;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly string _bucketId;
         private readonly string _topic;
 
-        public MigrationHostedService(IMongoClient mongoClient, StreamingClient streamingClient, IStreamFactory streamFactory)
+        public MigrationHostedService(IMongoClient mongoClient, StreamingClient streamingClient, IStreamFactory streamFactory, ILoggerFactory loggerFactory)
         {
             _mongoClient = mongoClient;
             _streamingClient = streamingClient;
             _streamFactory = streamFactory;
+            _loggerFactory = loggerFactory;
             _bucketId = "tec_event_firm";
             _topic = $"persistent://legacy/events/{_bucketId}";
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            var filter = Builders<BsonDocument>.Filter.Empty;
+            var mongodbSource = new MongoDbSource(_mongoClient, _bucketId, _loggerFactory.CreateLogger<MongoDbSource>());
 
-            // Delete Existing Topic
-            await _streamFactory.CreateAdmin().DeleteTopicAsync(_topic, CancellationToken.None);
-            await Task.Delay(TimeSpan.FromSeconds(3), stoppingToken);
-
-            using var publisher = _streamingClient.CreatePublisher<Event>().AddTopic(_topic).Build();
+            // TEMP: Delete Existing Topic
+            await _streamFactory.CreateAdmin().DeleteTopicAsync(_topic, stoppingToken);
+            await mongodbSource.DeleteState(stoppingToken);
+            await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
 
             while (true)
             {
-                try
+                if (!await mongodbSource.AnyAsync(stoppingToken))
                 {
-                    var cursor = await GetCursor(filter);
-                    while (await cursor.MoveNextAsync(stoppingToken))
-                    {
-                        var events = new List<Event>();
-                        var batch = cursor.Current.ToArray();
-                        foreach (var item  in batch)
-                        {
-                            var streamId = item["StreamId"].AsString;
-                            var type = item["Type"].AsString;
-                            var payload = item["Payload"].AsBsonDocument.ToString();
-                            var eventDateTime = item["EventDateTime"].AsBsonDateTime;
-                            var sourceDateTime = item["SourceDateTime"].AsBsonDateTime;
-                            // var obj = JsonSerializer.Deserialize<dynamic>(payload);
-
-                            events.Add(new Event { StreamId = streamId, Type = type, Payload = payload });
-                        }
-
-                        await publisher.PublishAsync(events.ToArray());
-                    }
-
-                    break;
+                    await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                    continue;
                 }
-                catch (Exception e)
+
+                using var publisher = _streamingClient.CreatePublisher<Event>().AddTopic(_topic).Build();
+                await foreach (var item in mongodbSource.GetAsyncEnumerator(stoppingToken))
                 {
-                    Console.WriteLine(e);
-                    throw;
+
+                    // await publisher.PublishAsync(item);
+                    await mongodbSource.SaveState(stoppingToken);
                 }
             }
-        }
 
-        private Task<IAsyncCursor<BsonDocument>> GetCursor(FilterDefinition<BsonDocument> filter)
-        {
-            var options = new FindOptions
-            {
-                BatchSize = 10000
-            };
-
-            return _mongoClient.GetDatabase(_bucketId).GetCollection<BsonDocument>(nameof(Event))
-                .Find(filter, options)
-                .SortBy(x => x["EventDateTime"])
-                .ThenBy(x => x["StreamId"])
-                .ToCursorAsync();
         }
     }
 }
