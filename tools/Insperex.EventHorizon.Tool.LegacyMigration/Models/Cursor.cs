@@ -1,6 +1,6 @@
 using System;
 
-namespace Insperex.EventHorizon.Tool.LegacyMigration
+namespace Insperex.EventHorizon.Tool.LegacyMigration.Models
 {
     public class Cursor
     {

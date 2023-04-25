@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Insperex.EventHorizon.EventStore.MongoDb.Extensions;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
+using Insperex.EventHorizon.Tool.LegacyMigration.HostedServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;

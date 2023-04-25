@@ -6,13 +6,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Util;
+using Insperex.EventHorizon.Tool.LegacyMigration.Models;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace Insperex.EventHorizon.Tool.LegacyMigration
 {
-    public class MongoDbSource : IDataSource
+    public class MongoDbSource
     {
         private readonly IMongoClient _client;
         private readonly string _bucketId;
