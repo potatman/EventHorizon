@@ -3,9 +3,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
-using Insperex.EventHorizon.EventSourcing.Util;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStreaming;
+using Insperex.EventHorizon.EventStreaming.Extensions;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Microsoft.Extensions.Hosting;
 
@@ -28,10 +28,11 @@ public class AggregateHostedService<TParent, TAction, T> : IHostedService
         _subscription = streamingClient.CreateSubscription<TAction>()
             .SubscriptionName(typeof(T).Name)
             .AddStateTopic<T>()
-            .OnBatch(x =>
+            .OnBatch(async x =>
             {
                 var messages = x.Messages.Select(m => m.Data).ToArray();
-                return aggregator.Handle(messages, 0, x.CancellationToken);
+                var responses = await aggregator.Handle(messages, x.CancellationToken);
+                await aggregator.PublishResponseAsync(responses);
             })
             .Build();
     }

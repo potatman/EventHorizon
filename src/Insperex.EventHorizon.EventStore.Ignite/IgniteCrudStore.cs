@@ -50,7 +50,6 @@ public class IgniteCrudStore<T> : ICrudStore<T>
         var entries = await _cache.GetAllAsync(ids);
         var existing = entries.Select(x => x.Key).ToArray();
 
-
         // Try Insert with transaction
         using var transaction = _client.GetTransactions().TxStart(
             TransactionConcurrency.Pessimistic,

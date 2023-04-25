@@ -9,7 +9,7 @@ namespace Insperex.EventHorizon.EventStreaming.Extensions;
 
 public static class TopicMessageExtensions
 {
-    public static object GetPayload<T>(this T message) 
+    public static object GetPayload<T>(this T message)
         where T : class, ITopicMessage =>
         JsonSerializer.Deserialize(message.Payload, AssemblyUtil.ActionDict[message.Type]);
 
@@ -23,7 +23,7 @@ public static class TopicMessageExtensions
 
         // If no upgrade return original message
         if (upgrade == null) return message;
-        
+
         upgrade?.Invoke(payload, null);
         return Activator.CreateInstance(typeof(T), message.StreamId, payload) as T;
 

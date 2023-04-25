@@ -17,7 +17,6 @@ using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
-using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -118,8 +117,8 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         var command2 = new Command(streamId, new ChangeUserName("Joe"));
 
         // Act
-        await _userAggregator.Handle(new [] {command1}, 0, CancellationToken.None);
-        await _userAggregator.Handle(new [] {command2}, 0, CancellationToken.None);
+        await _userAggregator.Handle(new [] {command1}, CancellationToken.None);
+        await _userAggregator.Handle(new [] {command2}, CancellationToken.None);
 
         // Assert Account
         var aggregate1  = await _userAggregator.GetAggregateFromSnapshotAsync(streamId, CancellationToken.None);
@@ -139,7 +138,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         var @event = new Event(streamId, 1, new AccountOpened(100));
 
         // Act
-        await _accountAggregator.Handle(new [] {@event}, 0, CancellationToken.None);
+        await _accountAggregator.Handle(new [] {@event}, CancellationToken.None);
 
         // Assert Account
         var aggregate1  = await _accountAggregator.GetAggregateFromSnapshotAsync(streamId, CancellationToken.None);

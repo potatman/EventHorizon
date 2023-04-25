@@ -7,7 +7,6 @@ using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
-using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStreaming;
@@ -84,9 +83,11 @@ public class Aggregator<TParent, T>
         }
     }
 
-    public async Task Handle<TM>(TM[] messages, int retryCount, CancellationToken ct) where TM : ITopicMessage
+    public async Task<Response[]> Handle<TM>(TM[] messages, CancellationToken ct) where TM : ITopicMessage
     {
+        var responses = new List<Response>();
         Dictionary<string, Aggregate<T>> aggregateDict;
+        var retryCount = 0;
         do
         {
             _logger.LogInformation("{State} Handling {Count} {Type} (Retry {RetryCount})",
@@ -102,18 +103,24 @@ public class Aggregator<TParent, T>
             // Save Successful Aggregates
             await SaveAllAsync(aggregateDict);
 
-            // Publish Successful Responses
-            await PublishResponseAsync(aggregateDict, false);
+            // Add Successful Responses
+            responses.AddRange(aggregateDict.Values
+                .Where(x => x.Status == AggregateStatus.Ok)
+                .SelectMany(x => x.Responses).ToArray());
 
             // Setup for Next Iteration, If Any Failures
             messages = messages
                 .Where(x => aggregateDict[x.StreamId].Status != AggregateStatus.Ok)
                 .ToArray();
+
             retryCount = ++retryCount;
         } while (_config.RetryLimit != retryCount && messages.Any());
 
-        // Publish Failed Responses - After all retry's
-        await PublishResponseAsync(aggregateDict, true);
+        responses.AddRange(aggregateDict.Values
+            .Where(x => x.Status == AggregateStatus.Ok)
+            .SelectMany(x => x.Responses).ToArray());
+
+        return responses.Distinct().ToArray();
     }
 
     private void TriggerHandle<TM>(TM[] messages, Dictionary<string, Aggregate<T>> aggregateDict) where TM : ITopicMessage
@@ -189,8 +196,10 @@ public class Aggregator<TParent, T>
                 return;
 
             var results = await _crudStore.UpsertAsync(parents, CancellationToken.None);
-            foreach (var failedId in results.FailedIds)
-                aggregateDict[failedId].SetStatus(AggregateStatus.SaveSnapshotFailed);
+            foreach (var id in results.FailedIds)
+                aggregateDict[id].SetStatus(AggregateStatus.SaveSnapshotFailed);
+            foreach (var id in results.PassedIds)
+                aggregateDict[id].SequenceId++;
         }
         catch (Exception ex)
         {
@@ -223,16 +232,11 @@ public class Aggregator<TParent, T>
         }
     }
 
-    private async Task PublishResponseAsync(Dictionary<string, Aggregate<T>> aggregateDict, bool forFailed)
+    internal async Task PublishResponseAsync(Response[] responses)
     {
         try
         {
-            var responsesLookup = aggregateDict.Values
-                .Where(x => !forFailed?
-                    x.Status == AggregateStatus.Ok
-                    : x.Status != AggregateStatus.Ok)
-                .SelectMany(x => x.Responses)
-                .ToLookup(x => x.SenderId);
+            var responsesLookup = responses.ToLookup(x => x.SenderId);
             foreach (var group in responsesLookup)
             {
                 var publisher = _streamingClient.CreatePublisher<Response>().AddTopic<T>(group.Key).Build();
@@ -251,8 +255,6 @@ public class Aggregator<TParent, T>
         {
             aggregate.Events.Clear();
             aggregate.Responses.Clear();
-            if (aggregate.Status == AggregateStatus.Ok)
-                aggregate.SequenceId++;
             aggregate.SetStatus(AggregateStatus.Ok);
         }
     }
