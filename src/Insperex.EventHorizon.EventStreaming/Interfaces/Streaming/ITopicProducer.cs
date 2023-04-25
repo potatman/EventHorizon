@@ -7,5 +7,5 @@ namespace Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 public interface ITopicProducer<in T> : IDisposable
     where T : ITopicMessage
 {
-    Task SendAsync(params T[] mesages);
+    Task SendAsync(params T[] messages);
 }
