@@ -13,7 +13,7 @@ public class PulsarTopicAdmin : ITopicAdmin
 {
     private readonly IPulsarAdminRESTAPIClient _admin;
     private readonly ILogger<PulsarTopicAdmin> _logger;
-    private static readonly object Locker = new object();
+    private static readonly object Locker = new();
 
     public PulsarTopicAdmin(IPulsarAdminRESTAPIClient admin, ILogger<PulsarTopicAdmin> logger)
     {
@@ -44,20 +44,23 @@ public class PulsarTopicAdmin : ITopicAdmin
 
     public async Task DeleteTopicAsync(string str, CancellationToken ct)
     {
-        var topic = PulsarTopicParser.Parse(str);
-        try
+        lock (Locker)
         {
-            if (topic.IsPersisted)
-                await _admin.DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
-            else
-                await _admin.UnloadTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, ct);
-            _logger.LogInformation("Deleted Topic {Topic}", topic);
-        }
-        catch (ApiException ex)
-        {
-            // 404 - Namespace or topic does not exist
-            if (ex.StatusCode != 404)
-                throw;
+            var topic = PulsarTopicParser.Parse(str);
+            try
+            {
+                if (topic.IsPersisted)
+                    _admin.DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct).Wait(ct);
+                else
+                    _admin.UnloadTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, ct).Wait(ct);
+                _logger.LogInformation("Deleted Topic {Topic}", topic);
+            }
+            catch (ApiException ex)
+            {
+                // 404 - Namespace or topic does not exist
+                if (ex.StatusCode != 404)
+                    throw;
+            }
         }
     }
 
