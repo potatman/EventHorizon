@@ -39,7 +39,6 @@ public class PulsarTopicAdmin : ITopicAdmin
             //     if (ex.StatusCode != 409)
             //         throw;
             // }
-
         }
     }
 
