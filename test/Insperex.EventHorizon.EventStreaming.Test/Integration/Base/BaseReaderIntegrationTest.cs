@@ -15,6 +15,7 @@ using Xunit.Abstractions;
 namespace Insperex.EventHorizon.EventStreaming.Test.Integration.Base;
 
 [Trait("Category", "Integration")]
+[Collection("Integration")]
 public abstract class BaseReaderIntegrationTest : IAsyncLifetime
 {
     private readonly ITestOutputHelper _outputHelper;
