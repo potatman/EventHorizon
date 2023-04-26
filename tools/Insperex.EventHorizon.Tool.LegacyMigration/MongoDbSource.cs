@@ -56,9 +56,6 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration
                         var streamId = item["StreamId"].AsString;
                         var type = item["Type"].AsString;
                         var payload = item["Payload"].AsBsonDocument.ToString();
-                        var eventDateTime = item["EventDateTime"].AsBsonDateTime;
-                        var sourceDateTime = item["SourceDateTime"].AsBsonDateTime;
-                        // var obj = JsonSerializer.Deserialize<dynamic>(payload);
                         return new Event { StreamId = streamId, Type = type, Payload = payload };
                     })
                     .ToArray();
