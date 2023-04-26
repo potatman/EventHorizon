@@ -83,7 +83,7 @@ public class Aggregator<TParent, T>
         }
     }
 
-    public async Task<Response[]> Handle<TM>(TM[] messages, CancellationToken ct) where TM : ITopicMessage
+    public async Task<Response[]> HandleAsync<TM>(TM[] messages, CancellationToken ct) where TM : ITopicMessage
     {
         var responses = new List<Response>();
         Dictionary<string, Aggregate<T>> aggregateDict;

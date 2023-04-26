@@ -5,7 +5,6 @@ using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStreaming;
-using Insperex.EventHorizon.EventStreaming.Extensions;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Microsoft.Extensions.Hosting;
 
@@ -31,7 +30,7 @@ public class AggregateHostedService<TParent, TAction, T> : IHostedService
             .OnBatch(async x =>
             {
                 var messages = x.Messages.Select(m => m.Data).ToArray();
-                var responses = await aggregator.Handle(messages, x.CancellationToken);
+                var responses = await aggregator.HandleAsync(messages, x.CancellationToken);
                 await aggregator.PublishResponseAsync(responses);
             })
             .Build();
