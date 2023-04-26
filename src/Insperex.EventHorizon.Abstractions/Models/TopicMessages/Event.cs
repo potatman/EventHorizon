@@ -1,6 +1,6 @@
 using System.Text.Json;
-using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
+using Insperex.EventHorizon.Abstractions.Util;
 
 namespace Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 
@@ -17,7 +17,7 @@ public class Event : ITopicMessage
         Type = payload.GetType().Name;
     }
 
-    public Event(string streamId, long sequenceId, IEvent payload) : this(streamId, payload)
+    public Event(string streamId, long sequenceId, object payload) : this(streamId, payload)
     {
         SequenceId = sequenceId;
     }
