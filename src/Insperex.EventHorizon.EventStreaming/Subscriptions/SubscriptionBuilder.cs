@@ -107,7 +107,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         return new Subscription<T>(_factory, config, logger);
     }
 
-    private async Task RequireTopics()
+    private async void RequireTopics()
     {
         // Ensure Topic Exists
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
