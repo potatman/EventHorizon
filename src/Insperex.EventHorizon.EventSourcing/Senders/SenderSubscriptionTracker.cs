@@ -81,10 +81,10 @@ public class SenderSubscriptionTracker : IDisposable
         foreach (var group in _subscriptionDict)
         {
             // Stop Subscription
-            group.Value.StopAsync().Wait();
+            group.Value.StopAsync().GetAwaiter().GetResult();
 
             // Delete Topic
-            _streamingClient.GetAdmin<Response>().DeleteTopicAsync(group.Key, _senderId).Wait();
+            _streamingClient.GetAdmin<Response>().DeleteTopicAsync(group.Key, _senderId).GetAwaiter().GetResult();
         }
     }
 }

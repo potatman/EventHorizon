@@ -27,7 +27,7 @@ public class LockDisposable : IDisposable
 
     public void Dispose()
     {
-        ReleaseAsync().Wait();
+        ReleaseAsync().GetAwaiter().GetResult();
     }
 
     public async Task WaitForLockAsync()
@@ -76,6 +76,6 @@ public class LockDisposable : IDisposable
 
     private void OnExit(object sender, EventArgs e)
     {
-        ReleaseAsync().Wait();
+        ReleaseAsync().GetAwaiter().GetResult();
     }
 }
