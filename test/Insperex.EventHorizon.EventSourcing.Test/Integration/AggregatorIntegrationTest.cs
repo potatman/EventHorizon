@@ -50,9 +50,9 @@ public class AggregatorIntegrationTest : IAsyncLifetime
                 // services.AddMongoDbEventStore(hostContext.Configuration);
 
                 services.AddEventSourcing();
-                services.AddHostedAggregate<Account>();
-                services.AddHostedAggregate<User>();
-                services.AddHostedAggregate<SearchAccountView>();
+                services.AddHostedSnapshot<Account>();
+                services.AddHostedSnapshot<User>();
+                services.AddHostedSnapshot<SearchAccountView>();
             })
             .UseSerilog((_, config) =>
             {

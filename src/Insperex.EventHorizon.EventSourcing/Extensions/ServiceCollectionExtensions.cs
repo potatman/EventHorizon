@@ -28,23 +28,31 @@ public static class ServiceCollectionExtensions
         return collection;
     }
 
-    public static IServiceCollection AddHostedAggregate<T>(this IServiceCollection collection,
+    public static IServiceCollection AddHostedSnapshot<T>(this IServiceCollection collection,
         Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null)
         where T : class, IState
     {
-        collection.AddSingleton(x =>
+        // Handle Commands
+        collection.AddHostedService(x =>
         {
             var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();
             var loggerFactory = x.GetRequiredService<ILoggerFactory>();
             var builder = new AggregateBuilder<Snapshot<T>, T>(serviceProvider, streamingClient, loggerFactory);
             onBuild?.Invoke(builder);
-            return builder.Build();
+            return new AggregateHostedService<Snapshot<T>, Command, T>(streamingClient, builder.Build());
         });
 
-        collection.AddScoped<T>();
-        collection.AddHostedService<AggregateHostedService<Snapshot<T>, Command, T>>();
-        collection.AddHostedService<AggregateHostedService<Snapshot<T>, Request, T>>();
+        // Handle Requests
+        collection.AddHostedService(x =>
+        {
+            var serviceProvider = x.GetRequiredService<IServiceProvider>();
+            var streamingClient = x.GetRequiredService<StreamingClient>();
+            var loggerFactory = x.GetRequiredService<ILoggerFactory>();
+            var builder = new AggregateBuilder<Snapshot<T>, T>(serviceProvider, streamingClient, loggerFactory);
+            onBuild?.Invoke(builder);
+            return new AggregateHostedService<Snapshot<T>, Request, T>(streamingClient, builder.Build());
+        });
 
         return collection;
     }
@@ -53,19 +61,32 @@ public static class ServiceCollectionExtensions
         Action<AggregateBuilder<View<T>, T>> onBuild = null)
         where T : class, IState
     {
-        collection.AddSingleton(x =>
+        // Handle Events
+        return collection.AddSingleton(x =>
         {
             var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();
             var loggerFactory = x.GetRequiredService<ILoggerFactory>();
             var builder = new AggregateBuilder<View<T>, T>(serviceProvider, streamingClient, loggerFactory);
             onBuild?.Invoke(builder);
-            return builder.Build();
+            var aggregator = builder.Build();
+            return new AggregateHostedService<View<T>, Request, T>(streamingClient, aggregator);
         });
+    }
 
-        collection.AddScoped<T>();
-        collection.AddHostedService<AggregateHostedService<View<T>, Event, T>>();
-
-        return collection;
+    public static IServiceCollection AddHostedMigration<T>(this IServiceCollection collection,
+        Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null)
+        where T : class, IState, new()
+    {
+        return collection.AddSingleton(x =>
+        {
+            var serviceProvider = x.GetRequiredService<IServiceProvider>();
+            var streamingClient = x.GetRequiredService<StreamingClient>();
+            var loggerFactory = x.GetRequiredService<ILoggerFactory>();
+            var builder = new AggregateBuilder<Snapshot<T>, T>(serviceProvider, streamingClient, loggerFactory);
+            onBuild?.Invoke(builder);
+            var aggregator = builder.Build();
+            return new AggregateMigrationHostedService<T>(aggregator, streamingClient);
+        });
     }
 }

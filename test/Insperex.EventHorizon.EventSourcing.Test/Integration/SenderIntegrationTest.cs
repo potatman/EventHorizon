@@ -52,7 +52,7 @@ public class SenderIntegrationTest : IAsyncLifetime
                 // services.AddMongoDbSnapshotStore(hostContext.Configuration);
 
                 services.AddEventSourcing();
-                services.AddHostedAggregate<Account>();
+                services.AddHostedSnapshot<Account>();
                 // services.AddHostedAggregate<UserAccount>();
             })
             .UseSerilog((_, config) =>

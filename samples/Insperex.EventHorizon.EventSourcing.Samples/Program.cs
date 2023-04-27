@@ -30,7 +30,7 @@ public class Program
                 services.AddMongoDbSnapshotStore(hostContext.Configuration);
 
                 services.AddEventSourcing();
-                services.AddHostedAggregate<Account>(x =>
+                services.AddHostedSnapshot<Account>(x =>
                     x.RetryLimit(5)
                         .IsRebuildEnabled(true));
                 services.AddHostedViewIndexer<SearchAccountView>(x => x
