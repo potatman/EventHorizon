@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
-using Insperex.EventHorizon.Abstractions.Util;
-using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Test.Fakers;
 using Insperex.EventHorizon.EventStreaming.Test.Models;
 using Insperex.EventHorizon.EventStreaming.Test.Shared;
@@ -24,7 +21,6 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     private Stopwatch _stopwatch;
     private readonly TimeSpan _timeout;
     private Event[] _events;
-    private readonly IStreamFactory _streamFactory;
     private readonly ListTopicHandler<Event> _handler;
 
     protected BaseSingleTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
@@ -32,7 +28,6 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         _outputHelper = outputHelper;
         _timeout = TimeSpan.FromSeconds(30);
         _streamingClient = provider.GetRequiredService<StreamingClient>();
-        _streamFactory = provider.GetRequiredService<IStreamFactory>();
         _handler = new ListTopicHandler<Event>();
     }
 
