@@ -39,7 +39,6 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Extensions
             configurator.Collection.AddSingleton(typeof(IStreamFactory), typeof(PulsarStreamFactory));
 
             // Common
-            configurator.Collection.Configure<PulsarConfig>(section);
             configurator.Collection.AddSingleton(typeof(StreamingClient));
             configurator.Collection.AddSingleton(typeof(PublisherBuilder<>));
             configurator.Collection.AddSingleton(typeof(ReaderBuilder<>));
