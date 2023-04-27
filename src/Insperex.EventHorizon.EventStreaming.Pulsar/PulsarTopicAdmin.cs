@@ -48,23 +48,31 @@ public class PulsarTopicAdmin : ITopicAdmin
 
     public async Task DeleteTopicAsync(string str, CancellationToken ct)
     {
-        Console.WriteLine("DeleteTopicAsync - 1");
-        var topic = PulsarTopicParser.Parse(str);
+        await SemaphoreSlim.WaitAsync(ct);
         try
         {
-            if (topic.IsPersisted)
-                await _admin.DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
-            else
-                await _admin.UnloadTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, ct);
-            _logger.LogInformation("Deleted Topic {Topic}", topic);
+            Console.WriteLine("DeleteTopicAsync - 1");
+            var topic = PulsarTopicParser.Parse(str);
+            try
+            {
+                if (topic.IsPersisted)
+                    await _admin.DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
+                else
+                    await _admin.UnloadTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, ct);
+                _logger.LogInformation("Deleted Topic {Topic}", topic);
+            }
+            catch (ApiException ex)
+            {
+                // 404 - Namespace or topic does not exist
+                if (ex.StatusCode != 404)
+                    throw;
+            }
+            Console.WriteLine("DeleteTopicAsync - 2");
         }
-        catch (ApiException ex)
+        finally
         {
-            // 404 - Namespace or topic does not exist
-            if (ex.StatusCode != 404)
-                throw;
+            SemaphoreSlim.Release();
         }
-        Console.WriteLine("DeleteTopicAsync - 2");
     }
 
     private async Task RequireNamespace(string tenant, string nameSpace, int? retentionInMb, int? retentionInMinutes, CancellationToken ct)
