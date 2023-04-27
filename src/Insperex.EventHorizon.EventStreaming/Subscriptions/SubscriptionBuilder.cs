@@ -106,7 +106,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var admin = _factory.CreateAdmin();
         foreach (var topic in _topics)
-            admin.RequireTopicAsync(topic, cts.Token).Wait(cts.Token);
+            admin.RequireTopicAsync(topic, cts.Token).GetAwaiter().GetResult();
 
         // Return
         return new Subscription<T>(_factory, config, logger);

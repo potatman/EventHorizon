@@ -44,7 +44,7 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
 
         // Ensure Topic Exists
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        _factory.CreateAdmin().RequireTopicAsync(_topic, cts.Token).Wait();
+        _factory.CreateAdmin().RequireTopicAsync(_topic, cts.Token).GetAwaiter().GetResult();
 
         // Create
         return new Publisher<T>(_factory, config, logger);
