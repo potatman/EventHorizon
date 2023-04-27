@@ -64,8 +64,8 @@ public class AggregatorIntegrationTest : IAsyncLifetime
             .AddTestBucketIds();
 
         _eventSourcingClient = _host.Services.GetRequiredService<EventSourcingClient<Account>>();
-        _accountAggregator = _host.Services.GetRequiredService<Aggregator<Snapshot<Account>, Account>>();
-        _userAggregator = _host.Services.GetRequiredService<Aggregator<Snapshot<User>, User>>();
+        _accountAggregator = _eventSourcingClient.Aggregator().Build();
+        _userAggregator = _host.Services.GetRequiredService<EventSourcingClient<User>>().Aggregator().Build();
 
 
         _streamingClient = _host.Services.GetRequiredService<StreamingClient>();

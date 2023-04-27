@@ -40,7 +40,7 @@ public static class ServiceCollectionExtensions
             var loggerFactory = x.GetRequiredService<ILoggerFactory>();
             var builder = new AggregateBuilder<Snapshot<T>, T>(serviceProvider, streamingClient, loggerFactory);
             onBuild?.Invoke(builder);
-            return new AggregateHostedService<Snapshot<T>, Command, T>(streamingClient, builder.Build());
+            return new AggregateStateHostedService<Snapshot<T>, Command, T>(streamingClient, builder.Build());
         });
 
         // Handle Requests
@@ -51,7 +51,7 @@ public static class ServiceCollectionExtensions
             var loggerFactory = x.GetRequiredService<ILoggerFactory>();
             var builder = new AggregateBuilder<Snapshot<T>, T>(serviceProvider, streamingClient, loggerFactory);
             onBuild?.Invoke(builder);
-            return new AggregateHostedService<Snapshot<T>, Request, T>(streamingClient, builder.Build());
+            return new AggregateStateHostedService<Snapshot<T>, Request, T>(streamingClient, builder.Build());
         });
 
         return collection;
@@ -62,7 +62,7 @@ public static class ServiceCollectionExtensions
         where T : class, IState
     {
         // Handle Events
-        return collection.AddSingleton(x =>
+        return collection.AddHostedService(x =>
         {
             var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();
@@ -70,7 +70,7 @@ public static class ServiceCollectionExtensions
             var builder = new AggregateBuilder<View<T>, T>(serviceProvider, streamingClient, loggerFactory);
             onBuild?.Invoke(builder);
             var aggregator = builder.Build();
-            return new AggregateHostedService<View<T>, Request, T>(streamingClient, aggregator);
+            return new AggregateStateHostedService<View<T>, Event, T>(streamingClient, aggregator);
         });
     }
 
@@ -78,7 +78,7 @@ public static class ServiceCollectionExtensions
         Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null)
         where T : class, IState, new()
     {
-        return collection.AddSingleton(x =>
+        return collection.AddHostedService(x =>
         {
             var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();

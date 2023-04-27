@@ -145,6 +145,23 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         return _client.Indices.DeleteAsync(_dbName, ct: ct);
     }
 
+    private void ThrowErrors(MultiGetResponse res)
+    {
+        if (res.IsValid) return;
+
+        var failedHits = res.Hits.Where(x => x.Error != null).ToArray();
+        if (failedHits.Any())
+        {
+            var first = failedHits.First();
+            if (first.Error.Type == "index_not_found_exception")
+                return;
+            else
+                throw new Exception(first.Error.Type);
+        }
+
+        ThrowErrors(res as IResponse);
+    }
+
     private void ThrowErrors(IResponse res)
     {
         if (res.IsValid) return;
