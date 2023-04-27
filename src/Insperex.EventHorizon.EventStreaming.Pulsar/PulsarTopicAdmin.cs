@@ -39,6 +39,7 @@ public class PulsarTopicAdmin : ITopicAdmin
 
     public async Task DeleteTopicAsync(string str, CancellationToken ct)
     {
+        Console.WriteLine("DeleteTopicAsync - 1");
         var topic = PulsarTopicParser.Parse(str);
         try
         {
@@ -54,19 +55,24 @@ public class PulsarTopicAdmin : ITopicAdmin
             if (ex.StatusCode != 404)
                 throw;
         }
+        Console.WriteLine("DeleteTopicAsync - 2");
     }
 
     private async Task RequireNamespace(string tenant, string nameSpace, int? retentionInMb, int? retentionInMinutes, CancellationToken ct)
     {
         // Ensure Tenant Exists
+        Console.WriteLine("RequireNamespace - 1");
         var tenants = await _admin.GetTenantsAsync(ct);
+        Console.WriteLine("RequireNamespace - 2");
         if (!tenants.Contains(tenant))
         {
             var clusters = await _admin.GetClustersAsync(ct);
+            Console.WriteLine("RequireNamespace - 3");
             var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
             try
             {
                 await _admin.CreateTenantAsync(tenant, tenantInfo, ct);
+                Console.WriteLine("RequireNamespace - 4");
             }
             catch (Exception)
             {
@@ -76,6 +82,7 @@ public class PulsarTopicAdmin : ITopicAdmin
 
         // Ensure Namespace Exists
         var namespaces = await _admin.GetTenantNamespacesAsync(tenant, ct);
+        Console.WriteLine("RequireNamespace - 5");
         if (!namespaces.Contains($"{tenant}/{nameSpace}"))
         {
             // Add Retention Policy if namespace == Events
@@ -92,6 +99,7 @@ public class PulsarTopicAdmin : ITopicAdmin
             try
             {
                 await _admin.CreateNamespaceAsync(tenant, nameSpace, policies, ct);
+                Console.WriteLine("RequireNamespace - 6");
             }
             catch (Exception)
             {
