@@ -15,17 +15,20 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 public class PulsarStreamFactory : IStreamFactory
 {
     private readonly PulsarClient _client;
+    private readonly IOptions<PulsarConfig> _options;
     private readonly IPulsarAdminRESTAPIClient _admin;
     private readonly AttributeUtil _attributeUtil;
     private readonly ILoggerFactory _loggerFactory;
 
     public PulsarStreamFactory(
         PulsarClient client,
+        IOptions<PulsarConfig> options,
         IPulsarAdminRESTAPIClient admin,
         AttributeUtil attributeUtil,
         ILoggerFactory loggerFactory)
     {
         _client = client;
+        _options = options;
         _admin = admin;
         _attributeUtil = attributeUtil;
         _loggerFactory = loggerFactory;
@@ -48,7 +51,7 @@ public class PulsarStreamFactory : IStreamFactory
 
     public ITopicAdmin CreateAdmin()
     {
-        return new PulsarTopicAdmin(_admin, _loggerFactory.CreateLogger<PulsarTopicAdmin>());
+        return new PulsarTopicAdmin(_options.Value, _loggerFactory.CreateLogger<PulsarTopicAdmin>());
     }
 
     public ITopicResolver GetTopicResolver()

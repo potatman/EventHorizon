@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
@@ -11,12 +12,12 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
 public class PulsarTopicAdmin : ITopicAdmin
 {
-    private readonly IPulsarAdminRESTAPIClient _admin;
+    private readonly PulsarConfig _config;
     private readonly ILogger<PulsarTopicAdmin> _logger;
 
-    public PulsarTopicAdmin(IPulsarAdminRESTAPIClient admin, ILogger<PulsarTopicAdmin> logger)
+    public PulsarTopicAdmin(PulsarConfig config, ILogger<PulsarTopicAdmin> logger)
     {
-        _admin = admin;
+        _config = config;
         _logger = logger;
     }
 
@@ -44,9 +45,9 @@ public class PulsarTopicAdmin : ITopicAdmin
         try
         {
             if (topic.IsPersisted)
-                await _admin.DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
+                await GetAdmin().DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
             else
-                await _admin.UnloadTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, ct);
+                await GetAdmin().UnloadTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, ct);
             _logger.LogInformation("Deleted Topic {Topic}", topic);
         }
         catch (ApiException ex)
@@ -62,16 +63,16 @@ public class PulsarTopicAdmin : ITopicAdmin
     {
         // Ensure Tenant Exists
         Console.WriteLine("RequireNamespace - 1");
-        var tenants = await _admin.GetTenantsAsync(ct);
+        var tenants = await GetAdmin().GetTenantsAsync(ct);
         Console.WriteLine("RequireNamespace - 2");
         if (!tenants.Contains(tenant))
         {
-            var clusters = await _admin.GetClustersAsync(ct);
+            var clusters = await GetAdmin().GetClustersAsync(ct);
             Console.WriteLine("RequireNamespace - 3");
             var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
             try
             {
-                await _admin.CreateTenantAsync(tenant, tenantInfo, ct);
+                await GetAdmin().CreateTenantAsync(tenant, tenantInfo, ct);
                 Console.WriteLine("RequireNamespace - 4");
             }
             catch (Exception)
@@ -81,7 +82,7 @@ public class PulsarTopicAdmin : ITopicAdmin
         }
 
         // Ensure Namespace Exists
-        var namespaces = await _admin.GetTenantNamespacesAsync(tenant, ct);
+        var namespaces = await GetAdmin().GetTenantNamespacesAsync(tenant, ct);
         Console.WriteLine("RequireNamespace - 5");
         if (!namespaces.Contains($"{tenant}/{nameSpace}"))
         {
@@ -98,7 +99,7 @@ public class PulsarTopicAdmin : ITopicAdmin
                 };
             try
             {
-                await _admin.CreateNamespaceAsync(tenant, nameSpace, policies, ct);
+                await GetAdmin().CreateNamespaceAsync(tenant, nameSpace, policies, ct);
                 Console.WriteLine("RequireNamespace - 6");
             }
             catch (Exception)
@@ -106,5 +107,10 @@ public class PulsarTopicAdmin : ITopicAdmin
                 // Ignore race conditions
             }
         }
+    }
+
+    private PulsarAdminRESTAPIClient GetAdmin()
+    {
+        return new PulsarAdminRESTAPIClient(new HttpClient { BaseAddress = new Uri($"{_config.AdminUrl}/admin/v2/") });
     }
 }
