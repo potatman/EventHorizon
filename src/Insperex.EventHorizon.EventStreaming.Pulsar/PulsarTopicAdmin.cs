@@ -13,6 +13,7 @@ public class PulsarTopicAdmin : ITopicAdmin
 {
     private readonly IPulsarAdminRESTAPIClient _admin;
     private readonly ILogger<PulsarTopicAdmin> _logger;
+    private static readonly SemaphoreSlim SemaphoreSlim = new(1,1);
 
     public PulsarTopicAdmin(IPulsarAdminRESTAPIClient admin, ILogger<PulsarTopicAdmin> logger)
     {
@@ -22,8 +23,16 @@ public class PulsarTopicAdmin : ITopicAdmin
 
     public async Task RequireTopicAsync(string str, CancellationToken ct)
     {
-        var topic = PulsarTopicParser.Parse(str);
-        await RequireNamespace(topic.Tenant, topic.Namespace, -1, -1, ct);
+        await SemaphoreSlim.WaitAsync(ct);
+        try
+        {
+            var topic = PulsarTopicParser.Parse(str);
+            await RequireNamespace(topic.Tenant, topic.Namespace, -1, -1, ct);
+        }
+        finally
+        {
+            SemaphoreSlim.Release();
+        }
 
         // try
         // {
