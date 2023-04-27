@@ -101,14 +101,18 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
             OnBatch = _onBatch,
         };
         var logger = _loggerFactory.CreateLogger<Subscription<T>>();
+        Task.Run(RequireTopics);
 
+        // Return
+        return new Subscription<T>(_factory, config, logger);
+    }
+
+    private async Task RequireTopics()
+    {
         // Ensure Topic Exists
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         var admin = _factory.CreateAdmin();
         foreach (var topic in _topics)
-            admin.RequireTopicAsync(topic, cts.Token).GetAwaiter().GetResult();
-
-        // Return
-        return new Subscription<T>(_factory, config, logger);
+            await admin.RequireTopicAsync(topic, cts.Token);
     }
 }
