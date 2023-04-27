@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Testing;
 using Insperex.EventHorizon.EventSourcing.Aggregates;
@@ -46,14 +47,19 @@ public class SenderIntegrationTest : IAsyncLifetime
         _host = Host.CreateDefaultBuilder(Array.Empty<string>())
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddInMemorySnapshotStore();
-                services.AddInMemoryEventStream();
-                // services.AddPulsarEventStream(hostContext.Configuration);
-                // services.AddMongoDbSnapshotStore(hostContext.Configuration);
+                services.AddEventHorizon(hostContext.Configuration, x =>
+                {
+                    x.AddEventSourcing()
 
-                services.AddEventSourcing();
-                services.AddHostedSnapshot<Account>();
-                // services.AddHostedAggregate<UserAccount>();
+                        // Hosts
+                        .AddHostedSnapshot<Account>()
+
+                        // Stores
+                        .AddInMemorySnapshotStore()
+                        .AddInMemoryLockStore()
+                        .AddInMemoryViewStore()
+                        .AddInMemoryEventStream();
+                });
             })
             .UseSerilog((_, config) =>
             {

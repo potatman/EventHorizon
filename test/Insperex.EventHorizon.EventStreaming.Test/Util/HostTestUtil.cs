@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Testing;
 using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
@@ -16,7 +17,10 @@ public static class HostTestUtil
         return GetHostBase(output)
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddPulsarEventStream(hostContext.Configuration);
+                services.AddEventHorizon(hostContext.Configuration, x =>
+                {
+                    x.AddPulsarEventStream();
+                });
             })
             .Build()
             .AddTestBucketIds();
@@ -27,12 +31,14 @@ public static class HostTestUtil
         return GetHostBase(output)
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddInMemoryEventStream();
+                services.AddEventHorizon(hostContext.Configuration, x =>
+                {
+                    x.AddInMemoryEventStream();
+                });
             })
             .Build()
             .AddTestBucketIds();
     }
-
 
     private static IHostBuilder GetHostBase(ITestOutputHelper output)
     {

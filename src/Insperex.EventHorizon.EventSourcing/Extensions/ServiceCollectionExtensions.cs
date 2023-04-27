@@ -1,4 +1,5 @@
 ﻿using System;
+using Insperex.EventHorizon.Abstractions;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Util;
@@ -16,24 +17,24 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddEventSourcing(this IServiceCollection collection)
+    public static EventHorizonConfigurator AddEventSourcing(this EventHorizonConfigurator configurator)
     {
-        collection.AddSingleton(x => x.GetRequiredService<IStreamFactory>().GetTopicResolver());
-        collection.AddSingleton(typeof(EventSourcingClient<>));
-        collection.AddSingleton(typeof(AggregateBuilder<,>));
-        collection.AddSingleton<SenderBuilder>();
-        collection.AddSingleton<SenderSubscriptionTracker>();
-        collection.AddSingleton<ValidationUtil>();
+        configurator.Collection.AddSingleton(x => x.GetRequiredService<IStreamFactory>().GetTopicResolver());
+        configurator.Collection.AddSingleton(typeof(EventSourcingClient<>));
+        configurator.Collection.AddSingleton(typeof(AggregateBuilder<,>));
+        configurator.Collection.AddSingleton<SenderBuilder>();
+        configurator.Collection.AddSingleton<SenderSubscriptionTracker>();
+        configurator.Collection.AddSingleton<ValidationUtil>();
 
-        return collection;
+        return configurator;
     }
 
-    public static IServiceCollection AddHostedSnapshot<T>(this IServiceCollection collection,
+    public static EventHorizonConfigurator AddHostedSnapshot<T>(this EventHorizonConfigurator configurator,
         Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null)
         where T : class, IState
     {
         // Handle Commands
-        collection.AddHostedService(x =>
+        configurator.Collection.AddHostedService(x =>
         {
             var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();
@@ -44,7 +45,7 @@ public static class ServiceCollectionExtensions
         });
 
         // Handle Requests
-        collection.AddHostedService(x =>
+        configurator.Collection.AddHostedService(x =>
         {
             var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();
@@ -54,15 +55,15 @@ public static class ServiceCollectionExtensions
             return new AggregateStateHostedService<Snapshot<T>, Request, T>(streamingClient, builder.Build());
         });
 
-        return collection;
+        return configurator;
     }
 
-    public static IServiceCollection AddHostedViewIndexer<T>(this IServiceCollection collection,
+    public static EventHorizonConfigurator AddHostedViewIndexer<T>(this EventHorizonConfigurator configurator,
         Action<AggregateBuilder<View<T>, T>> onBuild = null)
         where T : class, IState
     {
         // Handle Events
-        return collection.AddHostedService(x =>
+        configurator.Collection.AddHostedService(x =>
         {
             var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();
@@ -72,14 +73,16 @@ public static class ServiceCollectionExtensions
             var aggregator = builder.Build();
             return new AggregateStateHostedService<View<T>, Event, T>(streamingClient, aggregator);
         });
+
+        return configurator;
     }
 
-    public static IServiceCollection AddHostedMigration<TSource, TTarget>(this IServiceCollection collection,
+    public static EventHorizonConfigurator AddHostedMigration<TSource, TTarget>(this EventHorizonConfigurator configurator,
         Action<AggregateBuilder<Snapshot<TTarget>, TTarget>> onBuild = null)
         where TSource : class, IState, new()
         where TTarget : class, IState, new()
     {
-        return collection.AddHostedService(x =>
+        configurator.Collection.AddHostedService(x =>
         {
             var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();
@@ -89,5 +92,7 @@ public static class ServiceCollectionExtensions
             var aggregator = builder.Build();
             return new AggregateMigrationHostedService<TSource,TTarget>(aggregator, streamingClient);
         });
+
+        return configurator;
     }
 }

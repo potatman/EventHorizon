@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Testing;
 using Insperex.EventHorizon.EventSourcing.Aggregates;
@@ -44,15 +45,21 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         _host = Host.CreateDefaultBuilder(Array.Empty<string>())
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddInMemorySnapshotStore();
-                services.AddInMemoryEventStream();
-                // services.Stream(hostContext.Configuration);
-                // services.AddMongoDbEventStore(hostContext.Configuration);
+                services.AddEventHorizon(hostContext.Configuration, x =>
+                {
+                    x.AddEventSourcing()
 
-                services.AddEventSourcing();
-                services.AddHostedSnapshot<Account>();
-                services.AddHostedSnapshot<User>();
-                services.AddHostedSnapshot<SearchAccountView>();
+                        // Hosts
+                        .AddHostedSnapshot<Account>()
+                        .AddHostedSnapshot<User>()
+                        .AddHostedSnapshot<SearchAccountView>()
+
+                        // Stores
+                        .AddInMemorySnapshotStore()
+                        .AddInMemoryLockStore()
+                        .AddInMemoryViewStore()
+                        .AddInMemoryEventStream();
+                });
             })
             .UseSerilog((_, config) =>
             {

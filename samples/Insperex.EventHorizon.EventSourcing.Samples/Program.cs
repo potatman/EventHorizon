@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventSourcing.Extensions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
@@ -25,22 +26,28 @@ public class Program
         var host = Host.CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddPulsarEventStream(hostContext.Configuration);
-                services.AddElasticViewStore(hostContext.Configuration);
-                services.AddMongoDbSnapshotStore(hostContext.Configuration);
+                services.AddEventHorizon(hostContext.Configuration, x =>
+                {
+                    x.AddEventSourcing()
 
-                services.AddEventSourcing();
-                services.AddHostedSnapshot<Account>(x =>
-                    x.RetryLimit(5)
-                        .IsRebuildEnabled(true));
-                services.AddHostedViewIndexer<SearchAccountView>(x => x
-                    .RetryLimit(5)
-                    .BeforeSave(batch =>
-                    {
-                        // Additional logic
-                    }));
+                        // Hosted
+                        .AddHostedSnapshot<Account>(h =>
+                            h.RetryLimit(5)
+                                .IsRebuildEnabled(true))
+                        .AddHostedViewIndexer<SearchAccountView>(h =>
+                            h.RetryLimit(5)
+                                .BeforeSave(batch =>
+                                {
+                                    // Additional logic
+                                }))
+                        .AddHostedSubscription<AccountSubscription, Event>()
 
-                services.AddHostedSubscription<AccountSubscription, Event>();
+                        // Stores
+                        .AddMongoDbSnapshotStore()
+                        .AddMongoDbLockStore()
+                        .AddElasticViewStore()
+                        .AddPulsarEventStream();
+                });
             })
             .UseSerilog((_, config) => { config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture); })
             .UseEnvironment("local")

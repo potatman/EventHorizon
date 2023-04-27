@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
 using Insperex.EventHorizon.EventStreaming.Samples.Handlers;
@@ -23,16 +24,20 @@ public class Program
                 services.AddHostedService<Feed1HostedService>();
                 services.AddHostedService<Feed2HostedService>();
 
-                // Add Stream
-                services.AddInMemoryEventStream();
-                // services.AddPulsarEventStream(hostContext.Configuration);
-
-                // Add Hosted Subscription
-                services.AddHostedSubscription<PriceChangeTracker, Event>(x =>
+                services.AddEventHorizon(hostContext.Configuration, x =>
                 {
-                    x.AddActionTopic<Feed1PriceChanged>();
-                    x.AddActionTopic<Feed2PriceChanged>();
+                    // Add Stream
+                    x.AddInMemoryEventStream();
+                    // services.AddPulsarEventStream(hostContext.Configuration);
+
+                    // Add Hosted Subscription
+                    x.AddHostedSubscription<PriceChangeTracker, Event>(x =>
+                    {
+                        x.AddActionTopic<Feed1PriceChanged>();
+                        x.AddActionTopic<Feed2PriceChanged>();
+                    });
                 });
+
             })
             .UseSerilog((_, config) => { config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture); })
             .UseEnvironment("local")

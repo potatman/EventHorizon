@@ -5,10 +5,9 @@
         <LangVersion>latest</LangVersion>
         <NoWarn>$(NoWarn)</NoWarn>
     </PropertyGroup>
-
+  
     <ItemGroup>
-        <ProjectReference Include="..\Insperex.EventHorizon.EventStore\Insperex.EventHorizon.EventStore.csproj" />
-        <ProjectReference Include="..\Insperex.EventHorizon.EventStreaming\Insperex.EventHorizon.EventStreaming.csproj" />
+        <PackageReference Include="MassTransit.Abstractions" Version="8.0.15" />
     </ItemGroup>
 
     <ItemGroup>
@@ -16,7 +15,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="MassTransit.Abstractions" Version="8.0.15" />
+        <ProjectReference Include="..\Insperex.EventHorizon.EventStore\Insperex.EventHorizon.EventStore.csproj" />
+        <ProjectReference Include="..\Insperex.EventHorizon.EventStreaming\Insperex.EventHorizon.EventStreaming.csproj" />
     </ItemGroup>
 
 </Project>

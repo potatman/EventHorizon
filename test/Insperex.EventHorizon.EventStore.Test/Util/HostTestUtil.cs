@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using System.Reflection;
 using Insperex.EventHorizon.Abstractions.Attributes;
+using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Testing;
 using Insperex.EventHorizon.EventStore.ElasticSearch.Extensions;
@@ -21,7 +22,12 @@ public static class HostTestUtil
         return GetHostBase(output)
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddElasticSnapshotStore(hostContext.Configuration);
+                services.AddEventHorizon(hostContext.Configuration, x =>
+                {
+                    x.AddElasticSnapshotStore()
+                        .AddElasticLockStore()
+                        .AddElasticViewStore();
+                });
             })
             .Build()
             .AddTestBucketIds();
@@ -32,7 +38,12 @@ public static class HostTestUtil
         return GetHostBase(output)
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddIgniteSnapshotStore(hostContext.Configuration);
+                services.AddEventHorizon(hostContext.Configuration, x =>
+                {
+                    x.AddElasticSnapshotStore()
+                        .AddElasticLockStore()
+                        .AddElasticViewStore();
+                });
             })
             .Build()
             .AddTestBucketIds();
@@ -43,7 +54,12 @@ public static class HostTestUtil
         return GetHostBase(output)
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddInMemorySnapshotStore();
+                services.AddEventHorizon(hostContext.Configuration, x =>
+                {
+                    x.AddInMemorySnapshotStore()
+                        .AddInMemoryLockStore()
+                        .AddInMemoryViewStore();
+                });
             })
             .Build()
             .AddTestBucketIds();
@@ -54,7 +70,12 @@ public static class HostTestUtil
         return GetHostBase(output)
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddMongoDbSnapshotStore(hostContext.Configuration);
+                services.AddEventHorizon(hostContext.Configuration, x =>
+                {
+                    x.AddMongoDbSnapshotStore()
+                        .AddMongoDbLockStore()
+                        .AddMongoDbViewStore();
+                });
             })
             .Build()
             .AddTestBucketIds();

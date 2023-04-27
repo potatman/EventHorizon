@@ -12,4 +12,15 @@
         <PackageReference Include="OpenTelemetry.Api" Version="1.4.0" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="Insperex.EventHorizon.EventSourcing" />
+        <InternalsVisibleTo Include="Insperex.EventHorizon.EventStore.ElasticSearch" />
+        <InternalsVisibleTo Include="Insperex.EventHorizon.EventStore.Ignite" />
+        <InternalsVisibleTo Include="Insperex.EventHorizon.EventStore.InMemory" />
+        <InternalsVisibleTo Include="Insperex.EventHorizon.EventStore.MongoDb" />
+        <InternalsVisibleTo Include="Insperex.EventHorizon.EventStreaming" />
+        <InternalsVisibleTo Include="Insperex.EventHorizon.EventStreaming.InMemory" />
+        <InternalsVisibleTo Include="Insperex.EventHorizon.EventStreaming.Pulsar" />
+    </ItemGroup>
+
 </Project>

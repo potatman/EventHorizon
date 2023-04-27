@@ -1,4 +1,5 @@
 ﻿using System;
+using Insperex.EventHorizon.Abstractions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,13 +8,13 @@ namespace Insperex.EventHorizon.EventStreaming.Subscriptions.Extensions;
 
 public static class SubscriptionServiceCollectionExtensions
 {
-    public static IServiceCollection AddHostedSubscription<TH, TM>(this IServiceCollection collection,
+    public static EventHorizonConfigurator AddHostedSubscription<TH, TM>(this EventHorizonConfigurator configurator,
         Action<SubscriptionBuilder<TM>> action = null)
         where TH : class, ITopicHandler<TM>
         where TM : class, ITopicMessage, new()
     {
-        collection.AddScoped<TH>();
-        collection.AddHostedService(x =>
+        configurator.Collection.AddScoped<TH>();
+        configurator.Collection.AddHostedService(x =>
         {
             using var scope = x.CreateScope();
             var handler = scope.ServiceProvider.GetRequiredService<TH>();
@@ -24,14 +25,14 @@ public static class SubscriptionServiceCollectionExtensions
 
             return new SubscriptionHostedService<TM>(builder.OnBatch(handler.OnBatch).Build());
         });
-        return collection;
+        return configurator;
     }
 
-    public static IServiceCollection AddHostedSubscription<T>(this IServiceCollection collection,
+    public static EventHorizonConfigurator AddHostedSubscription<T>(this EventHorizonConfigurator configurator,
         Action<SubscriptionBuilder<T>> action = null)
         where T : class, ITopicMessage, new()
     {
-        collection.AddHostedService(x =>
+        configurator.Collection.AddHostedService(x =>
         {
             using var scope = x.CreateScope();
             var client = scope.ServiceProvider.GetRequiredService<StreamingClient>();
@@ -40,6 +41,6 @@ public static class SubscriptionServiceCollectionExtensions
             action?.Invoke(builder);
             return new SubscriptionHostedService<T>(builder.Build());
         });
-        return collection;
+        return configurator;
     }
 }

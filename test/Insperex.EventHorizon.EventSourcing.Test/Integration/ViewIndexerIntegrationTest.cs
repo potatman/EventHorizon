@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Testing;
 using Insperex.EventHorizon.EventSourcing.Extensions;
@@ -41,16 +42,21 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
         _host = Host.CreateDefaultBuilder(Array.Empty<string>())
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddInMemorySnapshotStore();
-                services.AddInMemoryEventStream();
-                // services.AddInMemoryViewStore();
-                // services.AddMongoDbSnapshotStore(hostContext.Configuration);
-                // services.AddPulsarEventStream(hostContext.Configuration);
-                services.AddElasticViewStore(hostContext.Configuration);
+                services.AddEventHorizon(hostContext.Configuration, x =>
+                {
+                    x.AddEventSourcing()
 
-                services.AddEventSourcing();
-                services.AddHostedViewIndexer<AccountView>();
-                services.AddHostedViewIndexer<SearchAccountView>();
+                        // Hosts
+                        .AddHostedViewIndexer<AccountView>()
+                        .AddHostedViewIndexer<SearchAccountView>()
+
+                        // Stores
+                        .AddInMemorySnapshotStore()
+                        .AddInMemoryLockStore()
+                        .AddInMemoryViewStore()
+                        // .AddElasticViewStore()
+                        .AddInMemoryEventStream();
+                });
             })
             .UseSerilog((_, config) =>
             {
