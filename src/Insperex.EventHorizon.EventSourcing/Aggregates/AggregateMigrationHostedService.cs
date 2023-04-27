@@ -10,16 +10,17 @@ using Microsoft.Extensions.Hosting;
 
 namespace Insperex.EventHorizon.EventSourcing.Aggregates
 {
-    public class AggregateMigrationHostedService<T> : IHostedService
-        where T : class, IState, new()
+    public class AggregateMigrationHostedService<TSource, TTarget> : IHostedService
+        where TSource : class, IState, new()
+        where TTarget : class, IState, new()
     {
         private readonly Subscription<Event> _subscription;
 
-        public AggregateMigrationHostedService(Aggregator<Snapshot<T>, T> aggregator, StreamingClient streamingClient)
+        public AggregateMigrationHostedService(Aggregator<Snapshot<TTarget>, TTarget> aggregator, StreamingClient streamingClient)
         {
             _subscription = streamingClient.CreateSubscription<Event>()
-                .AddStateTopic<T>()
-                .SubscriptionName($"Migrate-{typeof(T).Name}")
+                .AddStateTopic<TSource>()
+                .SubscriptionName($"Migrate-{typeof(TSource).Name}")
                 .OnBatch(async batch =>
                 {
                     var events = batch.Messages

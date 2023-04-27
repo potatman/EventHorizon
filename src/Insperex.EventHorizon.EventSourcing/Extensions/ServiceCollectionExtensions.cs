@@ -74,19 +74,20 @@ public static class ServiceCollectionExtensions
         });
     }
 
-    public static IServiceCollection AddHostedMigration<T>(this IServiceCollection collection,
-        Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null)
-        where T : class, IState, new()
+    public static IServiceCollection AddHostedMigration<TSource, TTarget>(this IServiceCollection collection,
+        Action<AggregateBuilder<Snapshot<TTarget>, TTarget>> onBuild = null)
+        where TSource : class, IState, new()
+        where TTarget : class, IState, new()
     {
         return collection.AddHostedService(x =>
         {
             var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();
             var loggerFactory = x.GetRequiredService<ILoggerFactory>();
-            var builder = new AggregateBuilder<Snapshot<T>, T>(serviceProvider, streamingClient, loggerFactory);
+            var builder = new AggregateBuilder<Snapshot<TTarget>, TTarget>(serviceProvider, streamingClient, loggerFactory);
             onBuild?.Invoke(builder);
             var aggregator = builder.Build();
-            return new AggregateMigrationHostedService<T>(aggregator, streamingClient);
+            return new AggregateMigrationHostedService<TSource,TTarget>(aggregator, streamingClient);
         });
     }
 }
