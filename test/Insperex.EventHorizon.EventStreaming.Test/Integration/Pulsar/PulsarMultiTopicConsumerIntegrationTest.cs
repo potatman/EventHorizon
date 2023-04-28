@@ -5,6 +5,7 @@ using Xunit.Abstractions;
 
 namespace Insperex.EventHorizon.EventStreaming.Test.Integration.Pulsar;
 
+[Trait("Category", "Integration")]
 public class PulsarMultiTopicConsumerIntegrationTest : BaseMultiTopicConsumerIntegrationTest
 {
     public PulsarMultiTopicConsumerIntegrationTest(ITestOutputHelper outputHelper) :
