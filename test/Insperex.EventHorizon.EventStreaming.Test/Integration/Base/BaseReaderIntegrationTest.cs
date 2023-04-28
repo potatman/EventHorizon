@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
-using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Test.Fakers;
 using Insperex.EventHorizon.EventStreaming.Test.Models;
 using Insperex.EventHorizon.EventStreaming.Test.Util;
@@ -20,13 +19,11 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
     private string _streamId;
     private Event[] _events;
     private readonly StreamingClient _streamingClient;
-    private readonly IStreamFactory _streamFactory;
 
     protected BaseReaderIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
         _outputHelper = outputHelper;
         _streamingClient = provider.GetRequiredService<StreamingClient>();
-        _streamFactory = provider.GetRequiredService<IStreamFactory>();
     }
 
     public async Task InitializeAsync()
