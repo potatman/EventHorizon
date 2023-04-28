@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
@@ -138,7 +139,13 @@ public class PulsarTopicAdmin : ITopicAdmin
 
     private async Task<string[]> GetStringArray(string path, CancellationToken ct)
     {
-        var result = await new HttpClient { BaseAddress = new Uri($"{_pulsarConfig.AdminUrl}/admin/v2/") }.GetStringAsync(path, ct).ConfigureAwait(false);
-        return JsonSerializer.Deserialize<string[]>(result);
+        Console.WriteLine("GetStringArray - 1");
+        var client = new HttpClient { BaseAddress = new Uri($"{_pulsarConfig.AdminUrl}/admin/v2/") };
+        var result = await client.GetAsync(path, ct).ConfigureAwait(false);
+        Console.WriteLine("GetStringArray - 2");
+        var content = await result.Content.ReadAsByteArrayAsync(ct);
+        Console.WriteLine("GetStringArray - 3");
+        var str = Encoding.UTF8.GetString(content);
+        return JsonSerializer.Deserialize<string[]>(str);
     }
 }
