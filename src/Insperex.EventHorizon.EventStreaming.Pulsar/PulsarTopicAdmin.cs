@@ -85,11 +85,11 @@ public class PulsarTopicAdmin : ITopicAdmin
 
         // Ensure Tenant Exists
         Console.WriteLine("RequireNamespace - 1");
-        var tenants = await GetStringArray("tenants");
+        var tenants = await GetStringArray("tenants", ct);
         Console.WriteLine("RequireNamespace - 2");
         if (!tenants.Contains(tenant))
         {
-            var clusters = await GetStringArray("clusters");
+            var clusters = await GetStringArray("clusters", ct);
             Console.WriteLine("RequireNamespace - 3");
             var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
             try
@@ -104,7 +104,7 @@ public class PulsarTopicAdmin : ITopicAdmin
         }
 
         // Ensure Namespace Exists
-        var namespaces = await GetStringArray($"namespaces/{tenant}");
+        var namespaces = await GetStringArray($"namespaces/{tenant}", ct);
         Console.WriteLine("RequireNamespace - 5");
         if (!namespaces.Contains($"{tenant}/{nameSpace}"))
         {
@@ -131,9 +131,9 @@ public class PulsarTopicAdmin : ITopicAdmin
         }
     }
 
-    private async Task<string[]> GetStringArray(string path)
+    private async Task<string[]> GetStringArray(string path, CancellationToken ct)
     {
-        var result = await _httpClient.GetStringAsync(path);
+        var result = await _httpClient.GetStringAsync(path, ct);
         return JsonSerializer.Deserialize<string[]>(result);
     }
 }
