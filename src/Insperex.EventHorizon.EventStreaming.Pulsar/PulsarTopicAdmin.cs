@@ -16,15 +16,17 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 public class PulsarTopicAdmin : ITopicAdmin
 {
     private readonly IPulsarAdminRESTAPIClient _admin;
+    private readonly PulsarConfig _pulsarConfig;
     private readonly ILogger<PulsarTopicAdmin> _logger;
     private static readonly SemaphoreSlim SemaphoreSlim = new(1,1);
     private readonly HttpClient _httpClient;
-    private static List<string> _tenants = new();
-    private static List<string> _namespaces = new();
+    private static readonly List<string> Tenants = new();
+    private static readonly List<string> Namespaces = new();
 
     public PulsarTopicAdmin(IPulsarAdminRESTAPIClient admin, PulsarConfig pulsarConfig, ILogger<PulsarTopicAdmin> logger)
     {
         _admin = admin;
+        _pulsarConfig = pulsarConfig;
         _logger = logger;
         _httpClient = new HttpClient { BaseAddress = new Uri($"{pulsarConfig.AdminUrl}/admin/v2/") };
     }
@@ -78,7 +80,7 @@ public class PulsarTopicAdmin : ITopicAdmin
     private async Task RequireNamespace(string tenant, string nameSpace, int? retentionInMb, int? retentionInMinutes, CancellationToken ct)
     {
         // Ensure Tenant Exists
-        if (!_tenants.Contains(tenant))
+        if (!Tenants.Contains(tenant))
         {
             Console.WriteLine("RequireNamespace - 1");
             var tenants = await GetStringArray("tenants", ct);
@@ -98,12 +100,12 @@ public class PulsarTopicAdmin : ITopicAdmin
                     // Ignore race conditions
                 }
             }
-            _tenants.Add(tenant);
+            Tenants.Add(tenant);
         }
 
         // Ensure Namespace Exists
         var namespaceKey = $"{tenant}/{nameSpace}";
-        if (!_namespaces.Contains(namespaceKey))
+        if (!Namespaces.Contains(namespaceKey))
         {
             var namespaces = await GetStringArray($"namespaces/{tenant}", ct);
             Console.WriteLine("RequireNamespace - 5");
@@ -130,13 +132,13 @@ public class PulsarTopicAdmin : ITopicAdmin
                     // Ignore race conditions
                 }
             }
-            _namespaces.Add(namespaceKey);
+            Namespaces.Add(namespaceKey);
         }
     }
 
     private async Task<string[]> GetStringArray(string path, CancellationToken ct)
     {
-        var result = await _httpClient.GetStringAsync(path, ct);
+        var result = await new HttpClient { BaseAddress = new Uri($"{_pulsarConfig.AdminUrl}/admin/v2/") }.GetStringAsync(path, ct);
         return JsonSerializer.Deserialize<string[]>(result);
     }
 }
