@@ -146,6 +146,8 @@ public class PulsarTopicAdmin : ITopicAdmin
         var content = await result.Content.ReadAsByteArrayAsync(ct);
         Console.WriteLine("GetStringArray - 3");
         var str = Encoding.UTF8.GetString(content);
-        return JsonSerializer.Deserialize<string[]>(str);
+        var res = JsonSerializer.Deserialize<string[]>(str);
+        Console.WriteLine($"GetStringArray - {string.Join(",", res)}");
+        return res;
     }
 }
