@@ -17,17 +17,20 @@ public class PulsarStreamFactory : IStreamFactory
     private readonly PulsarClient _client;
     private readonly IPulsarAdminRESTAPIClient _admin;
     private readonly AttributeUtil _attributeUtil;
+    private readonly IOptions<PulsarConfig> _options;
     private readonly ILoggerFactory _loggerFactory;
 
     public PulsarStreamFactory(
         PulsarClient client,
         IPulsarAdminRESTAPIClient admin,
         AttributeUtil attributeUtil,
+        IOptions<PulsarConfig> options,
         ILoggerFactory loggerFactory)
     {
         _client = client;
         _admin = admin;
         _attributeUtil = attributeUtil;
+        _options = options;
         _loggerFactory = loggerFactory;
     }
 
@@ -48,7 +51,7 @@ public class PulsarStreamFactory : IStreamFactory
 
     public ITopicAdmin CreateAdmin()
     {
-        return new PulsarTopicAdmin(_admin, _loggerFactory.CreateLogger<PulsarTopicAdmin>());
+        return new PulsarTopicAdmin(_admin, _options.Value, _loggerFactory.CreateLogger<PulsarTopicAdmin>());
     }
 
     public ITopicResolver GetTopicResolver()

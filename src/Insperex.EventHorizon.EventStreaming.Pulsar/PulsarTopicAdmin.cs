@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
@@ -6,6 +8,7 @@ using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Microsoft.Extensions.Logging;
 using SharpPulsar.Admin.v2;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
@@ -14,11 +17,13 @@ public class PulsarTopicAdmin : ITopicAdmin
     private readonly IPulsarAdminRESTAPIClient _admin;
     private readonly ILogger<PulsarTopicAdmin> _logger;
     private static readonly SemaphoreSlim SemaphoreSlim = new(1,1);
+    private readonly HttpClient _httpClient;
 
-    public PulsarTopicAdmin(IPulsarAdminRESTAPIClient admin, ILogger<PulsarTopicAdmin> logger)
+    public PulsarTopicAdmin(IPulsarAdminRESTAPIClient admin, PulsarConfig pulsarConfig, ILogger<PulsarTopicAdmin> logger)
     {
         _admin = admin;
         _logger = logger;
+        _httpClient = new HttpClient { BaseAddress = new Uri($"{pulsarConfig.AdminUrl}/admin/v2/") };
     }
 
     public async Task RequireTopicAsync(string str, CancellationToken ct)
@@ -77,13 +82,14 @@ public class PulsarTopicAdmin : ITopicAdmin
 
     private async Task RequireNamespace(string tenant, string nameSpace, int? retentionInMb, int? retentionInMinutes, CancellationToken ct)
     {
+
         // Ensure Tenant Exists
         Console.WriteLine("RequireNamespace - 1");
-        var tenants = await _admin.GetTenantsAsync(ct);
+        var tenants = await GetStringArray("tenants");
         Console.WriteLine("RequireNamespace - 2");
         if (!tenants.Contains(tenant))
         {
-            var clusters = await _admin.GetClustersAsync(ct);
+            var clusters = await GetStringArray("clusters");
             Console.WriteLine("RequireNamespace - 3");
             var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
             try
@@ -98,7 +104,7 @@ public class PulsarTopicAdmin : ITopicAdmin
         }
 
         // Ensure Namespace Exists
-        var namespaces = await _admin.GetTenantNamespacesAsync(tenant, ct);
+        var namespaces = await GetStringArray($"namespaces/{tenant}");
         Console.WriteLine("RequireNamespace - 5");
         if (!namespaces.Contains($"{tenant}/{nameSpace}"))
         {
@@ -123,5 +129,11 @@ public class PulsarTopicAdmin : ITopicAdmin
                 // Ignore race conditions
             }
         }
+    }
+
+    private async Task<string[]> GetStringArray(string path)
+    {
+        var result = await _httpClient.GetStringAsync(path);
+        return JsonSerializer.Deserialize<string[]>(result);
     }
 }
