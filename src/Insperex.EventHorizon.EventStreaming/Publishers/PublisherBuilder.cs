@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Exceptions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
@@ -44,15 +43,10 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
         var logger = _loggerFactory.CreateLogger<Publisher<T>>();
 
         // Ensure Topic Exists
-        Task.Run(RequireTopics);
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        _factory.CreateAdmin().RequireTopicAsync(_topic, cts.Token).GetAwaiter().GetResult();
 
         // Create
         return new Publisher<T>(_factory, config, logger);
-    }
-
-    private async Task RequireTopics()
-    {
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        await _factory.CreateAdmin().RequireTopicAsync(_topic, cts.Token);
     }
 }
