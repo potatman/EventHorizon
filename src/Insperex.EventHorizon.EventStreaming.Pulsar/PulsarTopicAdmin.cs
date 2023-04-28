@@ -138,7 +138,7 @@ public class PulsarTopicAdmin : ITopicAdmin
 
     private async Task<string[]> GetStringArray(string path, CancellationToken ct)
     {
-        var result = await new HttpClient { BaseAddress = new Uri($"{_pulsarConfig.AdminUrl}/admin/v2/") }.GetStringAsync(path, ct);
+        var result = await new HttpClient { BaseAddress = new Uri($"{_pulsarConfig.AdminUrl}/admin/v2/") }.GetStringAsync(path, ct).ConfigureAwait(false);
         return JsonSerializer.Deserialize<string[]>(result);
     }
 }
