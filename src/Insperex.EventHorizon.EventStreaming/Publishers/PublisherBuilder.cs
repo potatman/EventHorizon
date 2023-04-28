@@ -50,7 +50,7 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
         return new Publisher<T>(_factory, config, logger);
     }
 
-    private async void RequireTopics()
+    private async Task RequireTopics()
     {
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         await _factory.CreateAdmin().RequireTopicAsync(_topic, cts.Token);
