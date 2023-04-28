@@ -93,7 +93,7 @@ public class PulsarTopicAdmin : ITopicAdmin
                 var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
                 try
                 {
-                    await _admin.CreateTenantAsync(tenant, tenantInfo, ct);
+                    await _admin.CreateTenantAsync(tenant, tenantInfo, ct).ConfigureAwait(false);
                     Console.WriteLine("RequireNamespace - 4");
                 }
                 catch (Exception)
@@ -108,7 +108,7 @@ public class PulsarTopicAdmin : ITopicAdmin
         var namespaceKey = $"{tenant}/{nameSpace}";
         if (!Namespaces.Contains(namespaceKey))
         {
-            var namespaces = await GetStringArray($"namespaces/{tenant}", ct);
+            var namespaces = await GetStringArray($"namespaces/{tenant}", ct).ConfigureAwait(false);
             Console.WriteLine("RequireNamespace - 5");
             if (!namespaces.Contains(namespaceKey))
             {
@@ -125,7 +125,7 @@ public class PulsarTopicAdmin : ITopicAdmin
                     };
                 try
                 {
-                    await _admin.CreateNamespaceAsync(tenant, nameSpace, policies, ct);
+                    await _admin.CreateNamespaceAsync(tenant, nameSpace, policies, ct).ConfigureAwait(false);
                     Console.WriteLine("RequireNamespace - 6");
                 }
                 catch (Exception)
