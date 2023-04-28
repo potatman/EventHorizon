@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -18,6 +19,8 @@ public class PulsarTopicAdmin : ITopicAdmin
     private readonly ILogger<PulsarTopicAdmin> _logger;
     private static readonly SemaphoreSlim SemaphoreSlim = new(1,1);
     private readonly HttpClient _httpClient;
+    private static List<string> _tenants = new();
+    private static List<string> _namespaces = new();
 
     public PulsarTopicAdmin(IPulsarAdminRESTAPIClient admin, PulsarConfig pulsarConfig, ILogger<PulsarTopicAdmin> logger)
     {
@@ -82,52 +85,60 @@ public class PulsarTopicAdmin : ITopicAdmin
 
     private async Task RequireNamespace(string tenant, string nameSpace, int? retentionInMb, int? retentionInMinutes, CancellationToken ct)
     {
-
         // Ensure Tenant Exists
-        Console.WriteLine("RequireNamespace - 1");
-        var tenants = await GetStringArray("tenants", ct);
-        Console.WriteLine("RequireNamespace - 2");
-        if (!tenants.Contains(tenant))
+        if (!_tenants.Contains(tenant))
         {
-            var clusters = await GetStringArray("clusters", ct);
-            Console.WriteLine("RequireNamespace - 3");
-            var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
-            try
+            Console.WriteLine("RequireNamespace - 1");
+            var tenants = await GetStringArray("tenants", ct);
+            Console.WriteLine("RequireNamespace - 2");
+            if (!tenants.Contains(tenant))
             {
-                await _admin.CreateTenantAsync(tenant, tenantInfo, ct);
-                Console.WriteLine("RequireNamespace - 4");
+                var clusters = await GetStringArray("clusters", ct);
+                Console.WriteLine("RequireNamespace - 3");
+                var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
+                try
+                {
+                    await _admin.CreateTenantAsync(tenant, tenantInfo, ct);
+                    Console.WriteLine("RequireNamespace - 4");
+                }
+                catch (Exception)
+                {
+                    // Ignore race conditions
+                }
             }
-            catch (Exception)
-            {
-                // Ignore race conditions
-            }
+            _tenants.Add(tenant);
         }
 
         // Ensure Namespace Exists
-        var namespaces = await GetStringArray($"namespaces/{tenant}", ct);
-        Console.WriteLine("RequireNamespace - 5");
-        if (!namespaces.Contains($"{tenant}/{nameSpace}"))
+        var namespaceKey = $"{tenant}/{nameSpace}";
+        if (!_namespaces.Contains(namespaceKey))
         {
-            // Add Retention Policy if namespace == Events
-            var policies = !nameSpace.Contains(PulsarConstants.Event)
-                ? new Policies()
-                : new Policies
-                {
-                    Retention_policies = new RetentionPolicies
+            var namespaces = await GetStringArray($"namespaces/{tenant}", ct);
+            Console.WriteLine("RequireNamespace - 5");
+            if (!namespaces.Contains(namespaceKey))
+            {
+                // Add Retention Policy if namespace == Events
+                var policies = !nameSpace.Contains(PulsarConstants.Event)
+                    ? new Policies()
+                    : new Policies
                     {
-                        RetentionTimeInMinutes = retentionInMb ?? -1,
-                        RetentionSizeInMB = retentionInMinutes ?? -1
-                    }
-                };
-            try
-            {
-                await _admin.CreateNamespaceAsync(tenant, nameSpace, policies, ct);
-                Console.WriteLine("RequireNamespace - 6");
+                        Retention_policies = new RetentionPolicies
+                        {
+                            RetentionTimeInMinutes = retentionInMb ?? -1,
+                            RetentionSizeInMB = retentionInMinutes ?? -1
+                        }
+                    };
+                try
+                {
+                    await _admin.CreateNamespaceAsync(tenant, nameSpace, policies, ct);
+                    Console.WriteLine("RequireNamespace - 6");
+                }
+                catch (Exception)
+                {
+                    // Ignore race conditions
+                }
             }
-            catch (Exception)
-            {
-                // Ignore race conditions
-            }
+            _namespaces.Add(namespaceKey);
         }
     }
 
