@@ -84,11 +84,11 @@ public class PulsarTopicAdmin : ITopicAdmin
         if (!Tenants.Contains(tenant))
         {
             Console.WriteLine("RequireNamespace - 1");
-            var tenants = await GetStringArray("tenants", ct);
+            var tenants = await GetStringArray("tenants", ct).ConfigureAwait(false);
             Console.WriteLine("RequireNamespace - 2");
             if (!tenants.Contains(tenant))
             {
-                var clusters = await GetStringArray("clusters", ct);
+                var clusters = await GetStringArray("clusters", ct).ConfigureAwait(false);
                 Console.WriteLine("RequireNamespace - 3");
                 var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
                 try
