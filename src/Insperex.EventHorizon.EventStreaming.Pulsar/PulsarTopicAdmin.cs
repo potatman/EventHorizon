@@ -141,12 +141,8 @@ public class PulsarTopicAdmin : ITopicAdmin
     {
         Console.WriteLine("GetStringArray - 1");
         var client = new HttpClient { BaseAddress = new Uri($"{_pulsarConfig.AdminUrl}/admin/v2/") };
-        var result = await client.GetAsync(path, ct).ConfigureAwait(false);
-        Console.WriteLine("GetStringArray - 2");
-        var content = await result.Content.ReadAsByteArrayAsync(ct);
-        Console.WriteLine("GetStringArray - 3");
-        var str = Encoding.UTF8.GetString(content);
-        var res = JsonSerializer.Deserialize<string[]>(str);
+        var result = await client.GetStringAsync(path, ct).ConfigureAwait(false);
+        var res = JsonSerializer.Deserialize<string[]>(result);
         Console.WriteLine($"GetStringArray - {string.Join(",", res)}");
         return res;
     }

@@ -29,7 +29,6 @@ install:
 build_script: bash ~/tools/dist/dotnet/build.sh $nuget_apikey
 
 test_script: 
-  - curl http://localhost:8080/admin/v2/tenants
   - bash ~/tools/dist/dotnet/test.sh
 
 after_test: 
