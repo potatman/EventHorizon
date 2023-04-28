@@ -5,6 +5,7 @@ using Xunit.Abstractions;
 
 namespace Insperex.EventHorizon.EventStreaming.Test.Integration.Pulsar;
 
+[Trait("Category", "Integration")]
 public class PulsarReaderIntegrationTest : BaseReaderIntegrationTest
 {
     public PulsarReaderIntegrationTest(ITestOutputHelper outputHelper) :
