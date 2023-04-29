@@ -80,8 +80,8 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
             .PublishAsync(_events);
 
         // Consume
-        using var subscription1 = await builder.Build().StartAsync();
-        using var subscription2 = await builder.Build().StartAsync();
+        using var subscription1 = await builder.Build().StartAsync().ConfigureAwait(false);
+        using var subscription2 = await builder.Build().StartAsync().ConfigureAwait(false);
 
         // Assert
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);
