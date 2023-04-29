@@ -102,14 +102,6 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         };
         var logger = _loggerFactory.CreateLogger<Subscription<T>>();
 
-        // Ensure Topic Exists
-        Console.WriteLine("SubscriptionBuilder - 1");
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        var admin = _factory.CreateAdmin();
-        foreach (var topic in _topics)
-            admin.RequireTopicAsync(topic, cts.Token).ConfigureAwait(false).GetAwaiter().GetResult();
-        Console.WriteLine("SubscriptionBuilder - 2");
-
         // Return
         return new Subscription<T>(_factory, config, logger);
     }

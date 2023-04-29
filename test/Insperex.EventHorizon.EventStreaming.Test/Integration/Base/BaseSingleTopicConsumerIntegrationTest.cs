@@ -36,6 +36,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         // Publish
         _events = EventStreamingFakers.EventFaker.Generate(100).ToArray();
         _stopwatch = Stopwatch.StartNew();
+        Console.WriteLine("BaseSingleTopicConsumerIntegrationTest - InitializeAsync 2");
         return Task.CompletedTask;
     }
 

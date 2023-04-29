@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
@@ -22,6 +23,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
 {
     private readonly PulsarClient _client;
     private readonly PublisherConfig _config;
+    private readonly ITopicAdmin _admin;
     private readonly OTelProducerInterceptor.OTelProducerInterceptor<T> _intercept;
     private readonly ILogger<PulsarTopicProducer<T>> _logger;
     private readonly string _publisherName;
@@ -32,28 +34,30 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     public PulsarTopicProducer(
         PulsarClient client,
         PublisherConfig config,
+        ITopicAdmin admin,
         ILogger<PulsarTopicProducer<T>> logger)
     {
         _client = client;
         _config = config;
+        _admin = admin;
         _logger = logger;
         _publisherName = NameUtil.AssemblyNameWithGuid;
         _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
-        _producer = GetProducerAsync().Result;
         TrackStats();
     }
 
     public async Task SendAsync(params T[] messages)
     {
+        var producer = await GetProducerAsync();
         foreach (var message in messages)
         {
             var func = AssemblyUtil.PropertyDict.GetValueOrDefault(message.Type)?
                 .FirstOrDefault(x => x.GetCustomAttribute<EventStreamKeyAttribute>(true) != null);
 
             var key = func?.GetValue(message)?.ToString() ?? message.StreamId;
-            var msg = _producer.NewMessage(message, key);
-            await _producer.SendAndForgetAsync(msg);
+            var msg = producer.NewMessage(message, key);
+            await producer.SendAndForgetAsync(msg);
         }
     }
 
@@ -68,6 +72,10 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     private async Task<IProducer<T>> GetProducerAsync()
     {
         if (_producer != null) return _producer;
+
+        // Ensure Topic Exists
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await _admin.RequireTopicAsync(_config.Topic, cts.Token);
 
         var builder = _client.NewProducer(Schema.JSON<T>())
             .ProducerName(_publisherName)
