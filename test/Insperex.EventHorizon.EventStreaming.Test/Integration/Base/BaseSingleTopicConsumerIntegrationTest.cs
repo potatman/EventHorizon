@@ -46,7 +46,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     [Fact]
     public async Task TestSingleConsumer()
     {
-        Console.WriteLine("TestSingleConsumer");
+        Console.WriteLine("TestSingleConsumer - 1");
         // Consume
         using var subscription = await _streamingClient.CreateSubscription<Event>()
             .AddActionTopic<ExampleEvent1>()
@@ -56,17 +56,25 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
             .StartAsync()
             .ConfigureAwait(false);
 
+        Console.WriteLine("TestSingleConsumer - 2");
+
         using var publisher = await _streamingClient.CreatePublisher<Event>()
             .AddTopic<ExampleEvent1>()
             .Build()
             .PublishAsync(_events)
             .ConfigureAwait(false);
 
+        Console.WriteLine("TestSingleConsumer - 3");
+
         // Wait for List
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);
 
+        Console.WriteLine("TestSingleConsumer - 4");
+
         // Assert
         AssertUtil.AssertEventsValid(_events, _handler.List.ToArray());
+
+        Console.WriteLine("TestSingleConsumer - 5");
     }
 
     [Fact]
