@@ -35,7 +35,7 @@ public class PulsarTopicAdmin : ITopicAdmin
     public async Task RequireTopicAsync(string str, CancellationToken ct)
     {
         var topic = PulsarTopicParser.Parse(str);
-        await RequireNamespace(topic.Tenant, topic.Namespace, -1, -1, ct);
+        await RequireNamespace(topic.Tenant, topic.Namespace, -1, -1, ct).ConfigureAwait(false);
 
         // try
         // {
