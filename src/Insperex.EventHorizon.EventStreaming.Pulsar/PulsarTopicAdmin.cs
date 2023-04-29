@@ -32,7 +32,7 @@ public class PulsarTopicAdmin : ITopicAdmin
     public async Task RequireTopicAsync(string str, CancellationToken ct)
     {
         var topic = PulsarTopicParser.Parse(str);
-        await RequireNamespace(topic.Tenant, topic.Namespace, -1, -1, ct).ConfigureAwait(false);
+        await RequireNamespace(topic.Tenant, topic.Namespace, -1, -1, ct);
 
         // try
         // {
@@ -80,14 +80,14 @@ public class PulsarTopicAdmin : ITopicAdmin
         // Ensure Tenant Exists
         if (!Tenants.Contains(tenant))
         {
-            var tenants = await GetStringArray("tenants", ct).ConfigureAwait(false);
+            var tenants = await GetStringArray("tenants", ct);
             if (!tenants.Contains(tenant))
             {
-                var clusters = await GetStringArray("clusters", ct).ConfigureAwait(false);
+                var clusters = await GetStringArray("clusters", ct);
                 var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
                 try
                 {
-                    await _admin.CreateTenantAsync(tenant, tenantInfo, ct).ConfigureAwait(false);
+                    await _admin.CreateTenantAsync(tenant, tenantInfo, ct);
                 }
                 catch (Exception)
                 {
@@ -101,7 +101,7 @@ public class PulsarTopicAdmin : ITopicAdmin
         var namespaceKey = $"{tenant}/{nameSpace}";
         if (!Namespaces.Contains(namespaceKey))
         {
-            var namespaces = await GetStringArray($"namespaces/{tenant}", ct).ConfigureAwait(false);
+            var namespaces = await GetStringArray($"namespaces/{tenant}", ct);
             if (!namespaces.Contains(namespaceKey))
             {
                 // Add Retention Policy if namespace == Events
@@ -117,7 +117,7 @@ public class PulsarTopicAdmin : ITopicAdmin
                     };
                 try
                 {
-                    await _admin.CreateNamespaceAsync(tenant, nameSpace, policies, ct).ConfigureAwait(false);
+                    await _admin.CreateNamespaceAsync(tenant, nameSpace, policies, ct);
                 }
                 catch (Exception)
                 {
@@ -131,7 +131,7 @@ public class PulsarTopicAdmin : ITopicAdmin
     private async Task<string[]> GetStringArray(string path, CancellationToken ct)
     {
         var client = new HttpClient { BaseAddress = new Uri($"{_pulsarConfig.AdminUrl}/admin/v2/") };
-        var result = await client.GetStringAsync(path, ct).ConfigureAwait(false);
+        var result = await client.GetStringAsync(path, ct);
         var res = JsonSerializer.Deserialize<string[]>(result);
         return res;
     }

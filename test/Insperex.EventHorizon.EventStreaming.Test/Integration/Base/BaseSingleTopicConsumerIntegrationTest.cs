@@ -57,7 +57,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
             .OnBatch(_handler.OnBatch)
             .Build()
             .StartAsync()
-            .ConfigureAwait(false);
+            ;
 
         Console.WriteLine("TestSingleConsumer - 2");
 
@@ -65,7 +65,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
             .AddTopic<ExampleEvent1>()
             .Build()
             .PublishAsync(_events)
-            .ConfigureAwait(false);
+            ;
 
         Console.WriteLine("TestSingleConsumer - 3");
 
@@ -95,8 +95,8 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
             .PublishAsync(_events);
 
         // Consume
-        using var subscription1 = await builder.Build().StartAsync().ConfigureAwait(false);
-        using var subscription2 = await builder.Build().StartAsync().ConfigureAwait(false);
+        using var subscription1 = await builder.Build().StartAsync();
+        using var subscription2 = await builder.Build().StartAsync();
 
         // Assert
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);
