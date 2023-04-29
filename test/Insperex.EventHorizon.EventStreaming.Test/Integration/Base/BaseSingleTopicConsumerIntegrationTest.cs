@@ -46,6 +46,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     [Fact]
     public async Task TestSingleConsumer()
     {
+        Console.WriteLine("TestSingleConsumer");
         // Consume
         using var subscription = _streamingClient.CreateSubscription<Event>()
             .AddActionTopic<ExampleEvent1>()
@@ -69,6 +70,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     [Fact]
     public async Task TestKeySharedConsumers()
     {
+        Console.WriteLine("TestKeySharedConsumers");
         var builder = _streamingClient.CreateSubscription<Event>()
             .AddActionTopic<ExampleEvent1>()
             .BatchSize(_events.Length / 10)
