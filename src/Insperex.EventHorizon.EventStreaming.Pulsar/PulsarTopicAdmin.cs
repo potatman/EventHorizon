@@ -85,18 +85,14 @@ public class PulsarTopicAdmin : ITopicAdmin
         // Ensure Tenant Exists
         if (!Tenants.Contains(tenant))
         {
-            Console.WriteLine("RequireNamespace - 1");
             var tenants = await GetStringArray("tenants", ct).ConfigureAwait(false);
-            Console.WriteLine("RequireNamespace - 2");
             if (!tenants.Contains(tenant))
             {
                 var clusters = await GetStringArray("clusters", ct).ConfigureAwait(false);
-                Console.WriteLine("RequireNamespace - 3");
                 var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
                 try
                 {
                     await _admin.CreateTenantAsync(tenant, tenantInfo, ct).ConfigureAwait(false);
-                    Console.WriteLine("RequireNamespace - 4");
                 }
                 catch (Exception)
                 {
@@ -111,7 +107,6 @@ public class PulsarTopicAdmin : ITopicAdmin
         if (!Namespaces.Contains(namespaceKey))
         {
             var namespaces = await GetStringArray($"namespaces/{tenant}", ct).ConfigureAwait(false);
-            Console.WriteLine("RequireNamespace - 5");
             if (!namespaces.Contains(namespaceKey))
             {
                 // Add Retention Policy if namespace == Events
@@ -128,7 +123,6 @@ public class PulsarTopicAdmin : ITopicAdmin
                 try
                 {
                     await _admin.CreateNamespaceAsync(tenant, nameSpace, policies, ct).ConfigureAwait(false);
-                    Console.WriteLine("RequireNamespace - 6");
                 }
                 catch (Exception)
                 {
@@ -141,11 +135,9 @@ public class PulsarTopicAdmin : ITopicAdmin
 
     private async Task<string[]> GetStringArray(string path, CancellationToken ct)
     {
-        Console.WriteLine("GetStringArray - 1");
         var client = new HttpClient { BaseAddress = new Uri($"{_pulsarConfig.AdminUrl}/admin/v2/") };
         var result = await client.GetStringAsync(path, ct).ConfigureAwait(false);
         var res = JsonSerializer.Deserialize<string[]>(result);
-        Console.WriteLine($"GetStringArray - {string.Join(",", res)}");
         return res;
     }
 }
