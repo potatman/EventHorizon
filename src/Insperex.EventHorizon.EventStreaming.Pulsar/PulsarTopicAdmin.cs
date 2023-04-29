@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
@@ -20,7 +19,6 @@ public class PulsarTopicAdmin : ITopicAdmin
     private readonly PulsarConfig _pulsarConfig;
     private readonly ILogger<PulsarTopicAdmin> _logger;
     private static readonly SemaphoreSlim SemaphoreSlim = new(1,1);
-    private readonly HttpClient _httpClient;
     private static readonly List<string> Tenants = new();
     private static readonly List<string> Namespaces = new();
 
@@ -29,7 +27,6 @@ public class PulsarTopicAdmin : ITopicAdmin
         _admin = admin;
         _pulsarConfig = pulsarConfig;
         _logger = logger;
-        _httpClient = new HttpClient { BaseAddress = new Uri($"{pulsarConfig.AdminUrl}/admin/v2/") };
     }
 
     public async Task RequireTopicAsync(string str, CancellationToken ct)
