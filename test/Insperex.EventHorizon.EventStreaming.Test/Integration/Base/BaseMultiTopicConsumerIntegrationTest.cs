@@ -53,7 +53,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     }
 
     [Fact]
-    public async void SubscribeToMultipleTopics()
+    public async Task SubscribeToMultipleTopics()
     {
         // Consume
         using var subscription = await _streamingClient.CreateSubscription<Event>()
@@ -70,7 +70,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     }
 
     [Fact]
-    public async void SubscribeToTopicsSeparately()
+    public async Task SubscribeToTopicsSeparately()
     {
         // Consume
         var builder = _streamingClient.CreateSubscription<Event>()
