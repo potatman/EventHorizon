@@ -22,12 +22,14 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
 
     protected BaseReaderIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
+        Console.WriteLine("BaseReaderIntegrationTest - Constructor");
         _outputHelper = outputHelper;
         _streamingClient = provider.GetRequiredService<StreamingClient>();
     }
 
     public async Task InitializeAsync()
     {
+        Console.WriteLine("BaseReaderIntegrationTest - InitializeAsync");
         // Note: uncomment for large dbs
         // var preEvents =_dataClassFixture.GetMessages(100000);
         // await publisher.PublishAsync(preEvents);

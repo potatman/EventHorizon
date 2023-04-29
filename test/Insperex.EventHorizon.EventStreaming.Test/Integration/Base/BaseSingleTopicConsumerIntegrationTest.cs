@@ -23,6 +23,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
 
     protected BaseSingleTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
+        Console.WriteLine("BaseSingleTopicConsumerIntegrationTest - Constructor");
         _outputHelper = outputHelper;
         _timeout = TimeSpan.FromSeconds(30);
         _streamingClient = provider.GetRequiredService<StreamingClient>();
@@ -31,6 +32,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
 
     public Task InitializeAsync()
     {
+        Console.WriteLine("BaseSingleTopicConsumerIntegrationTest - InitializeAsync");
         // Publish
         _events = EventStreamingFakers.EventFaker.Generate(100).ToArray();
         _stopwatch = Stopwatch.StartNew();

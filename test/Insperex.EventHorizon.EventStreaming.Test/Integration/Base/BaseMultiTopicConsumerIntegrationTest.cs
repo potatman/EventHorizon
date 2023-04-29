@@ -24,6 +24,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
 
     protected BaseMultiTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
+        Console.WriteLine("BaseMultiTopicConsumerIntegrationTest - Constructor");
         _outputHelper = outputHelper;
         _streamingClient = provider.GetRequiredService<StreamingClient>();
         _timeout = TimeSpan.FromSeconds(15);
@@ -32,6 +33,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        Console.WriteLine("BaseMultiTopicConsumerIntegrationTest - InitializeAsync");
         _events = EventStreamingFakers.EventFaker.Generate(1000).ToArray();
 
         Console.WriteLine("InitializeAsync - 1");
