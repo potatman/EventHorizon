@@ -68,7 +68,7 @@ public class ReaderBuilder<T> where T : class, ITopicMessage, new()
         var consumer = _factory.CreateReader<T>(config);
 
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        _factory.CreateAdmin().RequireTopicAsync(_topic, cts.Token).GetAwaiter().GetResult();
+        _factory.CreateAdmin().RequireTopicAsync(_topic, cts.Token).ConfigureAwait(false).GetAwaiter().GetResult();
 
         return new Reader<T>(consumer);
     }
