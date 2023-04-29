@@ -41,11 +41,11 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
         using var publisher2 = _streamingClient.CreatePublisher<Event>().AddTopic<ExampleEvent2>().Build();
         Console.WriteLine("InitializeAsync - 3");
 
-        await publisher1.PublishAsync(_events.Take(_events.Length/2).ToArray());
+        await publisher1.PublishAsync(_events.Take(_events.Length/2).ToArray()).ConfigureAwait(false);
         Console.WriteLine("InitializeAsync - 4");
-        await publisher2.PublishAsync(_events.Skip(_events.Length/2).ToArray());
+        await publisher2.PublishAsync(_events.Skip(_events.Length/2).ToArray()).ConfigureAwait(false);
         Console.WriteLine("InitializeAsync - 5");
-        await Task.Delay(2000);
+        await Task.Delay(2000).ConfigureAwait(false);
 
         _stopwatch = Stopwatch.StartNew();
     }
@@ -53,8 +53,8 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(ExampleEvent1));
-        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(ExampleEvent2));
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(ExampleEvent1)).ConfigureAwait(false);
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(ExampleEvent2)).ConfigureAwait(false);
     }
 
     [Fact]
