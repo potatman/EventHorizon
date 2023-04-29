@@ -48,7 +48,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     {
         Console.WriteLine("TestSingleConsumer");
         // Consume
-        using var subscription = _streamingClient.CreateSubscription<Event>()
+        using var subscription = await _streamingClient.CreateSubscription<Event>()
             .AddActionTopic<ExampleEvent1>()
             .BatchSize(_events.Length / 10)
             .OnBatch(_handler.OnBatch)
