@@ -35,7 +35,7 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
     public void Dispose()
     {
         _disposed = true;
-        StopAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+        StopAsync().GetAwaiter().GetResult();
     }
 
     public Task<Subscription<T>> StartAsync()
@@ -72,7 +72,7 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
         {
             try
             {
-                await RunIteration().ConfigureAwait(false);
+                await RunIteration();
             }
             catch (TaskCanceledException)
             {
@@ -88,14 +88,14 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
 
     private async Task RunIteration()
     {
-        var batch = await LoadEvents().ConfigureAwait(false);
+        var batch = await LoadEvents();
         if (batch?.Any() != true)
         {
-            await Task.Delay(_config.NoBatchDelay).ConfigureAwait(false);
+            await Task.Delay(_config.NoBatchDelay);
             return;
         }
 
-        await OnEvents(batch).ConfigureAwait(false);
+        await OnEvents(batch);
     }
 
     private async Task<MessageContext<T>[]> LoadEvents()
@@ -104,7 +104,7 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
         try
         {
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            var batch = await _consumer.NextBatchAsync(cts.Token).ConfigureAwait(false);
+            var batch = await _consumer.NextBatchAsync(cts.Token);
             activity?.SetTag(TraceConstants.Tags.Count, batch?.Length ?? 0);
             activity?.SetStatus(ActivityStatusCode.Ok);
 
@@ -138,18 +138,18 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
         var context = new SubscriptionContext<T> { Messages = batch };
         try
         {
-            await _config.OnBatch(context).ConfigureAwait(false);
+            await _config.OnBatch(context);
 
             // Ack/Nack Lists
-            await _consumer.AckAsync(context.AckList.ToArray()).ConfigureAwait(false);
-            await _consumer.NackAsync(context.NackList.ToArray()).ConfigureAwait(false);
+            await _consumer.AckAsync(context.AckList.ToArray());
+            await _consumer.NackAsync(context.NackList.ToArray());
 
             // Auto-Ack
             var list = batch
                 .Where(x => !context.NackList.Contains(x))
                 .Where(x => !context.AckList.Contains(x))
                 .ToArray();
-            await _consumer.AckAsync(list.ToArray()).ConfigureAwait(false);
+            await _consumer.AckAsync(list.ToArray());
 
             // Logging
             var min = batch.Min(x => x.TopicData.CreatedDate);
@@ -165,7 +165,7 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
         {
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _logger.LogError(ex, "Failed to process {Message}", ex.Message);
-            await _consumer.NackAsync(batch).ConfigureAwait(false);
+            await _consumer.NackAsync(batch);
         }
     }
 }

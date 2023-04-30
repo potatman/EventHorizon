@@ -47,7 +47,7 @@ public class Aggregator<TParent, T>
 
     public async Task RebuildAllAsync(CancellationToken ct)
     {
-        var minDateTime = await _crudStore.GetLastUpdatedDateAsync(ct).ConfigureAwait(false);
+        var minDateTime = await _crudStore.GetLastUpdatedDateAsync(ct);
 
         // NOTE: return with one ms forward because mongodb rounds to one ms
         minDateTime = minDateTime.AddMilliseconds(1);
@@ -56,12 +56,12 @@ public class Aggregator<TParent, T>
 
         while (!ct.IsCancellationRequested)
         {
-            var events = await reader.GetNextAsync(1000).ConfigureAwait(false);
+            var events = await reader.GetNextAsync(1000);
             if (!events.Any()) break;
 
             var lookup = events.ToLookup(x => x.Data.StreamId);
             var streamIds = lookup.Select(x => x.Key).ToArray();
-            var models = await _crudStore.GetAllAsync(streamIds, ct).ConfigureAwait(false);
+            var models = await _crudStore.GetAllAsync(streamIds, ct);
             var modelsDict = models.ToDictionary(x => x.Id);
             var dict = new Dictionary<string, Aggregate<T>>();
             foreach (var streamId in streamIds)
@@ -77,8 +77,8 @@ public class Aggregator<TParent, T>
             }
 
             if(! dict.Any()) return;
-            await SaveSnapshotsAsync(dict).ConfigureAwait(false);
-            await PublishEventsAsync(dict).ConfigureAwait(false);
+            await SaveSnapshotsAsync(dict);
+            await PublishEventsAsync(dict);
             ResetAll(dict);
         }
     }
@@ -95,13 +95,13 @@ public class Aggregator<TParent, T>
 
             // Load Aggregate
             var streamIds = messages.Select(x => x.StreamId).Distinct().ToArray();
-            aggregateDict = await GetAggregatesFromSnapshotsAsync(streamIds, ct).ConfigureAwait(false);
+            aggregateDict = await GetAggregatesFromSnapshotsAsync(streamIds, ct);
 
             // Map/Apply Changes
             TriggerHandle(messages, aggregateDict);
 
             // Save Successful Aggregates
-            await SaveAllAsync(aggregateDict).ConfigureAwait(false);
+            await SaveAllAsync(aggregateDict);
 
             // Add Successful Responses
             responses.AddRange(aggregateDict.Values
@@ -160,8 +160,8 @@ public class Aggregator<TParent, T>
     private async Task SaveAllAsync(Dictionary<string, Aggregate<T>> aggregateDict)
     {
         // Save Snapshots, Events, and Publish Responses for Successful Saves
-        await SaveSnapshotsAsync(aggregateDict).ConfigureAwait(false);
-        await PublishEventsAsync(aggregateDict).ConfigureAwait(false);
+        await SaveSnapshotsAsync(aggregateDict);
+        await PublishEventsAsync(aggregateDict);
 
         // Log Groups of failed snapshots
         var aggStatusLookup = aggregateDict.Values.ToLookup(x => x.Status);
@@ -195,7 +195,7 @@ public class Aggregator<TParent, T>
             if (parents.Any() != true)
                 return;
 
-            var results = await _crudStore.UpsertAsync(parents, CancellationToken.None).ConfigureAwait(false);
+            var results = await _crudStore.UpsertAsync(parents, CancellationToken.None);
             foreach (var id in results.FailedIds)
                 aggregateDict[id].SetStatus(AggregateStatus.SaveSnapshotFailed);
             foreach (var id in results.PassedIds)
@@ -221,7 +221,7 @@ public class Aggregator<TParent, T>
         try
         {
             var publisher = _streamingClient.CreatePublisher<Event>().AddTopic<T>().Build();
-            await publisher.PublishAsync(events).ConfigureAwait(false);
+            await publisher.PublishAsync(events);
         }
         catch (Exception ex)
         {
@@ -240,7 +240,7 @@ public class Aggregator<TParent, T>
             foreach (var group in responsesLookup)
             {
                 var publisher = _streamingClient.CreatePublisher<Response>().AddTopic<T>(group.Key).Build();
-                await publisher.PublishAsync(group.ToArray()).ConfigureAwait(false);
+                await publisher.PublishAsync(group.ToArray());
             }
         }
         catch (Exception ex)
@@ -265,7 +265,7 @@ public class Aggregator<TParent, T>
 
     public async Task<Aggregate<T>> GetAggregateFromSnapshotAsync(string streamId, CancellationToken ct)
     {
-        var result = await GetAggregatesFromSnapshotsAsync(new[] { streamId }, ct).ConfigureAwait(false);
+        var result = await GetAggregatesFromSnapshotsAsync(new[] { streamId }, ct);
         return result.Values.FirstOrDefault();
     }
 
@@ -275,7 +275,7 @@ public class Aggregator<TParent, T>
         {
             // Load Snapshots
             streamIds = streamIds.Distinct().ToArray();
-            var snapshots = await _crudStore.GetAllAsync(streamIds, ct).ConfigureAwait(false);
+            var snapshots = await _crudStore.GetAllAsync(streamIds, ct);
             var parentDict = snapshots.ToDictionary(x => x.Id);
 
             // Build Aggregate Dict
@@ -301,14 +301,14 @@ public class Aggregator<TParent, T>
 
     public async Task<Aggregate<T>> GetAggregateFromEventsAsync(string streamId, DateTime? endDateTime = null)
     {
-        var results = await GetAggregatesFromEventsAsync(new[] { streamId }, endDateTime).ConfigureAwait(false);
+        var results = await GetAggregatesFromEventsAsync(new[] { streamId }, endDateTime);
         return results[streamId];
     }
 
     public async Task<Dictionary<string, Aggregate<T>>> GetAggregatesFromEventsAsync(string[] streamIds,
         DateTime? endDateTime = null)
     {
-        var events = await GetEventsAsync(streamIds, endDateTime).ConfigureAwait(false);
+        var events = await GetEventsAsync(streamIds, endDateTime);
         var eventLookup = events.ToLookup(x => x.Data.StreamId);
         return streamIds
             .Select(x =>
