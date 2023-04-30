@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
@@ -9,23 +6,17 @@ using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Microsoft.Extensions.Logging;
 using SharpPulsar.Admin.v2;
-using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
 public class PulsarTopicAdmin : ITopicAdmin
 {
     private readonly IPulsarAdminRESTAPIClient _admin;
-    private readonly PulsarConfig _pulsarConfig;
     private readonly ILogger<PulsarTopicAdmin> _logger;
-    private static readonly SemaphoreSlim SemaphoreSlim = new(1,1);
-    private static readonly List<string> Tenants = new();
-    private static readonly List<string> Namespaces = new();
 
-    public PulsarTopicAdmin(IPulsarAdminRESTAPIClient admin, PulsarConfig pulsarConfig, ILogger<PulsarTopicAdmin> logger)
+    public PulsarTopicAdmin(IPulsarAdminRESTAPIClient admin, ILogger<PulsarTopicAdmin> logger)
     {
         _admin = admin;
-        _pulsarConfig = pulsarConfig;
         _logger = logger;
     }
 
@@ -48,91 +39,64 @@ public class PulsarTopicAdmin : ITopicAdmin
 
     public async Task DeleteTopicAsync(string str, CancellationToken ct)
     {
-        await SemaphoreSlim.WaitAsync(ct);
+        var topic = PulsarTopicParser.Parse(str);
         try
         {
-            Console.WriteLine("DeleteTopicAsync - 1");
-            var topic = PulsarTopicParser.Parse(str);
-            try
-            {
-                if (topic.IsPersisted)
-                    await _admin.DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
-                else
-                    await _admin.UnloadTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, ct);
-                _logger.LogInformation("Deleted Topic {Topic}", topic);
-            }
-            catch (ApiException ex)
-            {
-                // 404 - Namespace or topic does not exist
-                if (ex.StatusCode != 404)
-                    throw;
-            }
-            Console.WriteLine("DeleteTopicAsync - 2");
+            if (topic.IsPersisted)
+                await _admin.DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
+            else
+                await _admin.UnloadTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, ct);
+            _logger.LogInformation("Deleted Topic {Topic}", topic);
         }
-        finally
+        catch (ApiException ex)
         {
-            SemaphoreSlim.Release();
+            // 404 - Namespace or topic does not exist
+            if (ex.StatusCode != 404)
+                throw;
         }
     }
 
     private async Task RequireNamespace(string tenant, string nameSpace, int? retentionInMb, int? retentionInMinutes, CancellationToken ct)
     {
         // Ensure Tenant Exists
-        if (!Tenants.Contains(tenant))
+        var tenants = await _admin.GetTenantsAsync(ct);
+        if (!tenants.Contains(tenant))
         {
-            var tenants = await GetStringArray("tenants", ct);
-            if (!tenants.Contains(tenant))
+            var clusters = await _admin.GetClustersAsync(ct);
+            var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
+            try
             {
-                var clusters = await GetStringArray("clusters", ct);
-                var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
-                try
-                {
-                    await _admin.CreateTenantAsync(tenant, tenantInfo, ct);
-                }
-                catch (Exception)
-                {
-                    // Ignore race conditions
-                }
+                await _admin.CreateTenantAsync(tenant, tenantInfo, ct);
             }
-            Tenants.Add(tenant);
+            catch (Exception)
+            {
+                // Ignore race conditions
+            }
         }
 
         // Ensure Namespace Exists
-        var namespaceKey = $"{tenant}/{nameSpace}";
-        if (!Namespaces.Contains(namespaceKey))
+        var namespaces = await _admin.GetTenantNamespacesAsync(tenant, ct);
+        if (!namespaces.Contains($"{tenant}/{nameSpace}"))
         {
-            var namespaces = await GetStringArray($"namespaces/{tenant}", ct);
-            if (!namespaces.Contains(namespaceKey))
-            {
-                // Add Retention Policy if namespace == Events
-                var policies = !nameSpace.Contains(PulsarConstants.Event)
-                    ? new Policies()
-                    : new Policies
+            // Add Retention Policy if namespace == Events
+            var policies = !nameSpace.Contains(PulsarConstants.Event)
+                ? new Policies()
+                : new Policies
+                {
+                    Retention_policies = new RetentionPolicies
                     {
-                        Retention_policies = new RetentionPolicies
-                        {
-                            RetentionTimeInMinutes = retentionInMb ?? -1,
-                            RetentionSizeInMB = retentionInMinutes ?? -1
-                        }
-                    };
-                try
-                {
-                    await _admin.CreateNamespaceAsync(tenant, nameSpace, policies, ct);
-                }
-                catch (Exception)
-                {
-                    // Ignore race conditions
-                }
+                        RetentionTimeInMinutes = retentionInMb ?? -1,
+                        RetentionSizeInMB = retentionInMinutes ?? -1
+                    }
+                };
+            try
+            {
+                await _admin.CreateNamespaceAsync(tenant, nameSpace, policies, ct);
             }
-            Namespaces.Add(namespaceKey);
+            catch (Exception)
+            {
+                // Ignore race conditions
+            }
         }
-    }
-
-    private async Task<string[]> GetStringArray(string path, CancellationToken ct)
-    {
-        var client = new HttpClient { BaseAddress = new Uri($"{_pulsarConfig.AdminUrl}/admin/v2/") };
-        var result = await client.GetStringAsync(path, ct);
-        var res = JsonSerializer.Deserialize<string[]>(result);
-        return res;
     }
 }
