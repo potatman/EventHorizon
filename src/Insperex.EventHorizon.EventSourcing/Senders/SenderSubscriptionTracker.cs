@@ -14,16 +14,13 @@ namespace Insperex.EventHorizon.EventSourcing.Senders;
 
 public class SenderSubscriptionTracker : IDisposable
 {
-    private readonly ITopicResolver _topicResolver;
     private readonly StreamingClient _streamingClient;
     private readonly Dictionary<Type, Subscription<Response>> _subscriptionDict = new ();
     private readonly Dictionary<string, MessageContext<Response>> _responseDict = new ();
-    private readonly List<string> _responseTopics = new();
     private readonly string _senderId;
 
-    public SenderSubscriptionTracker(ITopicResolver topicResolver, StreamingClient streamingClient)
+    public SenderSubscriptionTracker(StreamingClient streamingClient)
     {
-        _topicResolver = topicResolver;
         _streamingClient = streamingClient;
         _senderId = NameUtil.AssemblyNameWithGuid;
         // Used for when process is stopped mid way
@@ -38,7 +35,6 @@ public class SenderSubscriptionTracker : IDisposable
         if(_subscriptionDict.ContainsKey(type))
             return;
 
-        _responseTopics.AddRange(_topicResolver.GetTopics<Response>(typeof(T), _senderId));
         var subscription = await _streamingClient.CreateSubscription<Response>()
             .OnBatch(x =>
             {
