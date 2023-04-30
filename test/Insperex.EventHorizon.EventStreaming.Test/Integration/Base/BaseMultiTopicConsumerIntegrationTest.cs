@@ -24,7 +24,6 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
 
     protected BaseMultiTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
-        Console.WriteLine("BaseMultiTopicConsumerIntegrationTest - Constructor");
         _outputHelper = outputHelper;
         _streamingClient = provider.GetRequiredService<StreamingClient>();
         _timeout = TimeSpan.FromSeconds(15);
@@ -55,7 +54,6 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     [Fact]
     public async Task SubscribeToMultipleTopics()
     {
-        Console.WriteLine("SubscribeToMultipleTopics");
         // Consume
         using var subscription = await _streamingClient.CreateSubscription<Event>()
             .AddActionTopic<ExampleEvent1>()
@@ -73,7 +71,6 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     [Fact]
     public async Task SubscribeToTopicsSeparately()
     {
-        Console.WriteLine("SubscribeToTopicsSeparately");
         // Consume
         var builder = _streamingClient.CreateSubscription<Event>()
             .BatchSize(_events.Length / 10);
