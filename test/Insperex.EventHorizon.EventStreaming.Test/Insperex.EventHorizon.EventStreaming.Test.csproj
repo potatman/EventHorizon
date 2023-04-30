@@ -26,6 +26,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\..\samples\Insperex.EventHorizon.EventStreaming.Samples\Insperex.EventHorizon.EventStreaming.Samples.csproj" />
       <ProjectReference Include="..\..\src\Insperex.EventHorizon.EventStreaming.InMemory\Insperex.EventHorizon.EventStreaming.InMemory.csproj" />
       <ProjectReference Include="..\..\src\Insperex.EventHorizon.EventStreaming.Pulsar\Insperex.EventHorizon.EventStreaming.Pulsar.csproj" />
     </ItemGroup>
