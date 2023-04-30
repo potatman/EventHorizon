@@ -17,7 +17,6 @@ public class PulsarStreamFactory : IStreamFactory
     private readonly PulsarClient _client;
     private readonly IPulsarAdminRESTAPIClient _admin;
     private readonly AttributeUtil _attributeUtil;
-    private readonly IOptions<PulsarConfig> _options;
     private readonly ILoggerFactory _loggerFactory;
 
     public PulsarStreamFactory(
