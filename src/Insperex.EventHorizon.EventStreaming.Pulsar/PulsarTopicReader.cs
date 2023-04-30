@@ -83,7 +83,7 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
 
     public void Dispose()
     {
-        _reader.DisposeAsync().GetAwaiter().GetResult();
+        _reader.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _reader = null;
     }
 

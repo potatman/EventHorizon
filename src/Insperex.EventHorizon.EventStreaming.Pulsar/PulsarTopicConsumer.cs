@@ -91,7 +91,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
     public void Dispose()
     {
-        _consumer.DisposeAsync().GetAwaiter().GetResult();
+        _consumer.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _consumer = null;
     }
 

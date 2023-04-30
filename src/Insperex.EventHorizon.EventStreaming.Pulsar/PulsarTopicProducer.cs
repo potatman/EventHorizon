@@ -65,7 +65,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     {
         _running = false;
         _hasSent = false;
-        _producer.DisposeAsync().GetAwaiter().GetResult();
+        _producer.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _producer = null;
     }
 
