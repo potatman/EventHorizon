@@ -11,15 +11,13 @@ public class SenderBuilder
 {
     private readonly SenderSubscriptionTracker _subscriptionTracker;
     private readonly StreamingClient _streamingClient;
-    private readonly ITopicResolver _topicResolver;
     private Func<AggregateStatus, string, IResponse> _getErrorResult;
     private TimeSpan _timeout;
 
-    public SenderBuilder(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient, ITopicResolver topicResolver)
+    public SenderBuilder(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient)
     {
         _subscriptionTracker = subscriptionTracker;
         _streamingClient = streamingClient;
-        _topicResolver = topicResolver;
     }
 
     public SenderBuilder Timeout(TimeSpan timeout)

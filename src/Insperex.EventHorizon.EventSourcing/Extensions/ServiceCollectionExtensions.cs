@@ -19,7 +19,6 @@ public static class ServiceCollectionExtensions
 {
     public static EventHorizonConfigurator AddEventSourcing(this EventHorizonConfigurator configurator)
     {
-        configurator.Collection.AddSingleton(x => x.GetRequiredService<IStreamFactory>().GetTopicResolver());
         configurator.Collection.AddSingleton(typeof(EventSourcingClient<>));
         configurator.Collection.AddSingleton(typeof(AggregateBuilder<,>));
         configurator.Collection.AddSingleton<SenderBuilder>();
