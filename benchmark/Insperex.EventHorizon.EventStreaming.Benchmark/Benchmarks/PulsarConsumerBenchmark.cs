@@ -20,7 +20,7 @@ public class PulsarConsumerBenchmark
     {
         var events = PulsarSingleton.Instance.FakeEvents(1000);
         _publisher = PulsarSingleton.Instance.GetPublisher<ExampleEvent>();
-        _publisher.PublishAsync(events).GetAwaiter().GetResult();
+        _publisher.PublishAsync(events).ConfigureAwait(false).GetAwaiter().GetResult();
 
         _consumer = PulsarSingleton.Instance.GetConsumer<ExampleEvent>();
         _counter = context.GetCounter("TestCounter");
@@ -34,8 +34,8 @@ public class PulsarConsumerBenchmark
     //     _publisher = null;
     //     _consumer = null;
     // }
-
-    [PerfBenchmark(Description = "Test Pulsar Publisher throughput",
+    
+    [PerfBenchmark(Description = "Test Pulsar Publisher throughput", 
         NumberOfIterations = 3, RunMode = RunMode.Throughput, RunTimeMilliseconds = 1000, TestMode = TestMode.Test)]
     [CounterThroughputAssertion("TestCounter", MustBe.GreaterThan, 1.0d)]
     public void BenchmarkBulk()
