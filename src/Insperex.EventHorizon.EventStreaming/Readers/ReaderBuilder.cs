@@ -24,7 +24,7 @@ public class ReaderBuilder<T> where T : class, ITopicMessage, new()
         _loggerFactory = loggerFactory;
     }
 
-    public ReaderBuilder<T> AddTopic<TS>(string topicName = null)
+    public ReaderBuilder<T> AddStream<TS>(string topicName = null)
     {
         if (_topic != null) throw new MultiTopicNotSupportedException<ReaderBuilder<T>>();
         _topic = _factory.GetTopicResolver().GetTopics<T>(typeof(TS), topicName).FirstOrDefault();

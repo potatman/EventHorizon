@@ -49,7 +49,7 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
     public ICrudStore<View<T>> GetViewStore()
     {
         return new ElasticCrudStore<View<T>>(_elasticAttr, _client,
-            _attributeUtil.GetOne<ViewStoreAttribute>(_type).BucketId,
+            _attributeUtil.GetOne<ViewStoreAttribute>(_type).Database,
             _loggerFactory.CreateLogger<ElasticCrudStore<View<T>>>());
     }
 }

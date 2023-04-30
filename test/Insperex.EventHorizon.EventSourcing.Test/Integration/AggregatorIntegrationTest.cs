@@ -98,7 +98,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
     public async Task TestRebuild()
     {
         var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(9);
-        var publisher = _streamingClient.CreatePublisher<Event>().AddTopic<Account>().Build();
+        var publisher = _streamingClient.CreatePublisher<Event>().AddStream<Account>().Build();
 
         // Setup Event
         await publisher.PublishAsync(new Event(streamId, new AccountOpened(100)));

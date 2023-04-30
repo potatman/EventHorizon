@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
-using Insperex.EventHorizon.EventSourcing.Interfaces;
+using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventSourcing.Interfaces.State;
 using Insperex.EventHorizon.EventStore.MongoDb.Attributes;
 using Insperex.EventHorizon.EventStore.MongoDb.Models;
@@ -9,8 +9,10 @@ using MongoDB.Driver;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
-[SnapshotStore("test_snapshot_bank_account", nameof(Account))]
-[EventStream("test_event_bank_account", nameof(Account))]
+[SnapshotStore("test_bank_snapshot_account")]
+[Stream<Event>("test_bank", "event", "account")]
+[Stream<Request>("test_bank", "request", "account")]
+[Stream<Response>("test_bank", "response", "account")]
 [MongoConfig(ReadPreferenceMode = ReadPreferenceMode.SecondaryPreferred, ReadConcernLevel = ReadConcernLevel.Majority, WriteConcernLevel = WriteConcernLevel.Majority)]
 public class Account : IState,
     IHandleRequest<OpenAccount, AccountResponse>,
@@ -21,7 +23,8 @@ public class Account : IState,
     IApplyEvent<AccountCredited>
 {
     public string Id { get; set; }
-    [EventStreamKey]
+
+    [StreamKey]
     public string BankAccount { get; set; }
     public int Amount { get; set; }
 
@@ -63,7 +66,7 @@ public class Account : IState,
     #endregion
 }
 
-[EventStream("test_event_bank_account", nameof(Account))]
+[Stream<Event>("test_bank", "command", "account")]
 public interface IApplyAccountEvents :
     IApplyEvent<AccountOpened>,
     IApplyEvent<AccountDebited>,

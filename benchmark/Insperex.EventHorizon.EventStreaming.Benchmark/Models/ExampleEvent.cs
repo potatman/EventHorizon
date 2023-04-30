@@ -1,10 +1,11 @@
 ﻿using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
+using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using ProtoBuf;
 
 namespace Insperex.EventHorizon.EventStreaming.Benchmark.Models;
 
-[SnapshotStore("tec_test_benchmark", nameof(ExampleEvent))]
+[Stream<Event>("tec_test_benchmark")]
 public class ExampleEvent : IEvent
 {
     public string Property1 { get; set; }

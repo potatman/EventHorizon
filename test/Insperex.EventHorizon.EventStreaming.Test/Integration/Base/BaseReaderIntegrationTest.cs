@@ -3,8 +3,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
+using Insperex.EventHorizon.EventStreaming.Samples.Models;
 using Insperex.EventHorizon.EventStreaming.Test.Fakers;
-using Insperex.EventHorizon.EventStreaming.Test.Models;
 using Insperex.EventHorizon.EventStreaming.Test.Util;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -34,8 +34,8 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
         // await publisher.PublishAsync(preEvents);
 
         // Publish Events
-        _events = EventStreamingFakers.EventFaker.Generate(1000).ToArray();
-        using var publisher = _streamingClient.CreatePublisher<Event>().AddTopic<ExampleEvent1>().Build();
+        _events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(1000).Select(x => new Event(x.Id, x)).ToArray();
+        using var publisher = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
         await publisher.PublishAsync(_events);
         await Task.Delay(2000);
 
@@ -47,13 +47,13 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(ExampleEvent1));
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged));
     }
 
     [Fact]
     public async Task TestReaderGetStreamId()
     {
-        using var reader = _streamingClient.CreateReader<Event>().AddTopic<ExampleEvent1>().Keys(_streamId).Build();
+        using var reader = _streamingClient.CreateReader<Event>().AddStream<Feed1PriceChanged>().Keys(_streamId).Build();
 
         var events = await reader.GetNextAsync(_events.Length);
 

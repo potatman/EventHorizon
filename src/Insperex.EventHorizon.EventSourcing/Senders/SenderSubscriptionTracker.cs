@@ -47,7 +47,7 @@ public class SenderSubscriptionTracker : IDisposable
                     _responseDict[response.Data.RequestId] = response;
                 return Task.CompletedTask;
             })
-            .AddStateTopic<T>(_senderId)
+            .AddStream<T>(_senderId)
             .IsBeginning(true)
             .Build()
             .StartAsync();

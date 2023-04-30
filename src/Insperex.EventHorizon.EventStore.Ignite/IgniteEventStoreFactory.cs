@@ -38,6 +38,6 @@ public class IgniteEventStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFa
 
     public ICrudStore<View<T>> GetViewStore()
     {
-        return new IgniteCrudStore<View<T>>(_client, _attributeUtil.GetOne<ViewStoreAttribute>(_type).BucketId);
+        return new IgniteCrudStore<View<T>>(_client, _attributeUtil.GetOne<ViewStoreAttribute>(_type).Database);
     }
 }

@@ -6,12 +6,9 @@ namespace Insperex.EventHorizon.Abstractions.Attributes;
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 public sealed class ViewStoreAttribute : Attribute
 {
-    public string BucketId { get; set; }
-    public string Type { get; set; }
-    public bool ValidateEventHandlers { get; set; }
-    public ViewStoreAttribute(string bucketId, string type)
+    public string Database { get; set; }
+    public ViewStoreAttribute(string database)
     {
-        BucketId = bucketId;
-        Type = type;
+        Database = database;
     }
 }

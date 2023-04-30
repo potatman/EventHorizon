@@ -32,23 +32,19 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         _topicResolver = _factory.GetTopicResolver();
     }
 
-    public SubscriptionBuilder<T> AddStateTopic<TS>(string topic = null) where TS : IState
+    public SubscriptionBuilder<T> AddStream<TS>(string topic = null)
     {
         // Add Main Topic
         _topics.AddRange(_topicResolver.GetTopics<T>(typeof(TS), topic));
 
-        // Add Sub Topics
-        var topics = AssemblyUtil.SubStateDict[typeof(TS).Name]
+        // Add Sub Topics (for IState only)
+        var topics = AssemblyUtil.SubStateDict.GetValueOrDefault(typeof(TS).Name)?
             .SelectMany(x => _topicResolver.GetTopics<T>(x, topic))
             .ToArray();
-        _topics.AddRange(topics);
 
-        return this;
-    }
+        if(topics != null)
+            _topics.AddRange(topics);
 
-    public SubscriptionBuilder<T> AddActionTopic<TA>() where TA : IAction
-    {
-        _topics.AddRange(_topicResolver.GetTopics<T>(typeof(TA)));
         return this;
     }
 
