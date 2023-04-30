@@ -35,7 +35,7 @@ public class Sender
     public Task SendAsync<T>(params Command[] commands) where T : IState
     {
         return _streamingClient.CreatePublisher<Command>()
-            .AddTopic<T>().Build()
+            .AddStream<T>().Build()
             .PublishAsync(commands);
     }
 
@@ -67,7 +67,7 @@ public class Sender
 
         // Send requests
         var requestDict = requests.ToDictionary(x => x.Id);
-        await _streamingClient.CreatePublisher<Request>().AddTopic<T>().Build().PublishAsync(requests);
+        await _streamingClient.CreatePublisher<Request>().AddStream<T>().Build().PublishAsync(requests);
 
         // Wait for messages
         var sw = Stopwatch.StartNew();

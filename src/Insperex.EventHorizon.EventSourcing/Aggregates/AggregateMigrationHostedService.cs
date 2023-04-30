@@ -19,7 +19,7 @@ namespace Insperex.EventHorizon.EventSourcing.Aggregates
         public AggregateMigrationHostedService(Aggregator<Snapshot<TTarget>, TTarget> aggregator, StreamingClient streamingClient)
         {
             _subscription = streamingClient.CreateSubscription<Event>()
-                .AddTopic<TSource>()
+                .AddStream<TSource>()
                 .SubscriptionName($"Migrate-{typeof(TSource).Name}")
                 .OnBatch(async batch =>
                 {

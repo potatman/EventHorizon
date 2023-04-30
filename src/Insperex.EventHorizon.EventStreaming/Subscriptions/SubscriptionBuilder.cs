@@ -32,7 +32,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         _topicResolver = _factory.GetTopicResolver();
     }
 
-    public SubscriptionBuilder<T> AddTopic<TS>(string topic = null)
+    public SubscriptionBuilder<T> AddStream<TS>(string topic = null)
     {
         // Add Main Topic
         _topics.AddRange(_topicResolver.GetTopics<T>(typeof(TS), topic));

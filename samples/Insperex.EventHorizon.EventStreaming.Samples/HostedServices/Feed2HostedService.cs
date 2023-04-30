@@ -19,7 +19,7 @@ public class Feed2HostedService : IHostedService
     {
         var priceChange = new Feed2PriceChanged("123", 100);
         using var publisher = _streamingClient.CreatePublisher<Event>()
-            .AddTopic<Feed2PriceChanged>()
+            .AddStream<Feed2PriceChanged>()
             .Build()
             .PublishAsync(new Event(priceChange.Id, priceChange));
 

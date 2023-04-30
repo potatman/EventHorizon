@@ -52,7 +52,7 @@ public class Aggregator<TParent, T>
         // NOTE: return with one ms forward because mongodb rounds to one ms
         minDateTime = minDateTime.AddMilliseconds(1);
 
-        var reader = _streamingClient.CreateReader<Event>().AddTopic<T>().StartDateTime(minDateTime).Build();
+        var reader = _streamingClient.CreateReader<Event>().AddStream<T>().StartDateTime(minDateTime).Build();
 
         while (!ct.IsCancellationRequested)
         {
@@ -220,7 +220,7 @@ public class Aggregator<TParent, T>
 
         try
         {
-            var publisher = _streamingClient.CreatePublisher<Event>().AddTopic<T>().Build();
+            var publisher = _streamingClient.CreatePublisher<Event>().AddStream<T>().Build();
             await publisher.PublishAsync(events);
         }
         catch (Exception ex)
@@ -239,7 +239,7 @@ public class Aggregator<TParent, T>
             var responsesLookup = responses.ToLookup(x => x.SenderId);
             foreach (var group in responsesLookup)
             {
-                var publisher = _streamingClient.CreatePublisher<Response>().AddTopic<T>(group.Key).Build();
+                var publisher = _streamingClient.CreatePublisher<Response>().AddStream<T>(group.Key).Build();
                 await publisher.PublishAsync(group.ToArray());
             }
         }
@@ -321,7 +321,7 @@ public class Aggregator<TParent, T>
 
     public Task<MessageContext<Event>[]> GetEventsAsync(string[] streamIds, DateTime? endDateTime = null)
     {
-        var reader = _streamingClient.CreateReader<Event>().AddTopic<T>().Keys(streamIds).EndDateTime(endDateTime).Build();
+        var reader = _streamingClient.CreateReader<Event>().AddStream<T>().Keys(streamIds).EndDateTime(endDateTime).Build();
         return reader.GetNextAsync(10000);
     }
 

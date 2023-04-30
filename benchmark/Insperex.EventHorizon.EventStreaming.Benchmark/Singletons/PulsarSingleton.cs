@@ -38,7 +38,7 @@ public class PulsarSingleton : IDisposable
             return Publishers[type];
 
         Publishers[type] = StreamClient.Value.CreatePublisher<Event>()
-            .AddTopic<T>()
+            .AddStream<T>()
             .Build();
 
         return Publishers[type];
@@ -67,7 +67,7 @@ public class PulsarSingleton : IDisposable
             return Readers[type];
 
         Readers[type] = StreamClient.Value.CreateReader<Event>()
-            .AddTopic<T>()
+            .AddStream<T>()
             .Keys("5")
             .Build();
 

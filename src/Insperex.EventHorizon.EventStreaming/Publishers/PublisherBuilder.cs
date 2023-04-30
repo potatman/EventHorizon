@@ -27,7 +27,7 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
         return this;
     }
 
-    public PublisherBuilder<T> AddTopic<TS>(string topicName = null)
+    public PublisherBuilder<T> AddStream<TS>(string topicName = null)
     {
         if (_topic != null) throw new MultiTopicNotSupportedException<PublisherBuilder<T>>();
         _topic = _factory.GetTopicResolver().GetTopics<T>(typeof(TS), topicName).FirstOrDefault();

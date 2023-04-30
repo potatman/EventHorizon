@@ -96,7 +96,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
     public async Task TestViewIndexer()
     {
         var streamId = "123";
-        var publisher = _streamingClient.CreatePublisher<Event>().AddTopic<Account>().Build();
+        var publisher = _streamingClient.CreatePublisher<Event>().AddStream<Account>().Build();
 
         // Setup Event
         await publisher.PublishAsync(new Event(streamId, new AccountOpened(100)));
