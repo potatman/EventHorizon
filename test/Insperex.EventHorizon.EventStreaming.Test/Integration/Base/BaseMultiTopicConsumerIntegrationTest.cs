@@ -13,6 +13,7 @@ using Xunit.Abstractions;
 
 namespace Insperex.EventHorizon.EventStreaming.Test.Integration.Base;
 
+[Trait("Category", "Integration")]
 public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
 {
     private readonly ITestOutputHelper _outputHelper;
