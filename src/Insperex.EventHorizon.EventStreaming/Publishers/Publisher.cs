@@ -2,7 +2,9 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
+using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 using Microsoft.Extensions.Logging;
@@ -29,6 +31,12 @@ public class Publisher<T> : IDisposable
     {
         _producer?.Dispose();
         _producer = null;
+    }
+
+    public Task PublishAsync(string streamId, params object[] objs)
+    {
+        var wrapped = objs.Select(x => Activator.CreateInstance(typeof(T), streamId, x) as T).ToArray();
+        return PublishAsync(wrapped);
     }
 
     public async Task<Publisher<T>> PublishAsync(params T[] messages)
