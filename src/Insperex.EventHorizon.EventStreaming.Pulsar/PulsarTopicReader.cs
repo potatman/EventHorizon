@@ -21,23 +21,28 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
 {
     private readonly PulsarClient _client;
     private readonly ReaderConfig _config;
+    private readonly ITopicAdmin _admin;
     private IReader<T> _reader;
 
-    public PulsarTopicReader(PulsarClient client, ReaderConfig config)
+    public PulsarTopicReader(
+        PulsarClient client,
+        ReaderConfig config,
+        ITopicAdmin admin)
     {
         _client = client;
         _config = config;
-        _reader = GetReaderAsync().Result;
+        _admin = admin;
     }
 
     public async Task<MessageContext<T>[]> GetNextAsync(int batchSize, TimeSpan timeout)
     {
         var list = new List<MessageContext<T>>();
+        var reader = await GetReaderAsync();
 
         // Move After StartDateTime
         if (_config.StartDateTime != null)
         {
-            await _reader.SeekAsync(_config.StartDateTime.Value.Ticks);
+            await reader.SeekAsync(_config.StartDateTime.Value.Ticks);
         }
 
         Message<T> message;
@@ -46,7 +51,7 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
             try
             {
                 var cts = new CancellationTokenSource(timeout);
-                message = await _reader.ReadNextAsync(cts.Token);
+                message = await reader.ReadNextAsync(cts.Token);
             }
             catch (TaskCanceledException)
             {
@@ -71,14 +76,14 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
                 Data = message.GetValue(),
                 TopicData = PulsarMessageMapper.MapTopicData(list.Count.ToString(CultureInfo.InvariantCulture), message, _config.Topic)
             });
-        } while (message != null && list.Count < batchSize && await _reader.HasMessageAvailableAsync());
+        } while (message != null && list.Count < batchSize && await reader.HasMessageAvailableAsync());
 
         return list.ToArray();
     }
 
     public void Dispose()
     {
-        _reader.DisposeAsync().GetAwaiter().GetResult();
+        _reader.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _reader = null;
     }
 
@@ -86,6 +91,9 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
     {
         if (_reader != null)
             return _reader;
+
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await _admin.RequireTopicAsync(_config.Topic, cts.Token);
 
         var builder = _client.NewReader(Schema.JSON<T>())
             .Topic(_config.Topic)

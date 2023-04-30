@@ -35,7 +35,7 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
     public void Dispose()
     {
         _disposed = true;
-        StopAsync().Wait();
+        StopAsync().GetAwaiter().GetResult();
     }
 
     public Task<Subscription<T>> StartAsync()

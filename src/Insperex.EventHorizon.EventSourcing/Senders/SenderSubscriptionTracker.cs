@@ -73,7 +73,7 @@ public class SenderSubscriptionTracker : IDisposable
 
     public void Dispose()
     {
-        OnExit(Dispose, null);
+        OnExit(null, null);
     }
 
     private void OnExit(object sender, EventArgs e)

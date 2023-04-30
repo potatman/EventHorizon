@@ -17,7 +17,7 @@ public class PulsarReaderBenchmark
     {
         var publisher = PulsarSingleton.Instance.GetPublisher<ExampleEvent>();
         var events = PulsarSingleton.Instance.FakeEvents(1000);
-        publisher.PublishAsync(events).ConfigureAwait(false).GetAwaiter().GetResult();
+        publisher.PublishAsync(events).GetAwaiter().GetResult();
 
         // Setup
         _reader = PulsarSingleton.Instance.GetReader<ExampleEvent>();
@@ -35,7 +35,7 @@ public class PulsarReaderBenchmark
     [CounterThroughputAssertion("TestCounter", MustBe.GreaterThan, 1.0d)]
     public void BenchmarkBulk()
     {
-        _reader.GetNextAsync(1000).ConfigureAwait(false).GetAwaiter().GetResult();
+        _reader.GetNextAsync(1000).GetAwaiter().GetResult();
         _counter.Increment();
     }
 }

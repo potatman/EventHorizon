@@ -6,7 +6,7 @@ namespace Insperex.EventHorizon.EventStreaming.Test.Integration.Pulsar;
 
 public class PulsarMultiTopicConsumerIntegrationTest : BaseMultiTopicConsumerIntegrationTest
 {
-    public PulsarMultiTopicConsumerIntegrationTest(ITestOutputHelper outputHelper) : 
+    public PulsarMultiTopicConsumerIntegrationTest(ITestOutputHelper outputHelper) :
         base(outputHelper, HostTestUtil.GetPulsarHost(outputHelper).Services)
     {
     }

@@ -14,7 +14,6 @@ using Xunit.Abstractions;
 namespace Insperex.EventHorizon.EventStreaming.Test.Integration.Base;
 
 [Trait("Category", "Integration")]
-[Collection("Integration")]
 public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
 {
     private readonly ITestOutputHelper _outputHelper;
@@ -35,14 +34,13 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _events = EventStreamingFakers.EventFaker.Generate(1000).ToArray();
-
         // Setup
         using var publisher1 = _streamingClient.CreatePublisher<Event>().AddTopic<ExampleEvent1>().Build();
         using var publisher2 = _streamingClient.CreatePublisher<Event>().AddTopic<ExampleEvent2>().Build();
 
         await publisher1.PublishAsync(_events.Take(_events.Length/2).ToArray());
         await publisher2.PublishAsync(_events.Skip(_events.Length/2).ToArray());
-        await Task.Delay(2000);
+        await Task.Delay(4000);
 
         _stopwatch = Stopwatch.StartNew();
     }

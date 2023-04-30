@@ -13,7 +13,6 @@ using Xunit.Abstractions;
 namespace Insperex.EventHorizon.EventStreaming.Test.Integration.Base;
 
 [Trait("Category", "Integration")]
-[Collection("Integration")]
 public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
 {
     private readonly ITestOutputHelper _outputHelper;
@@ -49,23 +48,27 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task TestSingleConsumer()
     {
         // Consume
-        using var subscription = _streamingClient.CreateSubscription<Event>()
+        using var subscription = await _streamingClient.CreateSubscription<Event>()
             .AddActionTopic<ExampleEvent1>()
             .BatchSize(_events.Length / 10)
             .OnBatch(_handler.OnBatch)
             .Build()
             .StartAsync();
 
+
         using var publisher = await _streamingClient.CreatePublisher<Event>()
             .AddTopic<ExampleEvent1>()
             .Build()
             .PublishAsync(_events);
 
+
         // Wait for List
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);
 
+
         // Assert
         AssertUtil.AssertEventsValid(_events, _handler.List.ToArray());
+
     }
 
     [Fact]

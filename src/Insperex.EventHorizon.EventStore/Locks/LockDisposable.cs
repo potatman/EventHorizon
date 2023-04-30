@@ -25,11 +25,6 @@ public class LockDisposable : IDisposable
         AppDomain.CurrentDomain.ProcessExit += OnExit;
     }
 
-    public void Dispose()
-    {
-        ReleaseAsync().Wait();
-    }
-
     public async Task WaitForLockAsync()
     {
         do
@@ -75,6 +70,11 @@ public class LockDisposable : IDisposable
     }
 
     private void OnExit(object sender, EventArgs e)
+    {
+        ReleaseAsync().Wait();
+    }
+
+    public void Dispose()
     {
         ReleaseAsync().Wait();
     }

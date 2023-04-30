@@ -42,10 +42,6 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
         };
         var logger = _loggerFactory.CreateLogger<Publisher<T>>();
 
-        // Ensure Topic Exists
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        _factory.CreateAdmin().RequireTopicAsync(_topic, cts.Token).Wait();
-
         // Create
         return new Publisher<T>(_factory, config, logger);
     }

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -20,24 +21,29 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 {
     private readonly PulsarClient _client;
     private readonly SubscriptionConfig<T> _config;
+    private readonly ITopicAdmin _admin;
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
     private IConsumer<T> _consumer;
     private Dictionary<string, MessageId> _messageIdDict;
 
-    public PulsarTopicConsumer(PulsarClient client, SubscriptionConfig<T> config)
+    public PulsarTopicConsumer(
+        PulsarClient client,
+        SubscriptionConfig<T> config,
+        ITopicAdmin admin)
     {
         _client = client;
         _config = config;
+        _admin = admin;
         _intercept = new OtelConsumerInterceptor.OTelConsumerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
-        _consumer = GetConsumerAsync().Result;
     }
 
     public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
     {
         try
         {
-            var messages = await _consumer.BatchReceiveAsync(ct);
+            var consumer = await GetConsumerAsync();
+            var messages = await consumer.BatchReceiveAsync(ct);
             if (!messages.Any())
             {
                 await Task.Delay(_config.NoBatchDelay, ct);
@@ -69,21 +75,23 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
     public async Task AckAsync(params MessageContext<T>[] messages)
     {
+        var consumer = await GetConsumerAsync();
         if (messages?.Any() != true) return;
         foreach (var message in messages)
-            await _consumer.AcknowledgeAsync(_messageIdDict[message.TopicData.Id]);
+            await consumer.AcknowledgeAsync(_messageIdDict[message.TopicData.Id]);
     }
 
     public async Task NackAsync(params MessageContext<T>[] messages)
     {
+        var consumer = await GetConsumerAsync();
         if (messages?.Any() != true) return;
         foreach (var message in messages)
-            await _consumer.NegativeAcknowledge(_messageIdDict[message.TopicData.Id]);
+            await consumer.NegativeAcknowledge(_messageIdDict[message.TopicData.Id]);
     }
 
     public void Dispose()
     {
-        _consumer.DisposeAsync().GetAwaiter().GetResult();
+        _consumer.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _consumer = null;
     }
 
@@ -91,6 +99,11 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     {
         if (_consumer != null)
             return _consumer;
+
+        // Ensure Topic Exists
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        foreach (var topic in _config.Topics)
+            await _admin.RequireTopicAsync(topic, cts.Token);
 
         var builder = _client.NewConsumer(Schema.JSON<T>())
             .ConsumerName(NameUtil.AssemblyNameWithGuid)

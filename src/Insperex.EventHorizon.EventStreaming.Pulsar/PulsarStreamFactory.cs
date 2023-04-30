@@ -33,17 +33,17 @@ public class PulsarStreamFactory : IStreamFactory
 
     public ITopicProducer<T> CreateProducer<T>(PublisherConfig config) where T : class, ITopicMessage, new()
     {
-        return new PulsarTopicProducer<T>(_client, config, _loggerFactory.CreateLogger<PulsarTopicProducer<T>>());
+        return new PulsarTopicProducer<T>(_client, config, CreateAdmin(), _loggerFactory.CreateLogger<PulsarTopicProducer<T>>());
     }
 
     public ITopicConsumer<T> CreateConsumer<T>(SubscriptionConfig<T> config) where T : class, ITopicMessage, new()
     {
-        return new PulsarTopicConsumer<T>(_client, config);
+        return new PulsarTopicConsumer<T>(_client, config, CreateAdmin());
     }
 
     public ITopicReader<T> CreateReader<T>(ReaderConfig config) where T : class, ITopicMessage, new()
     {
-        return new PulsarTopicReader<T>(_client, config);
+        return new PulsarTopicReader<T>(_client, config, CreateAdmin());
     }
 
     public ITopicAdmin CreateAdmin()

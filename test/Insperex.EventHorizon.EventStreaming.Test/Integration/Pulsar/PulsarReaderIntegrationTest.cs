@@ -9,6 +9,6 @@ public class PulsarReaderIntegrationTest : BaseReaderIntegrationTest
     public PulsarReaderIntegrationTest(ITestOutputHelper outputHelper) :
         base(outputHelper, HostTestUtil.GetPulsarHost(outputHelper).Services)
     {
-    
+
     }
 }
