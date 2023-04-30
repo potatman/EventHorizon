@@ -81,7 +81,7 @@ public class SenderSubscriptionTracker : IDisposable
         foreach (var group in _subscriptionDict)
         {
             // Stop Subscription
-            group.Value.StopAsync().GetAwaiter().GetResult();
+            group.Value.StopAsync().Wait();
 
             // Delete Topic
             _streamingClient.GetAdmin<Response>().DeleteTopicAsync(group.Key, _senderId).GetAwaiter().GetResult();
