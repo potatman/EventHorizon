@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
+using Insperex.EventHorizon.EventStreaming.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Microsoft.Extensions.Logging;
@@ -79,7 +80,7 @@ public class PulsarTopicAdmin : ITopicAdmin
         if (!namespaces.Contains($"{tenant}/{nameSpace}"))
         {
             // Add Retention Policy if namespace == Events
-            var policies = !nameSpace.Contains(PulsarConstants.Event)
+            var policies = !nameSpace.Contains(EventStreamingConstants.Event)
                 ? new Policies()
                 : new Policies
                 {

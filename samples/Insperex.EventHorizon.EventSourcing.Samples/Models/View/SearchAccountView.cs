@@ -4,7 +4,7 @@ using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 
-[ViewStore("test_view_search_account", nameof(SearchAccountView))]
+[ViewStore("test_view_search_account")]
 public class SearchAccountView : IState
 {
     public string Id { get; set; }

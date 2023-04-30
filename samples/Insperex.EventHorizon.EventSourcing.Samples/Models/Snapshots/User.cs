@@ -2,21 +2,21 @@
 using System.Collections.Generic;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
+using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventSourcing.Interfaces.State;
 using Insperex.EventHorizon.EventStreaming.Interfaces;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
-[SnapshotStore("test_snapshot_bank_user", nameof(User))]
-[EventStream("test_event_bank_user", nameof(User))]
+[SnapshotStore("test_snapshot_bank_user")]
+[Stream<Event>("test_bank", "event", "user")]
+[Stream<Command>("test_bank", "command", "user")]
 public class User : IState,
     IHandleCommand<ChangeUserName>,
     IApplyEvent<UserNameChangedV2>
 {
     public string Id { get; set; }
     public string Name { get; set; }
-
-    public User() { }
 
     public void Handle(ChangeUserName command, List<IEvent> events)
     {

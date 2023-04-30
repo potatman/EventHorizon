@@ -30,12 +30,12 @@ public class ValidationUtil
     {
         if(typeof(T) == typeof(Snapshot<TS>))
             ValidateSnapshot<TS>();
-        
+
         if(typeof(T) == typeof(View<TS>))
             ValidateView<TS>();
     }
 
-    public void ValidateSnapshot<T>() 
+    public void ValidateSnapshot<T>()
         where T : IState
     {
         var type = typeof(T);
@@ -46,22 +46,23 @@ public class ValidationUtil
 
         var errors = commandErrors.Concat(requestErrors).Concat(eventErrors).ToArray();
         if (!errors.Any()) return;
-        
+
         throw new MissingHandlersException(type, AssemblyUtil.SubStateDict[type.Name], types, errors);
     }
-    
-    public void ValidateView<T>() 
+
+    public void ValidateView<T>()
         where T : IState
     {
         var type = typeof(T);
-        var attributes = _attributeUtil.GetAll<EventStreamAttribute>(typeof(T));
-        var types = attributes.Select(x => AssemblyUtil.TypeDictionary[x.Type]).ToArray();
+        var eventAttrs = _attributeUtil.GetAll<StreamAttribute<Event>>(typeof(T)) as BaseStreamAttribute[];
+        var types = eventAttrs.Select(x => x.SubType).ToArray();
+
         var errors = ValidateHandlers<T, Event>(types);
         if (!errors.Any()) return;
 
         throw new MissingHandlersException(type, AssemblyUtil.SubStateDict[type.Name], types, errors);
     }
-    
+
     private static string[] ValidateHandlers<T, TM>(params Type[] stateTypes)
         where T : IState
         where TM : ITopicMessage
@@ -97,7 +98,7 @@ public class ValidationUtil
         {
             throw new NotImplementedException();
         }
-        
+
         // Verify Actions are supported
         var supportedActions =  allStates
             // Get Handlers
@@ -111,7 +112,7 @@ public class ValidationUtil
             .Where(x => x.GetInterfaces().All(i => i.Name != typeof(IUpgradeTo<>).Name))
             .Distinct()
             .ToArray();
-        
+
         var missing = allActions.Where(x => !supportedActions.Contains(x)).ToArray();
 
         // Return Result

@@ -6,14 +6,9 @@ namespace Insperex.EventHorizon.Abstractions.Attributes;
 public sealed class SnapshotStoreAttribute : Attribute
 {
     public string BucketId { get; set; }
-    public string Type { get; set; }
-    public bool ValidateCommandHandlers { get; set; }
-    public bool ValidateRequestHandlers { get; set; }
-    public bool ValidateEventHandlers { get; set; }
 
-    public SnapshotStoreAttribute(string bucketId, string type)
+    public SnapshotStoreAttribute(string bucketId)
     {
         BucketId = bucketId;
-        Type = type;
     }
 }

@@ -40,5 +40,5 @@ public class AttributeUtil
         _stateCache[key] = attribute;
     }
 
-    private static string GetKey<T>(MemberInfo type) => $"{type.Name}-{typeof(T).Name}";
+    private static string GetKey<T>(MemberInfo type) => $"{type.Name}-{typeof(T).FullName}";
 }

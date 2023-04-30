@@ -3,8 +3,7 @@ using Insperex.EventHorizon.Abstractions.Interfaces;
 
 namespace Insperex.EventHorizon.EventStore.Test.Models;
 
-[SnapshotStore("test_snapshot_example", nameof(ExampleStoreState))]
-[EventStream("test_event_example", nameof(ExampleStoreState))]
+[SnapshotStore("test_snapshot_example")]
 public class ExampleStoreState : IState
 {
     public string Id { get; set; }
