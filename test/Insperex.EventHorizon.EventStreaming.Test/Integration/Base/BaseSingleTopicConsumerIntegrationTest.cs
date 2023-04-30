@@ -52,15 +52,13 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
             .BatchSize(_events.Length / 10)
             .OnBatch(_handler.OnBatch)
             .Build()
-            .StartAsync()
-            ;
+            .StartAsync();
 
 
         using var publisher = await _streamingClient.CreatePublisher<Event>()
             .AddTopic<ExampleEvent1>()
             .Build()
-            .PublishAsync(_events)
-            ;
+            .PublishAsync(_events);
 
 
         // Wait for List
