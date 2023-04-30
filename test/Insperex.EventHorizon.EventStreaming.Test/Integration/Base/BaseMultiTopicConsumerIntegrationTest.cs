@@ -57,8 +57,8 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     {
         // Consume
         using var subscription = await _streamingClient.CreateSubscription<Event>()
-            .AddActionTopic<Feed1PriceChanged>()
-            .AddActionTopic<Feed2PriceChanged>()
+            .AddTopic<Feed1PriceChanged>()
+            .AddTopic<Feed2PriceChanged>()
             .BatchSize(_events.Length/10)
             .OnBatch(_handler.OnBatch)
             .Build()
@@ -76,8 +76,8 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
         var builder = _streamingClient.CreateSubscription<Event>()
             .BatchSize(_events.Length / 10);
 
-        using var subscription1 = await builder.AddActionTopic<Feed1PriceChanged>().OnBatch(_handler.OnBatch).Build().StartAsync();
-        using var subscription2 = await builder.AddActionTopic<Feed2PriceChanged>().OnBatch(_handler.OnBatch).Build().StartAsync();
+        using var subscription1 = await builder.AddTopic<Feed1PriceChanged>().OnBatch(_handler.OnBatch).Build().StartAsync();
+        using var subscription2 = await builder.AddTopic<Feed2PriceChanged>().OnBatch(_handler.OnBatch).Build().StartAsync();
 
         // Assert
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);

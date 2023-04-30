@@ -26,7 +26,7 @@ public class AggregateStateHostedService<TParent, TAction, T> : IHostedService
 
         _subscription = streamingClient.CreateSubscription<TAction>()
             .SubscriptionName(typeof(T).Name)
-            .AddStateTopic<T>()
+            .AddTopic<T>()
             .OnBatch(async x =>
             {
                 var messages = x.Messages.Select(m => m.Data).ToArray();

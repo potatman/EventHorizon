@@ -33,8 +33,8 @@ public class Program
                     // Add Hosted Subscription
                     x.AddHostedSubscription<PriceChangeTracker, Event>(x =>
                     {
-                        x.AddActionTopic<Feed1PriceChanged>();
-                        x.AddActionTopic<Feed2PriceChanged>();
+                        x.AddTopic<Feed1PriceChanged>();
+                        x.AddTopic<Feed2PriceChanged>();
                     });
                 });
 
