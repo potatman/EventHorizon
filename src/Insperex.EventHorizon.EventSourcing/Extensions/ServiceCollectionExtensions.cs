@@ -11,6 +11,7 @@ using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventSourcing.Extensions;
@@ -19,11 +20,11 @@ public static class ServiceCollectionExtensions
 {
     public static EventHorizonConfigurator AddEventSourcing(this EventHorizonConfigurator configurator)
     {
-        configurator.Collection.AddSingleton(typeof(EventSourcingClient<>));
-        configurator.Collection.AddSingleton(typeof(AggregateBuilder<,>));
-        configurator.Collection.AddSingleton<SenderBuilder>();
-        configurator.Collection.AddSingleton<SenderSubscriptionTracker>();
-        configurator.Collection.AddSingleton<ValidationUtil>();
+        configurator.Collection.TryAddSingleton(typeof(EventSourcingClient<>));
+        configurator.Collection.TryAddSingleton(typeof(AggregateBuilder<,>));
+        configurator.Collection.TryAddSingleton<SenderBuilder>();
+        configurator.Collection.TryAddSingleton<SenderSubscriptionTracker>();
+        configurator.Collection.TryAddSingleton<ValidationUtil>();
 
         return configurator;
     }
@@ -32,6 +33,8 @@ public static class ServiceCollectionExtensions
         Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null)
         where T : class, IState
     {
+        configurator.AddEventSourcing();
+
         // Handle Commands
         configurator.Collection.AddHostedService(x =>
         {
@@ -61,6 +64,8 @@ public static class ServiceCollectionExtensions
         Action<AggregateBuilder<View<T>, T>> onBuild = null)
         where T : class, IState
     {
+        configurator.AddEventSourcing();
+
         // Handle Events
         configurator.Collection.AddHostedService(x =>
         {
@@ -81,6 +86,8 @@ public static class ServiceCollectionExtensions
         where TSource : class, IState, new()
         where TTarget : class, IState, new()
     {
+        configurator.AddEventSourcing();
+
         configurator.Collection.AddHostedService(x =>
         {
             var serviceProvider = x.GetRequiredService<IServiceProvider>();
