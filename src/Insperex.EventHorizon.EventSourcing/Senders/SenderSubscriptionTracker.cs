@@ -84,7 +84,7 @@ public class SenderSubscriptionTracker : IDisposable
             group.Value.StopAsync().Wait();
 
             // Delete Topic
-            _streamingClient.GetAdmin<Response>().DeleteTopicAsync(group.Key, _senderId).GetAwaiter().GetResult();
+            _streamingClient.GetAdmin<Response>().DeleteTopicAsync(group.Key, _senderId).Wait();
         }
     }
 }
