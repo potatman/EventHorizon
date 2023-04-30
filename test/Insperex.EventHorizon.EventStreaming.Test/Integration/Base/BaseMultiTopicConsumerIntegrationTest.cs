@@ -33,21 +33,14 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        Console.WriteLine("BaseMultiTopicConsumerIntegrationTest - InitializeAsync");
         _events = EventStreamingFakers.EventFaker.Generate(1000).ToArray();
-
-        Console.WriteLine("InitializeAsync - 1");
         // Setup
         using var publisher1 = _streamingClient.CreatePublisher<Event>().AddTopic<ExampleEvent1>().Build();
-        Console.WriteLine("InitializeAsync - 2");
         using var publisher2 = _streamingClient.CreatePublisher<Event>().AddTopic<ExampleEvent2>().Build();
-        Console.WriteLine("InitializeAsync - 3");
 
         await publisher1.PublishAsync(_events.Take(_events.Length/2).ToArray());
-        Console.WriteLine("InitializeAsync - 4");
         await publisher2.PublishAsync(_events.Skip(_events.Length/2).ToArray());
-        Console.WriteLine("InitializeAsync - 5");
-        await Task.Delay(2000);
+        await Task.Delay(4000);
 
         _stopwatch = Stopwatch.StartNew();
     }
