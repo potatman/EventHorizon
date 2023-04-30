@@ -84,7 +84,7 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration
             var filter = Builders<Cursor>.Filter.Eq("_id", AssemblyUtil.AssemblyName);
             if (_currentBatch.Any())
             {
-                var max = _currentBatch.Max(x => x["EventDateTime"].AsDateTime);
+                var max = _currentBatch.Max(x => x["EventDateTime"].ToUniversalTime());
                 var cursor = new Cursor
                 {
                     Id = AssemblyUtil.AssemblyName,
