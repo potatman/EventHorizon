@@ -31,10 +31,10 @@ public class Program
                     // services.AddPulsarEventStream(hostContext.Configuration);
 
                     // Add Hosted Subscription
-                    x.AddHostedSubscription<PriceChangeTracker, Event>(x =>
+                    x.AddHostedSubscription<PriceChangeTracker, Event>(h =>
                     {
-                        x.AddStream<Feed1PriceChanged>();
-                        x.AddStream<Feed2PriceChanged>();
+                        h.AddStream<Feed1PriceChanged>();
+                        h.AddStream<Feed2PriceChanged>();
                     });
                 });
 
