@@ -1,8 +1,8 @@
 ﻿using System.Collections.Generic;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
+using Insperex.EventHorizon.Abstractions.Interfaces.Handlers;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
-using Insperex.EventHorizon.EventSourcing.Interfaces.State;
 using Insperex.EventHorizon.EventStore.MongoDb.Attributes;
 using Insperex.EventHorizon.EventStore.MongoDb.Models;
 using MongoDB.Driver;

@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
+using Insperex.EventHorizon.Abstractions.Interfaces.Handlers;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
-using Insperex.EventHorizon.EventSourcing.Interfaces.State;
 using Insperex.EventHorizon.EventStreaming.Interfaces;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
