@@ -22,7 +22,7 @@ public class AggregateBuilder<TParent, T>
     private readonly ILoggerFactory _loggerFactory;
     private readonly ValidationUtil _validationUtil;
     private readonly StreamingClient _streamingClient;
-    private bool _isValidatingHandlers = true;
+    private bool _isValidationEnabled = true;
     private bool _isRebuildEnabled;
     private int _retryLimit = 5;
     private Action<Aggregate<T>[]> _beforeSave;
@@ -46,9 +46,9 @@ public class AggregateBuilder<TParent, T>
         return this;
     }
 
-    public AggregateBuilder<TParent, T> IsValidatingHandlers(bool isValidatingHandlers)
+    public AggregateBuilder<TParent, T> IsValidationEnabled(bool isValidationEnabled)
     {
-        _isValidatingHandlers = isValidatingHandlers;
+        _isValidationEnabled = isValidationEnabled;
         return this;
     }
 
@@ -68,14 +68,14 @@ public class AggregateBuilder<TParent, T>
     {
         var config = new AggregateConfig<T>
         {
-            IsValidatingHandlers = _isValidatingHandlers,
+            IsValidationEnabled = _isValidationEnabled,
             IsRebuildEnabled = _isRebuildEnabled,
             RetryLimit = _retryLimit,
             BeforeSave = _beforeSave,
         };
 
         // Validate Handlers if Enabled
-        if(config.IsValidatingHandlers)
+        if(config.IsValidationEnabled)
             _validationUtil.Validate<TParent, T>();
 
         var logger = _loggerFactory.CreateLogger<Aggregator<TParent, T>>();
