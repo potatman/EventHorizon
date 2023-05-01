@@ -21,14 +21,14 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     private Stopwatch _stopwatch;
     private Event[] _events;
     private readonly StreamingClient _streamingClient;
-    private readonly ListTopicHandler<Event> _handler;
+    private readonly ListStreamConsumer<Event> _handler;
 
     protected BaseMultiTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
         _outputHelper = outputHelper;
         _streamingClient = provider.GetRequiredService<StreamingClient>();
         _timeout = TimeSpan.FromSeconds(15);
-        _handler = new ListTopicHandler<Event>();
+        _handler = new ListStreamConsumer<Event>();
     }
 
     public async Task InitializeAsync()

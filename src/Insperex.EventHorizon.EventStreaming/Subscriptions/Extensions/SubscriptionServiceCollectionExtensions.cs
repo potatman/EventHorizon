@@ -10,7 +10,7 @@ public static class SubscriptionServiceCollectionExtensions
 {
     public static EventHorizonConfigurator AddHostedSubscription<TH, TM>(this EventHorizonConfigurator configurator,
         Action<SubscriptionBuilder<TM>> action = null)
-        where TH : class, ITopicHandler<TM>
+        where TH : class, IStreamConsumer<TM>
         where TM : class, ITopicMessage, new()
     {
         configurator.Collection.AddScoped<TH>();

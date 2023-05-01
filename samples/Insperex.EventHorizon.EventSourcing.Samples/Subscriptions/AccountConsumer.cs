@@ -5,7 +5,7 @@ using Insperex.EventHorizon.EventStreaming.Subscriptions;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Subscriptions;
 
-public class AccountSubscription : ITopicHandler<Event>
+public class AccountConsumer : IStreamConsumer<Event>
 {
     public Task OnBatch(SubscriptionContext<Event> context)
     {

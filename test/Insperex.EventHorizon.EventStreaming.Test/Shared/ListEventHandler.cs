@@ -8,7 +8,7 @@ using Xunit.Abstractions;
 
 namespace Insperex.EventHorizon.EventStreaming.Test.Shared;
 
-public class ListTopicHandler<T> : ITopicHandler<T> where T : ITopicMessage
+public class ListStreamConsumer<T> : IStreamConsumer<T> where T : ITopicMessage
 {
     public readonly BlockingCollection<MessageContext<T>> List = new();
 

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.Samples.Handlers;
 
-public class PriceChangeTracker : ITopicHandler<Event>
+public class PriceChangeTracker : IStreamConsumer<Event>
 {
     private readonly List<PriceChanged> _priceChanges = new();
     private readonly ILogger<PriceChangeTracker> _logger;

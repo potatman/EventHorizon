@@ -40,7 +40,7 @@ public class Program
                                 {
                                     // Additional logic
                                 }))
-                        .AddHostedSubscription<AccountSubscription, Event>()
+                        .AddHostedSubscription<AccountConsumer, Event>()
 
                         // Stores
                         .AddMongoDbSnapshotStore()
