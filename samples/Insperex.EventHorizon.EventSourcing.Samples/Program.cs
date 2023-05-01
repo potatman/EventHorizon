@@ -62,14 +62,16 @@ public class Program
             .Timeout(TimeSpan.FromSeconds(120))
             .GetErrorResult((status, error) =>
             {
-                return status switch
+                switch (status)
                 {
-                    AggregateStatus.CommandTimedOut => new AccountResponse(AccountResponseStatus.CommandTimedOut),
-                    AggregateStatus.LoadSnapshotFailed => new AccountResponse(AccountResponseStatus.LoadSnapshotFailed),
-                    AggregateStatus.SaveSnapshotFailed => new AccountResponse(AccountResponseStatus.SaveSnapshotFailed),
-                    AggregateStatus.SaveEventsFailed => new AccountResponse(AccountResponseStatus.SaveEventsFailed),
-                    _ => throw new Exception($"Unhandled ResultStatus {status} => {error}")
-                };
+                    case AggregateStatus.CommandTimedOut: return new AccountResponse(AccountResponseStatus.CommandTimedOut, error);
+                    case AggregateStatus.LoadSnapshotFailed: return new AccountResponse(AccountResponseStatus.LoadSnapshotFailed, error);
+                    case AggregateStatus.HandlerFailed: return new AccountResponse(AccountResponseStatus.HandlerFailed, error);
+                    case AggregateStatus.BeforeSaveFailed: return new AccountResponse(AccountResponseStatus.BeforeSaveFailed, error);
+                    case AggregateStatus.SaveSnapshotFailed: return new AccountResponse(AccountResponseStatus.SaveSnapshotFailed, error);
+                    case AggregateStatus.SaveEventsFailed: return new AccountResponse(AccountResponseStatus.SaveEventsFailed, error);
+                    default: throw new Exception($"Unhandled ResultStatus {status} => {error}");
+                }
             })
             .Build()
             .SendAndReceiveAsync("123", new OpenAccount(100));

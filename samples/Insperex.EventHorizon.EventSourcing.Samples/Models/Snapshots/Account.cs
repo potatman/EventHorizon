@@ -88,7 +88,7 @@ public record AccountDebited(int Amount) : IEvent<Account>;
 public record AccountCredited(int Amount) : IEvent<Account>;
 
 // Response
-public record AccountResponse(AccountResponseStatus Status = AccountResponseStatus.Success) : IResponse<Account>;
+public record AccountResponse(AccountResponseStatus Status = AccountResponseStatus.Success, string Error = null) : IResponse<Account>;
 
 public enum AccountResponseStatus
 {
@@ -97,6 +97,8 @@ public enum AccountResponseStatus
     // ----- Internal Errors Below ----
     CommandTimedOut,
     LoadSnapshotFailed,
+    HandlerFailed,
+    BeforeSaveFailed,
     SaveSnapshotFailed,
     SaveEventsFailed,
 }
