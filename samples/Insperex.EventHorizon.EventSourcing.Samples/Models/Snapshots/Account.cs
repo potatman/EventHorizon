@@ -13,7 +13,9 @@ namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 [Stream<Event>("test_bank", "event", "account")]
 [Stream<Request>("test_bank", "request", "account")]
 [Stream<Response>("test_bank", "response", "account")]
-[MongoConfig(ReadPreferenceMode = ReadPreferenceMode.SecondaryPreferred, ReadConcernLevel = ReadConcernLevel.Majority, WriteConcernLevel = WriteConcernLevel.Majority)]
+[MongoConfig(ReadPreferenceMode = ReadPreferenceMode.SecondaryPreferred,
+    ReadConcernLevel = ReadConcernLevel.Majority,
+    WriteConcernLevel = WriteConcernLevel.Majority)]
 public class Account : IState,
     IHandleRequest<OpenAccount, AccountResponse>,
     IHandleRequest<Withdrawal, AccountResponse>,
