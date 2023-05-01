@@ -83,6 +83,12 @@ public class Aggregator<TParent, T>
         }
     }
 
+    public async Task<Response> HandleAsync<TM>(TM message, CancellationToken ct) where TM : ITopicMessage
+    {
+        var responses = await HandleAsync(new[] { message }, ct);
+        return responses.FirstOrDefault();
+    }
+
     public async Task<Response[]> HandleAsync<TM>(TM[] messages, CancellationToken ct) where TM : ITopicMessage
     {
         var responses = new List<Response>();
