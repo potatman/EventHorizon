@@ -3,5 +3,5 @@
 public interface IApplyEvent<in T>
     where T : IEvent
 {
-    public void Apply(T payload);
+    public void Apply(T @event);
 }

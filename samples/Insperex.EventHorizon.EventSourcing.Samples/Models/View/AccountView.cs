@@ -21,9 +21,9 @@ public class AccountView : IState,
 
     #region Applys
 
-    public void Apply(AccountDebited payload) => Amount -= payload.Amount;
-    public void Apply(AccountCredited payload) => Amount += payload.Amount;
-    public void Apply(AccountOpened payload) => Amount = payload.Amount;
+    public void Apply(AccountDebited @event) => Amount -= @event.Amount;
+    public void Apply(AccountCredited @event) => Amount += @event.Amount;
+    public void Apply(AccountOpened @event) => Amount = @event.Amount;
 
     #endregion
 }

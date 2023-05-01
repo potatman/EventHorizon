@@ -24,9 +24,9 @@ public class User : IState,
             events.Add(new UserNameChangedV2(command.Name));
     }
 
-    public void Apply(UserNameChangedV2 payload)
+    public void Apply(UserNameChangedV2 @event)
     {
-        Name = payload.Name;
+        Name = @event.Name;
     }
 }
 
