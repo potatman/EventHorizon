@@ -124,8 +124,8 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         var command2 = new Command(streamId, new ChangeUserName("Joe"));
 
         // Act
-        await _userAggregator.HandleAsync(new [] {command1}, CancellationToken.None);
-        await _userAggregator.HandleAsync(new [] {command2}, CancellationToken.None);
+        var res1 = await _userAggregator.HandleAsync(command1, CancellationToken.None);
+        var res2 = await _userAggregator.HandleAsync(command2, CancellationToken.None);
 
         // Assert Account
         var aggregate1  = await _userAggregator.GetAggregateFromSnapshotAsync(streamId, CancellationToken.None);
@@ -145,7 +145,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         var @event = new Event(streamId, 1, new AccountOpened(100));
 
         // Act
-        await _accountAggregator.HandleAsync(new [] {@event}, CancellationToken.None);
+        var res = await _accountAggregator.HandleAsync(@event, CancellationToken.None);
 
         // Assert Account
         var aggregate1  = await _accountAggregator.GetAggregateFromSnapshotAsync(streamId, CancellationToken.None);
