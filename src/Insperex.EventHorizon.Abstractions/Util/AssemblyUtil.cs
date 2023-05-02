@@ -12,32 +12,16 @@ public static class AssemblyUtil
 {
     private static readonly Assembly Assembly = Assembly.GetCallingAssembly() ?? Assembly.GetEntryAssembly();
 
-    private static readonly Assembly[] AllAssemblies = DependencyContext.Default?.CompileLibraries
-        .Select(x =>
-        {
-            try
-            {
-                return Assembly.Load(x.Name);
-            }
-            catch (Exception)
-            {
-                return null;
-            }
-        })
-        .Where(x => x != null)
-        .ToArray();
-    
-    public static readonly ImmutableDictionary<string, Type> TypeDictionary = AllAssemblies
+    public static readonly ImmutableDictionary<string, Type> TypeDictionary = DependencyContext.Default?.CompileLibraries
         .SelectMany(x =>
         {
             try
             {
-                return x.GetTypes();
+                return Assembly.Load(x.Name)?.GetTypes();
             }
             catch (Exception)
             {
-                // ignore
-                return null;
+                return Array.Empty<Type>();
             }
         })
         .Where(x => x != null)
