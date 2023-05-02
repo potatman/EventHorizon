@@ -75,7 +75,7 @@ public static class ServiceCollectionExtensions
         return configurator;
     }
 
-    public static EventHorizonConfigurator AddHostedMigration<TSource, TTarget>(this EventHorizonConfigurator configurator,
+    public static EventHorizonConfigurator AddMigrationHostedService<TSource, TTarget>(this EventHorizonConfigurator configurator,
         Action<AggregateBuilder<Snapshot<TTarget>, TTarget>> onBuild = null)
         where TSource : class, IState, new()
         where TTarget : class, IState, new()
