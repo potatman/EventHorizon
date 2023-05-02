@@ -24,11 +24,10 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Extensions
                 return configurator;
 
             // Add Pulsar Client
-            configurator.Collection.AddSingleton(x => new PulsarClientBuilder()
+            configurator.Collection.AddSingleton(async x => await new PulsarClientBuilder()
                 .ServiceUrl(config.ServiceUrl)
                 .EnableTransaction(true)
-                .BuildAsync()
-                .Result);
+                .BuildAsync());
 
             // Add Pulsar Admin
             configurator.Collection.AddSingleton<IPulsarAdminRESTAPIClient>(x =>
