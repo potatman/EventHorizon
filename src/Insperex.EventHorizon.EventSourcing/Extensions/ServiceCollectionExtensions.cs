@@ -38,10 +38,8 @@ public static class ServiceCollectionExtensions
         // Handle Commands
         configurator.Collection.AddHostedService(x =>
         {
-            var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();
-            var loggerFactory = x.GetRequiredService<ILoggerFactory>();
-            var builder = new AggregateBuilder<Snapshot<T>, T>(serviceProvider, streamingClient, loggerFactory);
+            var builder = x.GetRequiredService<AggregateBuilder<Snapshot<T>, T>>();
             onBuild?.Invoke(builder);
             return new AggregateStateHostedService<Snapshot<T>, Command, T>(streamingClient, builder.Build());
         });
@@ -49,10 +47,8 @@ public static class ServiceCollectionExtensions
         // Handle Requests
         configurator.Collection.AddHostedService(x =>
         {
-            var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();
-            var loggerFactory = x.GetRequiredService<ILoggerFactory>();
-            var builder = new AggregateBuilder<Snapshot<T>, T>(serviceProvider, streamingClient, loggerFactory);
+            var builder = x.GetRequiredService<AggregateBuilder<Snapshot<T>, T>>();
             onBuild?.Invoke(builder);
             return new AggregateStateHostedService<Snapshot<T>, Request, T>(streamingClient, builder.Build());
         });
@@ -69,10 +65,8 @@ public static class ServiceCollectionExtensions
         // Handle Events
         configurator.Collection.AddHostedService(x =>
         {
-            var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();
-            var loggerFactory = x.GetRequiredService<ILoggerFactory>();
-            var builder = new AggregateBuilder<View<T>, T>(serviceProvider, streamingClient, loggerFactory);
+            var builder = x.GetRequiredService<AggregateBuilder<View<T>, T>>();
             onBuild?.Invoke(builder);
             var aggregator = builder.Build();
             return new AggregateStateHostedService<View<T>, Event, T>(streamingClient, aggregator);
@@ -90,10 +84,8 @@ public static class ServiceCollectionExtensions
 
         configurator.Collection.AddHostedService(x =>
         {
-            var serviceProvider = x.GetRequiredService<IServiceProvider>();
             var streamingClient = x.GetRequiredService<StreamingClient>();
-            var loggerFactory = x.GetRequiredService<ILoggerFactory>();
-            var builder = new AggregateBuilder<Snapshot<TTarget>, TTarget>(serviceProvider, streamingClient, loggerFactory);
+            var builder = x.GetRequiredService<AggregateBuilder<Snapshot<TTarget>, TTarget>>();
             onBuild?.Invoke(builder);
             var aggregator = builder.Build();
             return new AggregateMigrationHostedService<TSource,TTarget>(aggregator, streamingClient);
