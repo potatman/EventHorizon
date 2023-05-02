@@ -26,6 +26,7 @@ public class Program
         var host = Host.CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) =>
             {
+                services.AddScoped<SearchAccountViewMiddleware>();
                 services.AddEventHorizon(hostContext.Configuration, x =>
                 {
                     x.AddEventSourcing()
@@ -36,10 +37,7 @@ public class Program
                                 .IsRebuildEnabled(true))
                         .AddViewHostedService<SearchAccountView>(h =>
                             h.RetryLimit(5)
-                                .BeforeSave(batch =>
-                                {
-                                    // Additional logic
-                                }))
+                                .UseMiddleware<SearchAccountViewMiddleware>())
                         .AddHostedSubscription<AccountConsumer, Event>()
 
                         // Stores
@@ -68,6 +66,7 @@ public class Program
                     case AggregateStatus.LoadSnapshotFailed: return new AccountResponse(AccountResponseStatus.LoadSnapshotFailed, error);
                     case AggregateStatus.HandlerFailed: return new AccountResponse(AccountResponseStatus.HandlerFailed, error);
                     case AggregateStatus.BeforeSaveFailed: return new AccountResponse(AccountResponseStatus.BeforeSaveFailed, error);
+                    case AggregateStatus.AfterSaveFailed: return new AccountResponse(AccountResponseStatus.AfterSaveFailed, error);
                     case AggregateStatus.SaveSnapshotFailed: return new AccountResponse(AccountResponseStatus.SaveSnapshotFailed, error);
                     case AggregateStatus.SaveEventsFailed: return new AccountResponse(AccountResponseStatus.SaveEventsFailed, error);
                     default: throw new Exception($"Unhandled ResultStatus {status} => {error}");

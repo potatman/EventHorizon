@@ -100,6 +100,7 @@ public enum AccountResponseStatus
     LoadSnapshotFailed,
     HandlerFailed,
     BeforeSaveFailed,
+    AfterSaveFailed,
     SaveSnapshotFailed,
     SaveEventsFailed,
 }

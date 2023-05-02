@@ -7,6 +7,7 @@ public enum AggregateStatus
     LoadSnapshotFailed,
     HandlerFailed,
     BeforeSaveFailed,
+    AfterSaveFailed,
     SaveSnapshotFailed,
     SaveEventsFailed,
 }
