@@ -3,6 +3,7 @@ using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Util;
+using Insperex.EventHorizon.EventSourcing.Interfaces;
 using Insperex.EventHorizon.EventSourcing.Util;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Interfaces.Factory;
@@ -21,11 +22,12 @@ public class AggregateBuilder<TParent, T>
     private readonly ICrudStore<TParent> _crudStore;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ValidationUtil _validationUtil;
+    private readonly IServiceProvider _serviceProvider;
     private readonly StreamingClient _streamingClient;
     private bool _isValidationEnabled = true;
     private bool _isRebuildEnabled;
     private int _retryLimit = 5;
-    private Action<Aggregate<T>[]> _beforeSave;
+    private IAggregateMiddleware<T> _middleware;
 
     public AggregateBuilder(
         IServiceProvider serviceProvider,
@@ -36,6 +38,7 @@ public class AggregateBuilder<TParent, T>
             (ICrudStore<TParent>)serviceProvider.GetRequiredService<ISnapshotStoreFactory<T>>().GetSnapshotStore() :
             (ICrudStore<TParent>)serviceProvider.GetRequiredService<IViewStoreFactory<T>>().GetViewStore();
         _validationUtil = serviceProvider.GetRequiredService<ValidationUtil>();
+        _serviceProvider = serviceProvider;
         _streamingClient = streamingClient;
         _loggerFactory = loggerFactory;
     }
@@ -58,9 +61,10 @@ public class AggregateBuilder<TParent, T>
         return this;
     }
 
-    public AggregateBuilder<TParent, T> BeforeSave(Action<Aggregate<T>[]> beforeSave)
+    public AggregateBuilder<TParent, T> UseMiddleware<TMiddle>() where TMiddle : IAggregateMiddleware<T>
     {
-        _beforeSave = beforeSave;
+        using var scope = _serviceProvider.CreateScope();
+        _middleware = scope.ServiceProvider.GetRequiredService<TMiddle>();
         return this;
     }
 
@@ -71,7 +75,7 @@ public class AggregateBuilder<TParent, T>
             IsValidationEnabled = _isValidationEnabled,
             IsRebuildEnabled = _isRebuildEnabled,
             RetryLimit = _retryLimit,
-            BeforeSave = _beforeSave,
+            Middleware = _middleware,
         };
 
         // Validate Handlers if Enabled
