@@ -12,12 +12,12 @@ public static class AssemblyUtil
 {
     private static readonly Assembly Assembly = Assembly.GetCallingAssembly() ?? Assembly.GetEntryAssembly();
 
-    public static readonly ImmutableDictionary<string, Type> TypeDictionary = DependencyContext.Default?.CompileLibraries
-        .SelectMany(x =>
+    private static readonly Assembly[] AllAssemblies = DependencyContext.Default?.CompileLibraries
+        .Select(x =>
         {
             try
             {
-                return Assembly.Load(x.Name).GetTypes();
+                return Assembly.Load(x.Name);
             }
             catch (Exception)
             {
@@ -25,8 +25,24 @@ public static class AssemblyUtil
             }
         })
         .Where(x => x != null)
-        .ToLookup(x => x)
-        .ToImmutableDictionary(x => x.Key.Name, x => x.Last());
+        .ToArray();
+    
+    public static readonly ImmutableDictionary<string, Type> TypeDictionary = AllAssemblies
+        .SelectMany(x =>
+        {
+            try
+            {
+                return x.GetTypes();
+            }
+            catch (Exception)
+            {
+                // ignore
+                return null;
+            }
+        })
+        .Where(x => x != null)
+        .ToLookup(x => x.Name)
+        .ToImmutableDictionary(x => x.Key, x => x.Last());
 
     public static readonly string AssemblyName = Assembly.GetName().Name;
     public static readonly Version AssemblyVersion = Assembly.GetName().Version;
