@@ -50,9 +50,9 @@ public class AggregatorIntegrationTest : IAsyncLifetime
                     x.AddEventSourcing()
 
                         // Hosts
-                        .AddHostedSnapshot<Account>()
-                        .AddHostedSnapshot<User>()
-                        .AddHostedSnapshot<SearchAccountView>()
+                        .AddSnapshotHostedService<Account>()
+                        .AddSnapshotHostedService<User>()
+                        .AddSnapshotHostedService<SearchAccountView>()
 
                         // Stores
                         .AddInMemorySnapshotStore()

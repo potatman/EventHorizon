@@ -47,8 +47,8 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
                     x.AddEventSourcing()
 
                         // Hosts
-                        .AddHostedViewIndexer<AccountView>()
-                        .AddHostedViewIndexer<SearchAccountView>()
+                        .AddViewHostedService<AccountView>()
+                        .AddViewHostedService<SearchAccountView>()
 
                         // Stores
                         .AddInMemorySnapshotStore()

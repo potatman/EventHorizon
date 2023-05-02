@@ -31,10 +31,10 @@ public class Program
                     x.AddEventSourcing()
 
                         // Hosted
-                        .AddHostedSnapshot<Account>(h =>
+                        .AddSnapshotHostedService<Account>(h =>
                             h.RetryLimit(5)
                                 .IsRebuildEnabled(true))
-                        .AddHostedViewIndexer<SearchAccountView>(h =>
+                        .AddViewHostedService<SearchAccountView>(h =>
                             h.RetryLimit(5)
                                 .BeforeSave(batch =>
                                 {

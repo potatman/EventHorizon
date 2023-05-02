@@ -29,7 +29,7 @@ public static class ServiceCollectionExtensions
         return configurator;
     }
 
-    public static EventHorizonConfigurator AddHostedSnapshot<T>(this EventHorizonConfigurator configurator,
+    public static EventHorizonConfigurator AddSnapshotHostedService<T>(this EventHorizonConfigurator configurator,
         Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null)
         where T : class, IState
     {
@@ -60,7 +60,7 @@ public static class ServiceCollectionExtensions
         return configurator;
     }
 
-    public static EventHorizonConfigurator AddHostedViewIndexer<T>(this EventHorizonConfigurator configurator,
+    public static EventHorizonConfigurator AddViewHostedService<T>(this EventHorizonConfigurator configurator,
         Action<AggregateBuilder<View<T>, T>> onBuild = null)
         where T : class, IState
     {
