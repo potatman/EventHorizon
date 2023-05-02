@@ -57,7 +57,7 @@ public class Sender
         return res.Select(x => JsonSerializer.Deserialize<TR>(x.Payload)).ToArray();
     }
 
-    private async Task<Response[]> SendAndReceiveAsync<T>(Request[] requests) where T : IState
+    public async Task<Response[]> SendAndReceiveAsync<T>(Request[] requests) where T : IState
     {
         // Ensure subscription is ready
         await _subscriptionTracker.TrackSubscription<T>();
