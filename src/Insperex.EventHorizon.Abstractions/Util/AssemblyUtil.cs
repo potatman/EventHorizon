@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using Insperex.EventHorizon.Abstractions.Interfaces;
+using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Microsoft.Extensions.DependencyModel;
 
 namespace Insperex.EventHorizon.Abstractions.Util;

@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces;
+using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using MassTransit;

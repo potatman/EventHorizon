@@ -1,4 +1,4 @@
-﻿namespace Insperex.EventHorizon.Abstractions.Interfaces;
+﻿namespace Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 
 public interface ICommand : IAction
 {
