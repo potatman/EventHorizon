@@ -21,7 +21,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Extensions
             var section = configurator.Config.GetSection("Pulsar");
             var config = section.Get<PulsarConfig>();
             if (config == null)
-                throw new Exception("Pulsar Config is Missing");
+                return configurator;
 
             // Add Pulsar Client
             configurator.Collection.AddSingleton(x => new PulsarClientBuilder()
