@@ -23,19 +23,9 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Extensions
             if (config == null)
                 return configurator;
 
-            // Add Pulsar Client
-            configurator.Collection.AddSingleton(x => new PulsarClientBuilder()
-                .ServiceUrl(config.ServiceUrl)
-                .EnableTransaction(true)
-                .BuildAsync()
-                .Result);
-
-            // Add Pulsar Admin
-            configurator.Collection.AddSingleton<IPulsarAdminRESTAPIClient>(x =>
-                new PulsarAdminRESTAPIClient(new HttpClient { BaseAddress = new Uri($"{config.AdminUrl}/admin/v2/") }));
-
             // Add Admin and Factory
             configurator.Collection.Configure<PulsarConfig>(section);
+            configurator.Collection.AddSingleton<PulsarClientResolver>();
             configurator.Collection.AddSingleton<ITopicAdmin, PulsarTopicAdmin>();
             configurator.Collection.AddSingleton(typeof(IStreamFactory), typeof(PulsarStreamFactory));
 

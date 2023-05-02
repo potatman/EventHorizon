@@ -14,41 +14,38 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
 public class PulsarStreamFactory : IStreamFactory
 {
-    private readonly PulsarClient _client;
-    private readonly IPulsarAdminRESTAPIClient _admin;
+    private readonly PulsarClientResolver _clientResolver;
     private readonly AttributeUtil _attributeUtil;
     private readonly ILoggerFactory _loggerFactory;
 
     public PulsarStreamFactory(
-        PulsarClient client,
-        IPulsarAdminRESTAPIClient admin,
+        PulsarClientResolver clientResolver,
         AttributeUtil attributeUtil,
         ILoggerFactory loggerFactory)
     {
-        _client = client;
-        _admin = admin;
+        _clientResolver = clientResolver;
         _attributeUtil = attributeUtil;
         _loggerFactory = loggerFactory;
     }
 
     public ITopicProducer<T> CreateProducer<T>(PublisherConfig config) where T : class, ITopicMessage, new()
     {
-        return new PulsarTopicProducer<T>(_client, config, CreateAdmin(), _loggerFactory.CreateLogger<PulsarTopicProducer<T>>());
+        return new PulsarTopicProducer<T>(_clientResolver, config, CreateAdmin(), _loggerFactory.CreateLogger<PulsarTopicProducer<T>>());
     }
 
     public ITopicConsumer<T> CreateConsumer<T>(SubscriptionConfig<T> config) where T : class, ITopicMessage, new()
     {
-        return new PulsarTopicConsumer<T>(_client, config, CreateAdmin());
+        return new PulsarTopicConsumer<T>(_clientResolver, config, CreateAdmin());
     }
 
     public ITopicReader<T> CreateReader<T>(ReaderConfig config) where T : class, ITopicMessage, new()
     {
-        return new PulsarTopicReader<T>(_client, config, CreateAdmin());
+        return new PulsarTopicReader<T>(_clientResolver, config, CreateAdmin());
     }
 
     public ITopicAdmin CreateAdmin()
     {
-        return new PulsarTopicAdmin(_admin, _loggerFactory.CreateLogger<PulsarTopicAdmin>());
+        return new PulsarTopicAdmin(_clientResolver.GetAdminClient(), _loggerFactory.CreateLogger<PulsarTopicAdmin>());
     }
 
     public ITopicResolver GetTopicResolver()

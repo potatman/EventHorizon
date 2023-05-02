@@ -19,17 +19,17 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
 public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new()
 {
-    private readonly PulsarClient _client;
+    private readonly PulsarClientResolver _clientResolver;
     private readonly ReaderConfig _config;
     private readonly ITopicAdmin _admin;
     private IReader<T> _reader;
 
     public PulsarTopicReader(
-        PulsarClient client,
+        PulsarClientResolver clientResolver,
         ReaderConfig config,
         ITopicAdmin admin)
     {
-        _client = client;
+        _clientResolver = clientResolver;
         _config = config;
         _admin = admin;
     }
@@ -95,7 +95,8 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         await _admin.RequireTopicAsync(_config.Topic, cts.Token);
 
-        var builder = _client.NewReader(Schema.JSON<T>())
+        var client = await _clientResolver.GetPulsarClientAsync();
+        var builder = client.NewReader(Schema.JSON<T>())
             .Topic(_config.Topic)
             .ReaderName(NameUtil.AssemblyNameWithGuid)
             .ReceiverQueueSize(1000);

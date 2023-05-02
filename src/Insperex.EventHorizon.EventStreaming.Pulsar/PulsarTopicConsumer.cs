@@ -19,7 +19,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
 public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage, new()
 {
-    private readonly PulsarClient _client;
+    private readonly PulsarClientResolver _clientResolver;
     private readonly SubscriptionConfig<T> _config;
     private readonly ITopicAdmin _admin;
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
@@ -27,11 +27,11 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     private Dictionary<string, MessageId> _messageIdDict;
 
     public PulsarTopicConsumer(
-        PulsarClient client,
+        PulsarClientResolver clientResolver,
         SubscriptionConfig<T> config,
         ITopicAdmin admin)
     {
-        _client = client;
+        _clientResolver = clientResolver;
         _config = config;
         _admin = admin;
         _intercept = new OtelConsumerInterceptor.OTelConsumerInterceptor<T>(
@@ -105,7 +105,8 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         foreach (var topic in _config.Topics)
             await _admin.RequireTopicAsync(topic, cts.Token);
 
-        var builder = _client.NewConsumer(Schema.JSON<T>())
+        var client = await _clientResolver.GetPulsarClientAsync();
+        var builder = client.NewConsumer(Schema.JSON<T>())
             .ConsumerName(NameUtil.AssemblyNameWithGuid)
             .SubscriptionType(SubscriptionType.KeyShared)
             .SubscriptionName(_config.SubscriptionName)
