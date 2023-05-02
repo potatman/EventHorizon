@@ -30,9 +30,6 @@ public class InMemoryTopicResolver : ITopicResolver
             })
             .ToArray();
 
-        if (!topics.Any())
-            throw new Exception($"{type.Name} is Missing [StreamAttribute<{typeof(TM).Name}>]");
-
         return topics;
     }
 }
