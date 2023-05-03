@@ -13,7 +13,7 @@ public class SenderBuilder
     private readonly SenderSubscriptionTracker _subscriptionTracker;
     private readonly StreamingClient _streamingClient;
     private Func<AggregateStatus, string, IResponse> _getErrorResult;
-    private TimeSpan _timeout;
+    private TimeSpan _timeout = TimeSpan.FromSeconds(120);
 
     public SenderBuilder(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient)
     {
