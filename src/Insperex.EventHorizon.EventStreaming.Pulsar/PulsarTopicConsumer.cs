@@ -54,12 +54,16 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                 .Select((x, i) => new { Key = i.ToString(CultureInfo.InvariantCulture), Value = x.MessageId })
                 .ToDictionary(x => x.Key, x => x.Value);
 
-            var topic = _config.Topics.Length == 1 ? _config.Topics.First() : null;
             var contexts =  messages
-                .Select((x,i) => new MessageContext<T>
+                .Select((x,i) =>
                 {
-                    Data = x.GetValue(),
-                    TopicData = PulsarMessageMapper.MapTopicData(i.ToString(CultureInfo.InvariantCulture), x, topic ?? x.MessageId.TopicName)
+                    // Note: x.MessageId.TopicName is null, when single tropic
+                    var topic = _config.Topics.Length == 1 ? _config.Topics.First() : x.MessageId.TopicName;
+                    return new MessageContext<T>
+                            {
+                                Data = x.GetValue(),
+                                TopicData = PulsarMessageMapper.MapTopicData(i.ToString(CultureInfo.InvariantCulture), x, topic)
+                            };
                 })
                 .ToArray();
 
