@@ -80,16 +80,14 @@ public class PulsarTopicAdmin : ITopicAdmin
         if (!namespaces.Contains($"{tenant}/{nameSpace}"))
         {
             // Add Retention Policy if namespace == Events
-            var policies = !nameSpace.Contains(EventStreamingConstants.Event)
-                ? new Policies()
-                : new Policies
+            var policies = new Policies
+            {
+                Retention_policies = new RetentionPolicies
                 {
-                    Retention_policies = new RetentionPolicies
-                    {
-                        RetentionTimeInMinutes = retentionInMb ?? -1,
-                        RetentionSizeInMB = retentionInMinutes ?? -1
-                    }
-                };
+                    RetentionTimeInMinutes = retentionInMb ?? -1,
+                    RetentionSizeInMB = retentionInMinutes ?? -1
+                }
+            };
             try
             {
                 await _admin.CreateNamespaceAsync(tenant, nameSpace, policies, ct);
