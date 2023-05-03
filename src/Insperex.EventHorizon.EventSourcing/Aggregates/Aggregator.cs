@@ -302,6 +302,18 @@ public class Aggregator<TParent, T>
                 .Select(x => parentDict.TryGetValue(x, out var value)? new Aggregate<T>(value) : new Aggregate<T>(x))
                 .ToDictionary(x => x.Id);
 
+            // OnCompleted Hook
+            var passed = aggregateDict.Values.Where(x => x.Status == AggregateStatus.Ok).ToArray();
+            try
+            {
+                _config.Middleware?.OnLoad(passed);
+            }
+            catch (Exception e)
+            {
+                foreach (var agg in passed)
+                    agg.SetStatus(AggregateStatus.OnLoadFailed, e.Message);
+            }
+
             return aggregateDict;
         }
         catch (Exception ex)

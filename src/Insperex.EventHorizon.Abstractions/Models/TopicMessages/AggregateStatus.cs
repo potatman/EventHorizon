@@ -6,6 +6,7 @@ public enum AggregateStatus
     CommandTimedOut,
     LoadSnapshotFailed,
     HandlerFailed,
+    OnLoadFailed,
     BeforeSaveFailed,
     AfterSaveFailed,
     SaveSnapshotFailed,

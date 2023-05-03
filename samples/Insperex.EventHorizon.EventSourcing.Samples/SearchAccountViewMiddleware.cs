@@ -7,6 +7,11 @@ namespace Insperex.EventHorizon.EventSourcing.Samples
 {
     public class SearchAccountViewMiddleware : IAggregateMiddleware<SearchAccountView>
     {
+        public Task OnLoad(Aggregate<SearchAccountView>[] aggregates)
+        {
+            return Task.CompletedTask;
+        }
+
         public Task BeforeSave(Aggregate<SearchAccountView>[] aggregates)
         {
             return Task.CompletedTask;
