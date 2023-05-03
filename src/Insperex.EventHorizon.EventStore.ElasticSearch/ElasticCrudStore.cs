@@ -27,7 +27,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         _elasticAttr = elasticAttr;
         _client = client;
         _logger = logger;
-        _dbName = $"{bucketId}_{typeof(TE).Name.ToLower(CultureInfo.InvariantCulture).Replace("`1", string.Empty)}";
+        _dbName = bucketId;
     }
 
     public async Task Setup(CancellationToken ct)
