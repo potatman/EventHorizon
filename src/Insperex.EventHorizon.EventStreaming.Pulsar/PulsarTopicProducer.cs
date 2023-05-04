@@ -25,26 +25,20 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     private readonly PublisherConfig _config;
     private readonly ITopicAdmin _admin;
     private readonly OTelProducerInterceptor.OTelProducerInterceptor<T> _intercept;
-    private readonly ILogger<PulsarTopicProducer<T>> _logger;
     private readonly string _publisherName;
-    private bool _hasSent;
     private IProducer<T> _producer;
-    private bool _running;
 
     public PulsarTopicProducer(
         PulsarClientResolver clientResolver,
         PublisherConfig config,
-        ITopicAdmin admin,
-        ILogger<PulsarTopicProducer<T>> logger)
+        ITopicAdmin admin)
     {
         _clientResolver = clientResolver;
         _config = config;
         _admin = admin;
-        _logger = logger;
         _publisherName = NameUtil.AssemblyNameWithGuid;
         _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
-        TrackStats();
     }
 
     public async Task SendAsync(params T[] messages)
@@ -63,8 +57,6 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
 
     public void Dispose()
     {
-        _running = false;
-        _hasSent = false;
         _producer.DisposeAsync().AsTask().GetAwaiter().GetResult();
         _producer = null;
     }
@@ -93,27 +85,4 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         return _producer;
     }
 
-    private async void TrackStats()
-    {
-        _running = true;
-        while (_running)
-        {
-            await Task.Delay(TimeSpan.FromMinutes(5));
-
-            // Dont Start until first send
-            if (_hasSent)
-                continue;
-
-            try
-            {
-                var stats = await _producer.GetStatsAsync();
-                _logger.LogInformation("Publisher Stats {Name} => {@Stats}", _publisherName, stats);
-                await Task.Delay(TimeSpan.FromMinutes(5));
-            }
-            catch
-            {
-                // ignored
-            }
-        }
-    }
 }
