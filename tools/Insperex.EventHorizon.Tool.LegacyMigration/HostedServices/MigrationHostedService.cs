@@ -5,12 +5,14 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
+using Insperex.EventHorizon.EventStore.MongoDb.Models;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 
 namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
@@ -24,9 +26,9 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
         private readonly Dictionary<string, string> _bucketToTopic;
         private readonly ILogger<MigrationHostedService> _logger;
 
-        public MigrationHostedService(IMongoClient mongoClient, StreamingClient streamingClient, IStreamFactory streamFactory, ILoggerFactory loggerFactory, IConfiguration configuration)
+        public MigrationHostedService(IOptions<MongoConfig> mongoOptions, StreamingClient streamingClient, IStreamFactory streamFactory, ILoggerFactory loggerFactory, IConfiguration configuration)
         {
-            _mongoClient = mongoClient;
+            _mongoClient = new MongoClient(mongoOptions.Value.ConnectionString);
             _streamingClient = streamingClient;
             _streamFactory = streamFactory;
             _loggerFactory = loggerFactory;
@@ -37,7 +39,7 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             // Used to Start Over
-            if(true)
+            if(false)
                 foreach (var item in _bucketToTopic)
                     await ResetAsync(item.Key, item.Value, stoppingToken);
 
