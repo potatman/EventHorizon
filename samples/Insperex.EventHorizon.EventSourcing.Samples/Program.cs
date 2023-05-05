@@ -15,6 +15,7 @@ using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
 using Insperex.EventHorizon.EventStreaming.Subscriptions.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using MongoDB.Driver;
 using Serilog;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples;
@@ -27,7 +28,7 @@ public class Program
             .ConfigureServices((hostContext, services) =>
             {
                 services.AddScoped<SearchAccountViewMiddleware>();
-                services.AddEventHorizon(hostContext.Configuration, x =>
+                services.AddEventHorizon(x =>
                 {
                     x.AddEventSourcing()
 
@@ -38,12 +39,13 @@ public class Program
                         .AddViewHostedService<SearchAccountView>(h =>
                             h.RetryLimit(5)
                                 .UseMiddleware<SearchAccountViewMiddleware>())
+
                         .AddHostedSubscription<AccountConsumer, Event>()
 
                         // Stores
-                        .AddMongoDbSnapshotStore()
-                        .AddElasticViewStore()
-                        .AddPulsarEventStream();
+                        .AddMongoDbSnapshotStore(hostContext.Configuration)
+                        .AddElasticViewStore(hostContext.Configuration)
+                        .AddPulsarEventStream(hostContext.Configuration);
                 });
             })
             .UseSerilog((_, config) => { config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture); })

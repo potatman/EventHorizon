@@ -22,10 +22,10 @@ public static class HostTestUtil
         return GetHostBase(output)
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddEventHorizon(hostContext.Configuration, x =>
+                services.AddEventHorizon(x =>
                 {
-                    x.AddElasticSnapshotStore()
-                        .AddElasticViewStore();
+                    x.AddElasticSnapshotStore(hostContext.Configuration)
+                        .AddElasticViewStore(hostContext.Configuration);
                 });
             })
             .Build()
@@ -37,10 +37,10 @@ public static class HostTestUtil
         return GetHostBase(output)
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddEventHorizon(hostContext.Configuration, x =>
+                services.AddEventHorizon(x =>
                 {
-                    x.AddElasticSnapshotStore()
-                        .AddElasticViewStore();
+                    x.AddElasticSnapshotStore(hostContext.Configuration)
+                        .AddElasticViewStore(hostContext.Configuration);
                 });
             })
             .Build()
@@ -52,7 +52,7 @@ public static class HostTestUtil
         return GetHostBase(output)
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddEventHorizon(hostContext.Configuration, x =>
+                services.AddEventHorizon(x =>
                 {
                     x.AddInMemorySnapshotStore()
                         .AddInMemoryViewStore();
@@ -67,10 +67,10 @@ public static class HostTestUtil
         return GetHostBase(output)
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddEventHorizon(hostContext.Configuration, x =>
+                services.AddEventHorizon(x =>
                 {
-                    x.AddMongoDbSnapshotStore()
-                        .AddMongoDbViewStore();
+                    x.AddMongoDbSnapshotStore(hostContext.Configuration)
+                        .AddMongoDbViewStore(hostContext.Configuration);
                 });
             })
             .Build()

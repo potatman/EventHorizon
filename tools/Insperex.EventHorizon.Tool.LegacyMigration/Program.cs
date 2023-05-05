@@ -17,10 +17,9 @@ public class Program
         await Host.CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddEventHorizon(hostContext.Configuration, x =>
+                services.AddEventHorizon(x =>
                 {
-                    x.AddMongoDbSnapshotStore()
-                        .AddPulsarEventStream();
+                    x.AddPulsarEventStream(hostContext.Configuration);
                 });
 
                 // Runs Migration

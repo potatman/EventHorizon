@@ -16,11 +16,7 @@ public static class TestUtil
         {
             var snapAttr = attributeUtil.GetOne<SnapshotStoreAttribute>(type);
             var viewAttr = attributeUtil.GetOne<ViewStoreAttribute>(type);
-            var eventAttrs = attributeUtil.GetAll<StreamAttribute<Event>>(type) as BaseStreamAttribute[];
-            var commandAttrs = attributeUtil.GetAll<StreamAttribute<Command>>(type) as BaseStreamAttribute[];
-            var requestAttrs = attributeUtil.GetAll<StreamAttribute<Request>>(type) as BaseStreamAttribute[];
-            var responseAttrs = attributeUtil.GetAll<StreamAttribute<Response>>(type) as BaseStreamAttribute[];
-            var streamAttrs = eventAttrs.Concat(commandAttrs).Concat(requestAttrs).Concat(responseAttrs).ToArray();
+            var streamAttrs = attributeUtil.GetAll<StreamAttribute>(type);
 
             if (snapAttr != null) snapAttr.BucketId += iteration;
             if (viewAttr != null) viewAttr.Database += iteration;

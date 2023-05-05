@@ -11,10 +11,9 @@ using MongoDB.Driver;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
+[Stream("account")]
+[PulsarConfig("test_bank")]
 [SnapshotStore("test_bank_snapshot_account")]
-[Stream<Event>("test_bank", "event", "account")]
-[Stream<Request>("test_bank", "request", "account")]
-[Stream<Response>("test_bank", "response", "account")]
 [MongoConfig(ReadPreferenceMode = ReadPreferenceMode.SecondaryPreferred,
     ReadConcernLevel = ReadConcernLevel.Majority,
     WriteConcernLevel = WriteConcernLevel.Majority)]
@@ -70,7 +69,8 @@ public class Account : IState,
     #endregion
 }
 
-[Stream<Event>("test_bank", "command", "account")]
+[Stream("account")]
+[PulsarConfig("test_bank")]
 public interface IApplyAccountEvents :
     IApplyEvent<AccountOpened>,
     IApplyEvent<AccountDebited>,

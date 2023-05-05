@@ -19,14 +19,12 @@ public class InMemoryTopicResolver : ITopicResolver
 
     public string[] GetTopics<TM>(Type type, string topicName = null) where TM : ITopicMessage
     {
-        var attributes = _attributeUtil.GetAll<StreamAttribute<TM>>(type);
+        var attributes = _attributeUtil.GetAll<StreamAttribute>(type);
         var topics = attributes
             .Select(x =>
             {
-                var tenant = x.Tenant ?? "public";
-                var @namespace = x.Namespace ?? "default";
                 var topic = topicName == null ? x.Topic : $"{x.Topic}-{topicName}";
-                return $"in-memory://{tenant}/{@namespace}/{topic}";
+                return $"in-memory://{typeof(TM).Name}/{topic}";
             })
             .ToArray();
 

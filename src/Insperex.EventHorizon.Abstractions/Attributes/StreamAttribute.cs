@@ -4,21 +4,22 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 
 namespace Insperex.EventHorizon.Abstractions.Attributes
 {
-    [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, Inherited = true, AllowMultiple = true)]
-    public class StreamAttribute<T> : BaseStreamAttribute where T : ITopicMessage
+    [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
+    public class StreamAttribute : Attribute
     {
+        public string Topic { get; set; }
+        public Type SubType { get; set; }
 
-        public StreamAttribute(string topic) : base(topic) { }
-
-        public StreamAttribute(string tenant, string @namespace, string topic) : base(tenant, @namespace, topic) { }
+        public StreamAttribute(string topic)
+        {
+            Topic = topic;
+        }
 
         public StreamAttribute(Type subType)
         {
-            var attr = subType.GetCustomAttribute<StreamAttribute<T>>();
-            if (attr == null) throw new Exception($"{subType.Name} is missing StreamAttribute<{typeof(T).Name}>");
+            var attr = subType.GetCustomAttribute<StreamAttribute>();
+            if (attr == null) throw new Exception($"{subType.Name} is missing StreamAttribute");
             SubType = subType;
-            Tenant = attr.Tenant;
-            Namespace = attr.Namespace;
             Topic = attr.Topic;
         }
     }

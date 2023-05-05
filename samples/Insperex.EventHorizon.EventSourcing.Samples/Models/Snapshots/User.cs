@@ -6,12 +6,13 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Handlers;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.Interfaces;
+using Insperex.EventHorizon.EventStreaming.Pulsar.Attributes;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
+[Stream("user")]
+[PulsarConfig("test_bank")]
 [SnapshotStore("test_snapshot_bank_user")]
-[Stream<Event>("test_bank", "event", "user")]
-[Stream<Command>("test_bank", "command", "user")]
 public class User : IState,
     IHandleCommand<ChangeUserName>,
     IApplyEvent<UserNameChangedV2>

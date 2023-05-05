@@ -15,24 +15,24 @@ namespace Insperex.EventHorizon.EventStore.ElasticSearch.Extensions;
 
 public static class EventHorizonConfiguratorExtensions
 {
-    public static EventHorizonConfigurator AddElasticSnapshotStore(this EventHorizonConfigurator configurator)
+    public static EventHorizonConfigurator AddElasticSnapshotStore(this EventHorizonConfigurator configurator, IConfiguration config)
     {
-        AddElasticStore(configurator);
+        AddElasticStore(configurator, config);
         configurator.Collection.AddSingleton(typeof(ISnapshotStoreFactory<>), typeof(ElasticStoreFactory<>));
         configurator.Collection.AddSingleton(typeof(ILockStoreFactory<>), typeof(ElasticStoreFactory<>));
         return configurator;
     }
 
-    public static EventHorizonConfigurator AddElasticViewStore(this EventHorizonConfigurator configurator)
+    public static EventHorizonConfigurator AddElasticViewStore(this EventHorizonConfigurator configurator, IConfiguration config)
     {
-        AddElasticStore(configurator);
+        AddElasticStore(configurator, config);
         configurator.Collection.AddSingleton(typeof(IViewStoreFactory<>), typeof(ElasticStoreFactory<>));
         return configurator;
     }
 
-    private static void AddElasticStore(this EventHorizonConfigurator configurator)
+    private static void AddElasticStore(this EventHorizonConfigurator configurator, IConfiguration config)
     {
-        configurator.Collection.Configure<ElasticConfig>(configurator.Config.GetSection("ElasticSearch"));
+        configurator.Collection.Configure<ElasticConfig>(config.GetSection("ElasticSearch"));
         configurator.Collection.AddSingleton(typeof(LockFactory<>));
         configurator.Collection.AddSingleton<AttributeUtil>();
     }

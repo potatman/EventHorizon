@@ -42,7 +42,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
         _host = Host.CreateDefaultBuilder(Array.Empty<string>())
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddEventHorizon(hostContext.Configuration, x =>
+                services.AddEventHorizon(x =>
                 {
                     x.AddEventSourcing()
 

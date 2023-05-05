@@ -47,7 +47,7 @@ public class SenderIntegrationTest : IAsyncLifetime
         _host = Host.CreateDefaultBuilder(Array.Empty<string>())
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddEventHorizon(hostContext.Configuration, x =>
+                services.AddEventHorizon(x =>
                 {
                     x.AddEventSourcing()
 
@@ -58,6 +58,9 @@ public class SenderIntegrationTest : IAsyncLifetime
                         .AddInMemorySnapshotStore()
                         .AddInMemoryViewStore()
                         .AddInMemoryEventStream();
+                        // .AddInMemorySnapshotStore()
+                        // .AddInMemoryViewStore()
+                        // .AddPulsarEventStream(hostContext.Configuration);
                 });
             })
             .UseSerilog((_, config) =>

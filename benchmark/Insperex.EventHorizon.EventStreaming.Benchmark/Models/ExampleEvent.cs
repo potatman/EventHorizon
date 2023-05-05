@@ -2,11 +2,13 @@
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
+using Insperex.EventHorizon.EventStreaming.Pulsar.Attributes;
 using ProtoBuf;
 
 namespace Insperex.EventHorizon.EventStreaming.Benchmark.Models;
 
-[Stream<Event>("tec_test_benchmark")]
+[Stream("benchmark")]
+[PulsarConfig("test_benchmark")]
 public class ExampleEvent : IEvent
 {
     public string Property1 { get; set; }

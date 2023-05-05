@@ -22,6 +22,31 @@ public class MongoStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactory<
     {
         _type = typeof(T);
         _attributeUtil = attributeUtil;
+
+        // https://www.mongodb.com/docs/drivers/csharp/current/fundamentals/connection/connection-options/
+        var clientSettings = new MongoClientSettings()
+        {
+            UseTls = true,
+            ApplicationName = AssemblyUtil.AssemblyName,
+            Credential = new MongoCredential("MONGODB-AWS",
+                new MongoExternalIdentity("<awsKeyId>"),
+                new PasswordEvidence("<awsSecretKey>"))
+        };
+
+        // https://www.mongodb.com/docs/mongoid/master/reference/collection-configuration/
+        var collectionSettings = new MongoCollectionSettings
+        {
+            ReadConcern = ReadConcern.Linearizable,
+            ReadPreference = ReadPreference.PrimaryPreferred,
+            WriteConcern = WriteConcern.W1
+        };
+
+        // Question:
+            // - Attribute cant use Class Models... discuss
+
+        // var mongoClientSettings = MongoClientSettings.FromConnectionString("");
+
+
         _client = new MongoClient(MongoUrl.Create(mongoConfig.Value.ConnectionString));
     }
 

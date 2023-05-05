@@ -20,24 +20,24 @@ public static class EventHorizonConfiguratorExtensions
         BsonSerializer.RegisterSerializer(new ObjectSerializer(_ => true));
     }
 
-    public static EventHorizonConfigurator AddMongoDbSnapshotStore(this EventHorizonConfigurator configurator)
+    public static EventHorizonConfigurator AddMongoDbSnapshotStore(this EventHorizonConfigurator configurator, IConfiguration config)
     {
-        AddMongoDbStore(configurator);
+        AddMongoDbStore(configurator, config);
         configurator.Collection.AddSingleton(typeof(ISnapshotStoreFactory<>), typeof(MongoStoreFactory<>));
         configurator.Collection.AddSingleton(typeof(ILockStoreFactory<>), typeof(MongoStoreFactory<>));
         return configurator;
     }
 
-    public static EventHorizonConfigurator AddMongoDbViewStore(this EventHorizonConfigurator configurator)
+    public static EventHorizonConfigurator AddMongoDbViewStore(this EventHorizonConfigurator configurator, IConfiguration config)
     {
-        AddMongoDbStore(configurator);
+        AddMongoDbStore(configurator, config);
         configurator.Collection.AddSingleton(typeof(IViewStoreFactory<>), typeof(MongoStoreFactory<>));
         return configurator;
     }
 
-    private static void AddMongoDbStore(this EventHorizonConfigurator configurator)
+    private static void AddMongoDbStore(this EventHorizonConfigurator configurator, IConfiguration config)
     {
-        configurator.Collection.Configure<MongoConfig>(configurator.Config.GetSection("MongoDb"));
+        configurator.Collection.Configure<MongoConfig>(config.GetSection("MongoDb"));
         configurator.Collection.AddSingleton(typeof(LockFactory<>));
         configurator.Collection.AddSingleton<AttributeUtil>();
     }

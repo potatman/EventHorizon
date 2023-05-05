@@ -54,7 +54,7 @@ public class ValidationUtil
         where T : IState
     {
         var type = typeof(T);
-        var eventAttrs = _attributeUtil.GetAll<StreamAttribute<Event>>(typeof(T)) as BaseStreamAttribute[];
+        var eventAttrs = _attributeUtil.GetAll<StreamAttribute>(typeof(T));
         var types = eventAttrs.Select(x => x.SubType).ToArray();
 
         var errors = ValidateHandlers<T, Event>(types);

@@ -31,6 +31,7 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
         _loggerFactory = loggerFactory;
         _elasticAttr = _attributeUtil.GetOne<ElasticConfigAttribute>(_type);
 
+        // Client Configuration
         var connectionPool = new StickyConnectionPool(options.Value.Uris.Select(u => new Uri(u)));
         var settings = new ConnectionSettings(connectionPool)
             .PingTimeout(TimeSpan.FromSeconds(10))
@@ -42,6 +43,14 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
             settings = settings.BasicAuthentication(options.Value.UserName, options.Value.Password);
 
         _client = new ElasticClient(settings);
+
+
+        var indexSettings = new IndexSettings
+        {
+            NumberOfShards = 1,
+            NumberOfReplicas = 1,
+            ["key"] = "value"
+        };
     }
 
     public ICrudStore<Lock> GetLockStore()

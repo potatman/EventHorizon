@@ -5,6 +5,7 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Models;
+using Insperex.EventHorizon.EventStreaming.Pulsar.Attributes;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
@@ -26,12 +27,13 @@ public class PulsarTopicResolver : ITopicResolver
             ? EventStreamingConstants.Persistent
             : EventStreamingConstants.NonPersistent;
 
-        var attributes = _attributeUtil.GetAll<StreamAttribute<TM>>(type);
+        var pulsarAttr = _attributeUtil.GetOne<PulsarConfigAttribute>(type);
+        var attributes = _attributeUtil.GetAll<StreamAttribute>(type);
         var topics = attributes
             .Select(x =>
             {
-                var tenant = x.Tenant ?? DefaultTenant;
-                var @namespace = x.Namespace ?? DefaultNamespace;
+                var tenant = pulsarAttr?.Tenant ?? DefaultTenant;
+                var @namespace = typeof(TM).Name ?? DefaultNamespace;
                 var topic = topicName == null ? x.Topic : $"{x.Topic}-{topicName}";
                 return $"{persistent}://{tenant}/{@namespace}/{topic}";
             })

@@ -17,9 +17,9 @@ public static class HostTestUtil
         return GetHostBase(output)
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddEventHorizon(hostContext.Configuration, x =>
+                services.AddEventHorizon(x =>
                 {
-                    x.AddPulsarEventStream();
+                    x.AddPulsarEventStream(hostContext.Configuration);
                 });
             })
             .Build()
@@ -31,7 +31,7 @@ public static class HostTestUtil
         return GetHostBase(output)
             .ConfigureServices((hostContext, services) =>
             {
-                services.AddEventHorizon(hostContext.Configuration, x =>
+                services.AddEventHorizon(x =>
                 {
                     x.AddInMemoryEventStream();
                 });

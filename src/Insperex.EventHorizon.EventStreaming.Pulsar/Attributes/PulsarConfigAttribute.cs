@@ -2,7 +2,7 @@ using System;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar.Attributes
 {
-    [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, Inherited = true, AllowMultiple = true)]
     public class PulsarConfigAttribute : Attribute
     {
         public string Tenant { get; set; }
