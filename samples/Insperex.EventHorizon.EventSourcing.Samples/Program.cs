@@ -33,14 +33,11 @@ public class Program
                     x.AddEventSourcing()
 
                         // Hosted
-                        .ApplyRequestsToSnapshot<Account>(h =>
-                            h.RetryLimit(5)
-                                .IsRebuildEnabled(true))
-                        .ApplyEventsToView<SearchAccountView>(h =>
-                            h.RetryLimit(5)
-                                .UseMiddleware<SearchAccountViewMiddleware>())
+                        .ApplyRequestsToSnapshot<Account>()
+                        .ApplyEventsToView<SearchAccountView>(h=>
+                            h.UseMiddleware<SearchAccountViewMiddleware>())
 
-                        .AddHostedSubscription<AccountConsumer, Event>()
+                        .AddSubscription<AccountConsumer, Event>()
 
                         // Stores
                         .AddMongoDbSnapshotStore(hostContext.Configuration)

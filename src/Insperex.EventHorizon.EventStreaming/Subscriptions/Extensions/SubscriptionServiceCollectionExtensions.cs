@@ -8,7 +8,7 @@ namespace Insperex.EventHorizon.EventStreaming.Subscriptions.Extensions;
 
 public static class SubscriptionServiceCollectionExtensions
 {
-    public static EventHorizonConfigurator AddHostedSubscription<TH, TM>(this EventHorizonConfigurator configurator,
+    public static EventHorizonConfigurator AddSubscription<TH, TM>(this EventHorizonConfigurator configurator,
         Action<SubscriptionBuilder<TM>> action = null)
         where TH : class, IStreamConsumer<TM>
         where TM : class, ITopicMessage, new()
@@ -28,7 +28,7 @@ public static class SubscriptionServiceCollectionExtensions
         return configurator;
     }
 
-    public static EventHorizonConfigurator AddHostedSubscription<T>(this EventHorizonConfigurator configurator,
+    public static EventHorizonConfigurator AddSubscription<T>(this EventHorizonConfigurator configurator,
         Action<SubscriptionBuilder<T>> action = null)
         where T : class, ITopicMessage, new()
     {
