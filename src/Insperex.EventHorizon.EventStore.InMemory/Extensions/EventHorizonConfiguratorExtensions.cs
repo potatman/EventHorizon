@@ -16,12 +16,6 @@ public static class EventHorizonConfiguratorExtensions
             typeof(ISnapshotStoreFactory<>),
             typeof(InMemoryEventStoreFactory<>),
             ServiceLifetime.Singleton));
-        return configurator;
-    }
-
-    public static EventHorizonConfigurator AddInMemoryLockStore(this EventHorizonConfigurator configurator)
-    {
-        AddInMemoryStore(configurator);
         configurator.Collection.Replace(ServiceDescriptor.Describe(
             typeof(ILockStoreFactory<>),
             typeof(InMemoryEventStoreFactory<>),

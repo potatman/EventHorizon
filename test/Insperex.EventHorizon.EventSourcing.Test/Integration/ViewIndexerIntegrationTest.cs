@@ -52,7 +52,6 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
 
                         // Stores
                         .AddInMemorySnapshotStore()
-                        .AddInMemoryLockStore()
                         .AddInMemoryViewStore()
                         // .AddElasticViewStore()
                         .AddInMemoryEventStream();

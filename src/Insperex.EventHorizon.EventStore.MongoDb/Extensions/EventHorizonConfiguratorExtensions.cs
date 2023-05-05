@@ -24,12 +24,6 @@ public static class EventHorizonConfiguratorExtensions
     {
         AddMongoDbStore(configurator);
         configurator.Collection.AddSingleton(typeof(ISnapshotStoreFactory<>), typeof(MongoStoreFactory<>));
-        return configurator;
-    }
-
-    public static EventHorizonConfigurator AddMongoDbLockStore(this EventHorizonConfigurator configurator)
-    {
-        AddMongoDbStore(configurator);
         configurator.Collection.AddSingleton(typeof(ILockStoreFactory<>), typeof(MongoStoreFactory<>));
         return configurator;
     }

@@ -17,12 +17,6 @@ public static class EventHorizonConfiguratorExtensions
     {
         AddIgniteStore(configurator);
         configurator.Collection.AddSingleton(typeof(ISnapshotStoreFactory<>), typeof(IgniteEventStoreFactory<>));
-        return configurator;
-    }
-
-    public static EventHorizonConfigurator AddIgniteLockStore(this EventHorizonConfigurator configurator)
-    {
-        AddIgniteStore(configurator);
         configurator.Collection.AddSingleton(typeof(ILockStoreFactory<>), typeof(IgniteEventStoreFactory<>));
         return configurator;
     }

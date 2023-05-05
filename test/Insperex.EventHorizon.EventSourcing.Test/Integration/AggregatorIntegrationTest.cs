@@ -56,7 +56,6 @@ public class AggregatorIntegrationTest : IAsyncLifetime
 
                         // Stores
                         .AddInMemorySnapshotStore()
-                        .AddInMemoryLockStore()
                         .AddInMemoryViewStore()
                         .AddInMemoryEventStream();
                 });

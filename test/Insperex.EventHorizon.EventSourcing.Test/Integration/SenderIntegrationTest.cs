@@ -56,7 +56,6 @@ public class SenderIntegrationTest : IAsyncLifetime
 
                         // Stores
                         .AddInMemorySnapshotStore()
-                        .AddInMemoryLockStore()
                         .AddInMemoryViewStore()
                         .AddInMemoryEventStream();
                 });

@@ -42,7 +42,6 @@ public class Program
 
                         // Stores
                         .AddMongoDbSnapshotStore()
-                        .AddMongoDbLockStore()
                         .AddElasticViewStore()
                         .AddPulsarEventStream();
                 });

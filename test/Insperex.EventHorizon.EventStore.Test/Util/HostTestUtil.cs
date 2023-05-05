@@ -25,7 +25,6 @@ public static class HostTestUtil
                 services.AddEventHorizon(hostContext.Configuration, x =>
                 {
                     x.AddElasticSnapshotStore()
-                        .AddElasticLockStore()
                         .AddElasticViewStore();
                 });
             })
@@ -41,7 +40,6 @@ public static class HostTestUtil
                 services.AddEventHorizon(hostContext.Configuration, x =>
                 {
                     x.AddElasticSnapshotStore()
-                        .AddElasticLockStore()
                         .AddElasticViewStore();
                 });
             })
@@ -57,7 +55,6 @@ public static class HostTestUtil
                 services.AddEventHorizon(hostContext.Configuration, x =>
                 {
                     x.AddInMemorySnapshotStore()
-                        .AddInMemoryLockStore()
                         .AddInMemoryViewStore();
                 });
             })
@@ -73,7 +70,6 @@ public static class HostTestUtil
                 services.AddEventHorizon(hostContext.Configuration, x =>
                 {
                     x.AddMongoDbSnapshotStore()
-                        .AddMongoDbLockStore()
                         .AddMongoDbViewStore();
                 });
             })
