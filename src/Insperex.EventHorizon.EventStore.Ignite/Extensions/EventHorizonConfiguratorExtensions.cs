@@ -36,14 +36,7 @@ public static class EventHorizonConfiguratorExtensions
 
     private static void AddIgniteStore(this EventHorizonConfigurator configurator)
     {
-        var config = configurator.Config.GetSection("Ignite").Get<IgniteConfig>();
-
-        var cfg = new IgniteClientConfiguration
-        {
-            Endpoints = config.Endpoints
-        };
-
-        configurator.Collection.TryAddSingleton(x => Ignition.StartClient(cfg));
+        configurator.Collection.Configure<IgniteConfig>(configurator.Config.GetSection("Ignite"));
         configurator.Collection.AddSingleton(typeof(LockFactory<>));
         configurator.Collection.AddSingleton<AttributeUtil>();
     }

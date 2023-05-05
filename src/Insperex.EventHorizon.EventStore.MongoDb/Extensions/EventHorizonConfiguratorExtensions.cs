@@ -43,8 +43,7 @@ public static class EventHorizonConfiguratorExtensions
 
     private static void AddMongoDbStore(this EventHorizonConfigurator configurator)
     {
-        var config = configurator.Config.GetSection("MongoDb").Get<MongoConfig>();
-        configurator.Collection.TryAddSingleton<IMongoClient>(x => new MongoClient(MongoUrl.Create(config.ConnectionString)));
+        configurator.Collection.Configure<MongoConfig>(configurator.Config.GetSection("MongoDb"));
         configurator.Collection.AddSingleton(typeof(LockFactory<>));
         configurator.Collection.AddSingleton<AttributeUtil>();
     }

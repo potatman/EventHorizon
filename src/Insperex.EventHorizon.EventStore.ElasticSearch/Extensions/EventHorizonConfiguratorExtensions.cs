@@ -38,20 +38,7 @@ public static class EventHorizonConfiguratorExtensions
 
     private static void AddElasticStore(this EventHorizonConfigurator configurator)
     {
-        var config = configurator.Config.GetSection("ElasticSearch").Get<ElasticConfig>();
-
-        var connectionPool = new StickyConnectionPool(config.Uris.Select(u => new Uri(u)));
-        var settings = new ConnectionSettings(connectionPool)
-            .PingTimeout(TimeSpan.FromSeconds(10))
-            .DeadTimeout(TimeSpan.FromSeconds(60))
-            .RequestTimeout(TimeSpan.FromSeconds(60))
-            .DisableDirectStreaming();
-
-        if (config.UserName != null)
-            settings = settings.BasicAuthentication(config.UserName, config.Password);
-
-        var client = new ElasticClient(settings);
-        configurator.Collection.TryAddSingleton<IElasticClient>(x => client);
+        configurator.Collection.Configure<ElasticConfig>(configurator.Config.GetSection("ElasticSearch"));
         configurator.Collection.AddSingleton(typeof(LockFactory<>));
         configurator.Collection.AddSingleton<AttributeUtil>();
     }

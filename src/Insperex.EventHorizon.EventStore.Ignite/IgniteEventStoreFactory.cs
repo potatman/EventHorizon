@@ -1,12 +1,15 @@
 ﻿using System;
+using Apache.Ignite.Core;
 using Apache.Ignite.Core.Client;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Util;
+using Insperex.EventHorizon.EventStore.Ignite.Models;
 using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Insperex.EventHorizon.EventStore.Ignite;
 
@@ -18,10 +21,13 @@ public class IgniteEventStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFa
     private readonly ILoggerFactory _loggerFactory;
     private readonly Type _type;
 
-    public IgniteEventStoreFactory(IIgniteClient client, AttributeUtil attributeUtil, ILoggerFactory loggerFactory)
+    public IgniteEventStoreFactory(IOptions<IgniteConfig> options, AttributeUtil attributeUtil, ILoggerFactory loggerFactory)
     {
         _type = typeof(T);
-        _client = client;
+        _client = Ignition.StartClient(new IgniteClientConfiguration
+        {
+            Endpoints = options.Value.Endpoints
+        });
         _attributeUtil = attributeUtil;
         _loggerFactory = loggerFactory;
     }
