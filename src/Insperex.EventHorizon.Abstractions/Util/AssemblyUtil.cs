@@ -11,7 +11,7 @@ namespace Insperex.EventHorizon.Abstractions.Util;
 
 public static class AssemblyUtil
 {
-    private static readonly Assembly Assembly = Assembly.GetCallingAssembly() ?? Assembly.GetEntryAssembly();
+    private static readonly Assembly Assembly = Assembly.GetEntryAssembly() ?? Assembly.GetCallingAssembly();
 
     public static readonly ImmutableDictionary<string, Type> TypeDictionary = DependencyContext.Default?.CompileLibraries
         .SelectMany(x =>
