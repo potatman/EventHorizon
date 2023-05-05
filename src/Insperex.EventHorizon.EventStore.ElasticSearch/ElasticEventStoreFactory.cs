@@ -22,14 +22,14 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
     private readonly AttributeUtil _attributeUtil;
     private readonly ILoggerFactory _loggerFactory;
     private readonly Type _type;
-    private readonly ElasticConfigAttribute _elasticAttr;
+    private readonly ElasticIndexAttribute _elasticAttr;
 
     public ElasticStoreFactory(IOptions<ElasticConfig> options, AttributeUtil attributeUtil, ILoggerFactory loggerFactory)
     {
         _type = typeof(T);
         _attributeUtil = attributeUtil;
         _loggerFactory = loggerFactory;
-        _elasticAttr = _attributeUtil.GetOne<ElasticConfigAttribute>(_type);
+        _elasticAttr = _attributeUtil.GetOne<ElasticIndexAttribute>(_type);
 
         // Client Configuration
         var connectionPool = new StickyConnectionPool(options.Value.Uris.Select(u => new Uri(u)));

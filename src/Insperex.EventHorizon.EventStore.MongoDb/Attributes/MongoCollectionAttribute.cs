@@ -5,7 +5,7 @@ using MongoDB.Driver;
 namespace Insperex.EventHorizon.EventStore.MongoDb.Attributes
 {
     [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
-    public class MongoConfigAttribute : Attribute
+    public class MongoCollectionAttribute : Attribute
     {
         public int TimeToLiveMs { get; set; }
         public ReadPreferenceMode ReadPreferenceMode { get; set; }

@@ -17,12 +17,12 @@ namespace Insperex.EventHorizon.EventStore.ElasticSearch;
 public class ElasticCrudStore<TE> : ICrudStore<TE>
     where TE : class, ICrudEntity
 {
-    private readonly ElasticConfigAttribute _elasticAttr;
+    private readonly ElasticIndexAttribute _elasticAttr;
     private readonly IElasticClient _client;
     private readonly ILogger<ElasticCrudStore<TE>> _logger;
     private readonly string _dbName;
 
-    public ElasticCrudStore(ElasticConfigAttribute elasticAttr, IElasticClient client, string bucketId, ILogger<ElasticCrudStore<TE>> logger)
+    public ElasticCrudStore(ElasticIndexAttribute elasticAttr, IElasticClient client, string bucketId, ILogger<ElasticCrudStore<TE>> logger)
     {
         _elasticAttr = elasticAttr;
         _client = client;

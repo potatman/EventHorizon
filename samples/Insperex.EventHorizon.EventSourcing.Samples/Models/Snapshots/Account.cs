@@ -14,7 +14,7 @@ namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 [Stream("account")]
 [PulsarConfig("test_bank")]
 [SnapshotStore("test_bank_snapshot_account")]
-[MongoConfig(ReadPreferenceMode = ReadPreferenceMode.SecondaryPreferred,
+[MongoCollection(ReadPreferenceMode = ReadPreferenceMode.SecondaryPreferred,
     ReadConcernLevel = ReadConcernLevel.Majority,
     WriteConcernLevel = WriteConcernLevel.Majority)]
 public class Account : IState,

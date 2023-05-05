@@ -7,7 +7,7 @@ using Insperex.EventHorizon.EventStore.ElasticSearch.Attributes;
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 
 [ViewStore("test_view_search_account")]
-[ElasticConfig(Refresh = Refresh.False, RefreshIntervalMs = 30000, MaxResultWindow = 5000000)]
+[ElasticIndex(Refresh = Refresh.False, RefreshIntervalMs = 30000, MaxResultWindow = 5000000)]
 public class SearchAccountView : IState
 {
     public string Id { get; set; }

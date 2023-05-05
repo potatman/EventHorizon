@@ -4,7 +4,7 @@ using Elasticsearch.Net;
 namespace Insperex.EventHorizon.EventStore.ElasticSearch.Attributes
 {
     [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
-    public class ElasticConfigAttribute : Attribute
+    public class ElasticIndexAttribute : Attribute
     {
         public Refresh Refresh { get; set; } = Refresh.False;
         public int RefreshIntervalMs { get; set; }

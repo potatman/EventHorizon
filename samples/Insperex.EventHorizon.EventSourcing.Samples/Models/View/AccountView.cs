@@ -10,7 +10,7 @@ namespace Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 
 [ViewStore("test_bank_view_account")]
 [Stream(typeof(Account))]
-[ElasticConfig(Refresh = Refresh.True, RefreshIntervalMs = 200, MaxResultWindow = 5000000)]
+[ElasticIndex(Refresh = Refresh.True, RefreshIntervalMs = 200, MaxResultWindow = 5000000)]
 public class AccountView : IState,
     IApplyEvent<AccountOpened>,
     IApplyEvent<AccountDebited>,
