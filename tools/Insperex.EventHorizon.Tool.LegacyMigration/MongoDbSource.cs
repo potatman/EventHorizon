@@ -29,7 +29,8 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration
             _logger = logger;
             _findOptions = new FindOptions
             {
-                BatchSize = 10000
+                AllowPartialResults = false,
+                BatchSize = 20000
             };
             _cursors = _client.GetDatabase(_bucketId).GetCollection<Cursor>(nameof(Cursor));
         }
@@ -51,11 +52,12 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration
 
                 // Return Mapped Batch
                 yield return _currentBatch
+                    .AsParallel()
                     .Select(item =>
                     {
                         var streamId = item["StreamId"].AsString;
                         var type = item["Type"].AsString;
-                        var payload = item["Payload"].AsBsonDocument.ToString();
+                        var payload = item["Payload"].ToString();
                         return new Event { StreamId = streamId, Type = type, Payload = payload };
                     })
                     .ToArray();
@@ -69,14 +71,14 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration
             var cursor = await _cursors.Find(filter1).FirstOrDefaultAsync(ct);
 
             var filter2 = cursor == null ? Builders<BsonDocument>.Filter.Empty :
-                Builders<BsonDocument>.Filter.Gt("EventDateTime", AssemblyUtil.AssemblyName);
+                Builders<BsonDocument>.Filter.Gt("EventDateTime", cursor.EventDateTime);
 
-            return await _client.GetDatabase(_bucketId).GetCollection<BsonDocument>(nameof(Event))
+            var session = await _client.StartSessionAsync(cancellationToken: ct);
+            var query = session.Client.GetDatabase(_bucketId).GetCollection<BsonDocument>(nameof(Event))
+                .WithReadPreference(ReadPreference.Nearest)
                 .Find(filter2, _findOptions)
-                .SortBy(x => x["EventDateTime"])
-                .ThenBy(x => x["StreamId"])
-                .ToCursorAsync(ct);
-
+                .SortBy(x => x["EventDateTime"]);
+            return await query.ToCursorAsync(ct);
         }
 
         public async Task SaveState(CancellationToken ct)

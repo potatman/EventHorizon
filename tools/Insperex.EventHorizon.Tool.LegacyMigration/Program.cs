@@ -17,15 +17,14 @@ public class Program
         await Host.CreateDefaultBuilder(args)
             .ConfigureServices((hostContext, services) =>
             {
-                // Runs Migration
-                services.AddHostedService<MigrationHostedService>();
-
                 services.AddEventHorizon(hostContext.Configuration, x =>
                 {
                     x.AddMongoDbSnapshotStore()
-                        // .AddInMemoryEventStream()
                         .AddPulsarEventStream();
                 });
+
+                // Runs Migration
+                services.AddHostedService<MigrationHostedService>();
             })
             .UseSerilog((_, config) => { config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture); })
             .Build()

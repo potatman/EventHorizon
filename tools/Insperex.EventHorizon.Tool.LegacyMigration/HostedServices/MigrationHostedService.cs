@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
+using Insperex.EventHorizon.EventStreaming.Publishers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -20,6 +22,7 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
         private readonly IStreamFactory _streamFactory;
         private readonly ILoggerFactory _loggerFactory;
         private readonly Dictionary<string, string> _bucketToTopic;
+        private readonly ILogger<MigrationHostedService> _logger;
 
         public MigrationHostedService(IMongoClient mongoClient, StreamingClient streamingClient, IStreamFactory streamFactory, ILoggerFactory loggerFactory, IConfiguration configuration)
         {
@@ -28,28 +31,36 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
             _streamFactory = streamFactory;
             _loggerFactory = loggerFactory;
             _bucketToTopic = configuration.GetSection("Migration").GetChildren().ToDictionary(x => x.Key, x => x.Value);
+            _logger = _loggerFactory.CreateLogger<MigrationHostedService>();
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             // Used to Start Over
-            foreach (var item in _bucketToTopic)
-                await ResetAsync(item.Key, item.Value, stoppingToken);
+            if(true)
+                foreach (var item in _bucketToTopic)
+                    await ResetAsync(item.Key, item.Value, stoppingToken);
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                var results = _bucketToTopic.AsParallel()
-                    .Select(item => RunAsync(item.Key, item.Value, stoppingToken))
-                    .ToArray();
-
-                await Task.WhenAll(results);
+                try
+                {
+                    var results = _bucketToTopic.AsParallel()
+                        .Select(item => RunAsync(item.Key, item.Value, stoppingToken))
+                        .ToArray();
+                    await Task.WhenAll(results);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    throw;
+                }
             }
         }
 
         private async Task ResetAsync(string bucketId, string topic, CancellationToken ct)
         {
             var dataSource = new MongoDbSource(_mongoClient, bucketId, _loggerFactory.CreateLogger<MongoDbSource>());
-            using var publisher = _streamingClient.CreatePublisher<Event>().AddTopic(topic).Build();
 
             // TEMP: Delete Existing Topic
             await _streamFactory.CreateAdmin().DeleteTopicAsync(topic, ct);
@@ -59,19 +70,62 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
 
         private async Task RunAsync(string bucketId, string topic, CancellationToken ct)
         {
-            var dataSource = new MongoDbSource(_mongoClient, bucketId, _loggerFactory.CreateLogger<MongoDbSource>());
-            using var publisher = _streamingClient.CreatePublisher<Event>().AddTopic(topic).Build();
 
-            if (!await dataSource.AnyAsync(ct))
+            try
             {
-                await Task.Delay(TimeSpan.FromSeconds(30), ct);
-                return;
+                var dataSource = new MongoDbSource(_mongoClient, bucketId, _loggerFactory.CreateLogger<MongoDbSource>());
+                using var publisher = _streamingClient.CreatePublisher<Event>().AddTopic(topic).Build();
+
+                if (!await dataSource.AnyAsync(ct))
+                {
+                    await Task.Delay(TimeSpan.FromMinutes(30), ct);
+                    return;
+                }
+
+                var count = 0;
+                await foreach (var item in dataSource.GetAsyncEnumerator(ct))
+                {
+                    await publisher.PublishAsync(item);
+                    await dataSource.SaveState(ct);
+                    count += item.Length;
+                    _logger.LogInformation("Total Sent: {Count}", count);
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, e.Message);
             }
 
-            await foreach (var item in dataSource.GetAsyncEnumerator(ct))
+            // var channel = Channel.CreateBounded<Event>(new BoundedChannelOptions(1000000) { FullMode = BoundedChannelFullMode.Wait });
+            // var task1 = LoadChannel(bucketId, channel.Writer, ct);
+            // var task2 = WriteChannel(channel.Reader, publisher);
+            // await Task.WhenAll(task1, task2);
+        }
+
+        private async Task LoadChannel(string bucketId, ChannelWriter<Event> writer, CancellationToken ct)
+        {
+            var dataSource = new MongoDbSource(_mongoClient, bucketId, _loggerFactory.CreateLogger<MongoDbSource>());
+            await foreach (var batch in dataSource.GetAsyncEnumerator(ct))
             {
-                await publisher.PublishAsync(item);
+                foreach (var item in batch)
+                    await writer.WriteAsync(item, ct);
                 await dataSource.SaveState(ct);
+            }
+        }
+
+        private async Task WriteChannel(ChannelReader<Event> reader, Publisher<Event> publisher)
+        {
+            var size = 10000;
+            while (true)
+            {
+                var list = new List<Event>();
+                for (var i = 0; i < 10000; i++)
+                {
+                    var item = await reader.ReadAsync();
+                    list.Add(item);
+                }
+
+                await publisher.PublishAsync(list.ToArray());
             }
         }
     }
