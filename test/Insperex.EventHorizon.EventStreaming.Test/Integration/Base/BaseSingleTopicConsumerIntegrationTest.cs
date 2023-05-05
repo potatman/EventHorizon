@@ -56,16 +56,13 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
             .Build()
             .StartAsync();
 
-
         using var publisher = await _streamingClient.CreatePublisher<Event>()
             .AddStream<Feed1PriceChanged>()
             .Build()
             .PublishAsync(_events);
 
-
         // Wait for List
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);
-
 
         // Assert
         AssertUtil.AssertEventsValid(_events, _handler.List.ToArray());

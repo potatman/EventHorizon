@@ -29,22 +29,11 @@ public static class ServiceCollectionExtensions
         return configurator;
     }
 
-    public static EventHorizonConfigurator AddSnapshotHostedService<T>(this EventHorizonConfigurator configurator,
+    public static EventHorizonConfigurator ApplyRequestsToSnapshot<T>(this EventHorizonConfigurator configurator,
         Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null)
         where T : class, IState
     {
         configurator.AddEventSourcing();
-
-        // Handle Commands
-        configurator.Collection.AddHostedService(x =>
-        {
-            var streamingClient = x.GetRequiredService<StreamingClient>();
-            var builder = x.GetRequiredService<AggregateBuilder<Snapshot<T>, T>>();
-            onBuild?.Invoke(builder);
-            return new AggregateStateHostedService<Snapshot<T>, Command, T>(streamingClient, builder.Build());
-        });
-
-        // Handle Requests
         configurator.Collection.AddHostedService(x =>
         {
             var streamingClient = x.GetRequiredService<StreamingClient>();
@@ -56,13 +45,27 @@ public static class ServiceCollectionExtensions
         return configurator;
     }
 
-    public static EventHorizonConfigurator AddViewHostedService<T>(this EventHorizonConfigurator configurator,
+    public static EventHorizonConfigurator ApplyCommandsToSnapshot<T>(this EventHorizonConfigurator configurator,
+        Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null)
+        where T : class, IState
+    {
+        configurator.AddEventSourcing();
+        configurator.Collection.AddHostedService(x =>
+        {
+            var streamingClient = x.GetRequiredService<StreamingClient>();
+            var builder = x.GetRequiredService<AggregateBuilder<Snapshot<T>, T>>();
+            onBuild?.Invoke(builder);
+            return new AggregateStateHostedService<Snapshot<T>, Command, T>(streamingClient, builder.Build());
+        });
+
+        return configurator;
+    }
+
+    public static EventHorizonConfigurator ApplyEventsToView<T>(this EventHorizonConfigurator configurator,
         Action<AggregateBuilder<View<T>, T>> onBuild = null)
         where T : class, IState
     {
         configurator.AddEventSourcing();
-
-        // Handle Events
         configurator.Collection.AddHostedService(x =>
         {
             var streamingClient = x.GetRequiredService<StreamingClient>();

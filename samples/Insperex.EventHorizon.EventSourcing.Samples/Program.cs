@@ -33,10 +33,10 @@ public class Program
                     x.AddEventSourcing()
 
                         // Hosted
-                        .AddSnapshotHostedService<Account>(h =>
+                        .ApplyRequestsToSnapshot<Account>(h =>
                             h.RetryLimit(5)
                                 .IsRebuildEnabled(true))
-                        .AddViewHostedService<SearchAccountView>(h =>
+                        .ApplyEventsToView<SearchAccountView>(h =>
                             h.RetryLimit(5)
                                 .UseMiddleware<SearchAccountViewMiddleware>())
 

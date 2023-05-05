@@ -52,7 +52,7 @@ public class SenderIntegrationTest : IAsyncLifetime
                     x.AddEventSourcing()
 
                         // Hosts
-                        .AddSnapshotHostedService<Account>()
+                        .ApplyRequestsToSnapshot<Account>()
 
                         // Stores
                         .AddInMemorySnapshotStore()
