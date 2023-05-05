@@ -6,6 +6,7 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Handlers;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStore.MongoDb.Attributes;
 using Insperex.EventHorizon.EventStore.MongoDb.Models;
+using Insperex.EventHorizon.EventStreaming.Pulsar.Attributes;
 using MongoDB.Driver;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;

@@ -20,8 +20,8 @@ namespace Insperex.EventHorizon.EventStreaming.InMemory.Extensions
                 ServiceLifetime.Singleton));
 
             configurator.Collection.Replace(ServiceDescriptor.Describe(
-                typeof(ITopicAdmin),
-                typeof(InMemoryTopicAdmin),
+                typeof(ITopicAdmin<>),
+                typeof(InMemoryTopicAdmin<>),
                 ServiceLifetime.Singleton));
 
             configurator.Collection.AddSingleton(typeof(StreamingClient));

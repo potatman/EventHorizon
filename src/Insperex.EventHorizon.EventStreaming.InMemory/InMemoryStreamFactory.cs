@@ -39,9 +39,9 @@ public class InMemoryStreamFactory : IStreamFactory
         return new InMemoryTopicReader<T>(config, _messageDatabase);
     }
 
-    public ITopicAdmin CreateAdmin()
+    public ITopicAdmin<T> CreateAdmin<T>() where T : ITopicMessage
     {
-        return new InMemoryTopicAdmin(_messageDatabase, _indexDatabase, _consumerDatabase);
+        return new InMemoryTopicAdmin<T>(_messageDatabase, _indexDatabase, _consumerDatabase);
     }
 
     public ITopicResolver GetTopicResolver()

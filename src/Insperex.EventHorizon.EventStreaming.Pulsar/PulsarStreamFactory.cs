@@ -2,6 +2,7 @@
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
+using Insperex.EventHorizon.EventStreaming.Pulsar.Attributes;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Readers;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
@@ -30,22 +31,22 @@ public class PulsarStreamFactory : IStreamFactory
 
     public ITopicProducer<T> CreateProducer<T>(PublisherConfig config) where T : class, ITopicMessage, new()
     {
-        return new PulsarTopicProducer<T>(_clientResolver, config, CreateAdmin());
+        return new PulsarTopicProducer<T>(_clientResolver, config, CreateAdmin<T>());
     }
 
     public ITopicConsumer<T> CreateConsumer<T>(SubscriptionConfig<T> config) where T : class, ITopicMessage, new()
     {
-        return new PulsarTopicConsumer<T>(_clientResolver, config, CreateAdmin());
+        return new PulsarTopicConsumer<T>(_clientResolver, config, CreateAdmin<T>());
     }
 
     public ITopicReader<T> CreateReader<T>(ReaderConfig config) where T : class, ITopicMessage, new()
     {
-        return new PulsarTopicReader<T>(_clientResolver, config, CreateAdmin());
+        return new PulsarTopicReader<T>(_clientResolver, config, CreateAdmin<T>());
     }
 
-    public ITopicAdmin CreateAdmin()
+    public ITopicAdmin<T> CreateAdmin<T>() where T : ITopicMessage
     {
-        return new PulsarTopicAdmin(_clientResolver.GetAdminClient(), _loggerFactory.CreateLogger<PulsarTopicAdmin>());
+        return new PulsarTopicAdmin<T>(_clientResolver.GetAdminClient(), _attributeUtil, _loggerFactory.CreateLogger<PulsarTopicAdmin<T>>());
     }
 
     public ITopicResolver GetTopicResolver()

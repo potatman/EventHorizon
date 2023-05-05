@@ -10,10 +10,10 @@ namespace Insperex.EventHorizon.EventStreaming.Admins
     public class Admin<TM>
         where TM : ITopicMessage
     {
-        private readonly ITopicAdmin _topicAdmin;
+        private readonly ITopicAdmin<TM> _topicAdmin;
         private readonly ITopicResolver _topicResolver;
 
-        public Admin(ITopicAdmin topicAdmin, ITopicResolver topicResolver)
+        public Admin(ITopicAdmin<TM> topicAdmin, ITopicResolver topicResolver)
         {
             _topicAdmin = topicAdmin;
             _topicResolver = topicResolver;

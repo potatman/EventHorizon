@@ -21,13 +21,13 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
 {
     private readonly PulsarClientResolver _clientResolver;
     private readonly ReaderConfig _config;
-    private readonly ITopicAdmin _admin;
+    private readonly ITopicAdmin<T> _admin;
     private IReader<T> _reader;
 
     public PulsarTopicReader(
         PulsarClientResolver clientResolver,
         ReaderConfig config,
-        ITopicAdmin admin)
+        ITopicAdmin<T> admin)
     {
         _clientResolver = clientResolver;
         _config = config;

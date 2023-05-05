@@ -23,7 +23,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
 {
     private readonly PulsarClientResolver _clientResolver;
     private readonly PublisherConfig _config;
-    private readonly ITopicAdmin _admin;
+    private readonly ITopicAdmin<T> _admin;
     private readonly OTelProducerInterceptor.OTelProducerInterceptor<T> _intercept;
     private readonly string _publisherName;
     private IProducer<T> _producer;
@@ -31,7 +31,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     public PulsarTopicProducer(
         PulsarClientResolver clientResolver,
         PublisherConfig config,
-        ITopicAdmin admin)
+        ITopicAdmin<T> admin)
     {
         _clientResolver = clientResolver;
         _config = config;

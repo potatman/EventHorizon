@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
+using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Models;
+using Insperex.EventHorizon.EventStreaming.Pulsar.Attributes;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Microsoft.Extensions.Logging;
@@ -10,21 +13,23 @@ using SharpPulsar.Admin.v2;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
-public class PulsarTopicAdmin : ITopicAdmin
+public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
 {
     private readonly IPulsarAdminRESTAPIClient _admin;
-    private readonly ILogger<PulsarTopicAdmin> _logger;
+    private readonly ILogger<PulsarTopicAdmin<T>> _logger;
+    private readonly PulsarConfigAttribute _pulsarAttribute;
 
-    public PulsarTopicAdmin(IPulsarAdminRESTAPIClient admin, ILogger<PulsarTopicAdmin> logger)
+    public PulsarTopicAdmin(IPulsarAdminRESTAPIClient admin, AttributeUtil attributeUtil, ILogger<PulsarTopicAdmin<T>> logger)
     {
         _admin = admin;
         _logger = logger;
+        _pulsarAttribute = attributeUtil.GetOne<PulsarConfigAttribute>(typeof(T));
     }
 
     public async Task RequireTopicAsync(string str, CancellationToken ct)
     {
         var topic = PulsarTopicParser.Parse(str);
-        await RequireNamespace(topic.Tenant, topic.Namespace, -1, -1, ct);
+        await RequireNamespace(topic.Tenant, topic.Namespace, ct);
 
         // try
         // {
@@ -57,14 +62,17 @@ public class PulsarTopicAdmin : ITopicAdmin
         }
     }
 
-    private async Task RequireNamespace(string tenant, string nameSpace, int? retentionInMb, int? retentionInMinutes, CancellationToken ct)
+    private async Task RequireNamespace(string tenant, string nameSpace, CancellationToken ct)
     {
         // Ensure Tenant Exists
         var tenants = await _admin.GetTenantsAsync(ct);
         if (!tenants.Contains(tenant))
         {
             var clusters = await _admin.GetClustersAsync(ct);
-            var tenantInfo = new TenantInfo { AdminRoles = null, AllowedClusters = clusters };
+            var tenantInfo = new TenantInfo
+            {
+                AdminRoles = null, AllowedClusters = clusters
+            };
             try
             {
                 await _admin.CreateTenantAsync(tenant, tenantInfo, ct);
@@ -79,13 +87,13 @@ public class PulsarTopicAdmin : ITopicAdmin
         var namespaces = await _admin.GetTenantNamespacesAsync(tenant, ct);
         if (!namespaces.Contains($"{tenant}/{nameSpace}"))
         {
-            // Add Retention Policy if namespace == Events
             var policies = new Policies
             {
+                // Note: pulsar will delete data with no subscriptions, if retention is not set to -1
                 Retention_policies = new RetentionPolicies
                 {
-                    RetentionTimeInMinutes = retentionInMb ?? -1,
-                    RetentionSizeInMB = retentionInMinutes ?? -1
+                    RetentionTimeInMinutes = _pulsarAttribute?.RetentionTimeInMinutes ?? -1,
+                    RetentionSizeInMB = _pulsarAttribute?.RetentionSizeInMb ?? -1
                 }
             };
             try

@@ -36,6 +36,6 @@ public class StreamingClient
 
     public Admin<T> GetAdmin<T>() where T : class, ITopicMessage, new()
     {
-        return new Admin<T>(_streamFactory.CreateAdmin(), _streamFactory.GetTopicResolver());
+        return new Admin<T>(_streamFactory.CreateAdmin<T>(), _streamFactory.GetTopicResolver());
     }
 }

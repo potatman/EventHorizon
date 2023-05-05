@@ -1,11 +1,12 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.EventStreaming.InMemory.Databases;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory;
 
-public class InMemoryTopicAdmin : ITopicAdmin
+public class InMemoryTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
 {
     private readonly IndexDatabase _indexDatabase;
     private readonly MessageDatabase _messageDatabase;

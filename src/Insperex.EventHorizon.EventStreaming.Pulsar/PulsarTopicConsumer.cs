@@ -21,7 +21,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 {
     private readonly PulsarClientResolver _clientResolver;
     private readonly SubscriptionConfig<T> _config;
-    private readonly ITopicAdmin _admin;
+    private readonly ITopicAdmin<T> _admin;
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
     private IConsumer<T> _consumer;
     private Dictionary<string, MessageId> _messageIdDict;
@@ -29,7 +29,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     public PulsarTopicConsumer(
         PulsarClientResolver clientResolver,
         SubscriptionConfig<T> config,
-        ITopicAdmin admin)
+        ITopicAdmin<T> admin)
     {
         _clientResolver = clientResolver;
         _config = config;

@@ -63,14 +63,13 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
             var dataSource = new MongoDbSource(_mongoClient, bucketId, _loggerFactory.CreateLogger<MongoDbSource>());
 
             // TEMP: Delete Existing Topic
-            await _streamFactory.CreateAdmin().DeleteTopicAsync(topic, ct);
+            await _streamFactory.CreateAdmin<Event>().DeleteTopicAsync(topic, ct);
             await dataSource.DeleteState(ct);
             await Task.Delay(TimeSpan.FromSeconds(1), ct);
         }
 
         private async Task RunAsync(string bucketId, string topic, CancellationToken ct)
         {
-
             try
             {
                 var dataSource = new MongoDbSource(_mongoClient, bucketId, _loggerFactory.CreateLogger<MongoDbSource>());
