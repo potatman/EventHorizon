@@ -127,7 +127,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         var res2 = await _userAggregator.HandleAsync(command2, CancellationToken.None);
 
         // Assert Account
-        var aggregate1  = await _userAggregator.GetAggregateFromSnapshotAsync(streamId, CancellationToken.None);
+        var aggregate1  = await _userAggregator.GetAggregateFromStateAsync(streamId, CancellationToken.None);
         Assert.Equal(streamId, aggregate1.State.Id);
         Assert.Equal(streamId, aggregate1.Id);
         Assert.Equal(3, aggregate1.SequenceId);
@@ -147,7 +147,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         var res = await _accountAggregator.HandleAsync(@event, CancellationToken.None);
 
         // Assert Account
-        var aggregate1  = await _accountAggregator.GetAggregateFromSnapshotAsync(streamId, CancellationToken.None);
+        var aggregate1  = await _accountAggregator.GetAggregateFromStateAsync(streamId, CancellationToken.None);
         Assert.Equal(streamId, aggregate1.State.Id);
         Assert.Equal(streamId, aggregate1.Id);
         Assert.Equal(2, aggregate1.SequenceId);

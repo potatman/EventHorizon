@@ -101,7 +101,7 @@ public class Aggregator<TParent, T>
 
             // Load Aggregate
             var streamIds = messages.Select(x => x.StreamId).Distinct().ToArray();
-            aggregateDict = await GetAggregatesFromSnapshotsAsync(streamIds, ct);
+            aggregateDict = await GetAggregatesFromStatesAsync(streamIds, ct);
 
             // Map/Apply Changes
             TriggerHandle(messages, aggregateDict);
@@ -282,13 +282,13 @@ public class Aggregator<TParent, T>
 
     #region load
 
-    public async Task<Aggregate<T>> GetAggregateFromSnapshotAsync(string streamId, CancellationToken ct)
+    public async Task<Aggregate<T>> GetAggregateFromStateAsync(string streamId, CancellationToken ct)
     {
-        var result = await GetAggregatesFromSnapshotsAsync(new[] { streamId }, ct);
+        var result = await GetAggregatesFromStatesAsync(new[] { streamId }, ct);
         return result.Values.FirstOrDefault();
     }
 
-    public async Task<Dictionary<string, Aggregate<T>>> GetAggregatesFromSnapshotsAsync(string[] streamIds, CancellationToken ct)
+    public async Task<Dictionary<string, Aggregate<T>>> GetAggregatesFromStatesAsync(string[] streamIds, CancellationToken ct)
     {
         try
         {
