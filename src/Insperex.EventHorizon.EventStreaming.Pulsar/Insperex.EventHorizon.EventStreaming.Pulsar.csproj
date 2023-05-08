@@ -7,6 +7,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="AspNetCore.HealthChecks.System" Version="6.0.5" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\Insperex.EventHorizon.EventStreaming\Insperex.EventHorizon.EventStreaming.csproj" />
     </ItemGroup>
 
