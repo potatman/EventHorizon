@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventSourcing.Extensions;
+using Insperex.EventHorizon.EventSourcing.Samples.Middleware;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 using Insperex.EventHorizon.EventSourcing.Samples.Subscriptions;
