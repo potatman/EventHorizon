@@ -1,9 +1,11 @@
 using System;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Threading;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
+using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Util;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -70,8 +72,14 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
             var reqName = typeof(TReq).Name;
             app.MapPost(typeName + "/{id}/" + reqName, async (string id, TReq req)  =>
                 {
-                    var response = await sender.SendAndReceiveAsync(id, req);
-                    return Results.Ok(response);
+                    var response = await sender.SendAndReceiveAsync<T>(new Request(id, req));
+                    var statusCode = response.First().StatusCode;
+                    return statusCode switch
+                    {
+                        HttpStatusCode.OK => Results.Ok(response),
+                        HttpStatusCode.Created => Results.Created($"{typeName}/{id}", response),
+                        _ => Results.StatusCode((int)statusCode)
+                    };
                 })
                 .WithTags(typeName);
         }

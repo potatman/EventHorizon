@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces;
@@ -145,7 +146,7 @@ public class Aggregator<TParent, T>
             }
             catch (Exception e)
             {
-                agg.SetStatus(AggregateStatus.HandlerFailed, e.Message);
+                agg.SetStatus(AggregateStatus.HandlerFailed, HttpStatusCode.InternalServerError, e.Message);
             }
         }
 
@@ -158,7 +159,7 @@ public class Aggregator<TParent, T>
         catch (Exception e)
         {
             foreach (var agg in passed)
-                agg.SetStatus(AggregateStatus.BeforeSaveFailed, e.Message);
+                agg.SetStatus(AggregateStatus.BeforeSaveFailed, HttpStatusCode.InternalServerError, e.Message);
         }
     }
 
@@ -189,7 +190,7 @@ public class Aggregator<TParent, T>
         catch (Exception e)
         {
             foreach (var agg in passed)
-                agg.SetStatus(AggregateStatus.BeforeSaveFailed, e.Message);
+                agg.SetStatus(AggregateStatus.BeforeSaveFailed, HttpStatusCode.InternalServerError, e.Message);
         }
     }
 
@@ -216,14 +217,14 @@ public class Aggregator<TParent, T>
 
             var results = await _crudStore.UpsertAsync(parents, CancellationToken.None);
             foreach (var id in results.FailedIds)
-                aggregateDict[id].SetStatus(AggregateStatus.SaveSnapshotFailed);
+                aggregateDict[id].SetStatus(AggregateStatus.SaveSnapshotFailed, HttpStatusCode.InternalServerError);
             foreach (var id in results.PassedIds)
                 aggregateDict[id].SequenceId++;
         }
         catch (Exception ex)
         {
             foreach (var aggregate in aggregateDict.Values)
-                aggregate.SetStatus(AggregateStatus.SaveSnapshotFailed, ex.Message);
+                aggregate.SetStatus(AggregateStatus.SaveSnapshotFailed, HttpStatusCode.InternalServerError, ex.Message);
         }
     }
 
@@ -247,7 +248,7 @@ public class Aggregator<TParent, T>
             _logger.LogError(ex, "Failed to publish events");
             var streamIds = events.Select(x => x.StreamId).Distinct().ToArray();
             foreach (var streamId in streamIds)
-                aggregateDict[streamId].SetStatus(AggregateStatus.SaveEventsFailed);
+                aggregateDict[streamId].SetStatus(AggregateStatus.SaveEventsFailed, HttpStatusCode.InternalServerError);
         }
     }
 
@@ -274,7 +275,7 @@ public class Aggregator<TParent, T>
         {
             aggregate.Events.Clear();
             aggregate.Responses.Clear();
-            aggregate.SetStatus(AggregateStatus.Ok);
+            aggregate.SetStatus(AggregateStatus.Ok, HttpStatusCode.OK);
         }
     }
 
@@ -311,7 +312,7 @@ public class Aggregator<TParent, T>
             catch (Exception e)
             {
                 foreach (var agg in passed)
-                    agg.SetStatus(AggregateStatus.OnLoadFailed, e.Message);
+                    agg.SetStatus(AggregateStatus.OnLoadFailed, HttpStatusCode.InternalServerError, e.Message);
             }
 
             return aggregateDict;
@@ -323,7 +324,7 @@ public class Aggregator<TParent, T>
                 .Select(x =>
                 {
                     var agg = new Aggregate<T>(x);
-                    agg.SetStatus(AggregateStatus.LoadSnapshotFailed, ex.Message);
+                    agg.SetStatus(AggregateStatus.LoadSnapshotFailed, HttpStatusCode.InternalServerError, ex.Message);
                     return agg;
                 })
                 .ToDictionary(x => x.Id);

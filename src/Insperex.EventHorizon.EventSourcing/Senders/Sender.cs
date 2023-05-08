@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -57,7 +58,7 @@ public class Sender
         return res.Select(x => JsonSerializer.Deserialize<TR>(x.Payload)).ToArray();
     }
 
-    public async Task<Response[]> SendAndReceiveAsync<T>(Request[] requests) where T : IState
+    public async Task<Response[]> SendAndReceiveAsync<T>(params Request[] requests) where T : IState
     {
         // Ensure subscription is ready
         await _subscriptionTracker.TrackSubscription<T>();
@@ -87,7 +88,7 @@ public class Sender
         foreach (var request in requestDict.Values)
             if (!responseDict.ContainsKey(request.Id))
                 responseDict[request.Id] = new Response(request.StreamId, request.Id, _subscriptionTracker.GetSenderId(),
-                    _config.GetErrorResult?.Invoke(AggregateStatus.CommandTimedOut, string.Empty)) { Status = AggregateStatus.CommandTimedOut};
+                    _config.GetErrorResult?.Invoke(AggregateStatus.CommandTimedOut, string.Empty)) { Status = AggregateStatus.CommandTimedOut, StatusCode = HttpStatusCode.RequestTimeout };
 
         return responseDict.Values.ToArray();
     }
