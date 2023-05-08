@@ -2,17 +2,13 @@
 using Insperex.EventHorizon.Abstractions;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
-using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventSourcing.Aggregates;
 using Insperex.EventHorizon.EventSourcing.Senders;
 using Insperex.EventHorizon.EventSourcing.Util;
-using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming;
-using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventSourcing.Extensions;
 
