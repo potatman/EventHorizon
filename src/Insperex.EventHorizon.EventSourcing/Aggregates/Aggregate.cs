@@ -59,7 +59,7 @@ public class Aggregate<T>
 
         // Defensive
         if (!events.Any()) return;
-        
+
         // Apply Events
         foreach (var @event in events)
             Apply(@event.Data, false);
@@ -78,7 +78,7 @@ public class Aggregate<T>
                 Apply((dynamic)new Event(Id, SequenceId, item));
         }
     }
-    
+
     public void Handle(Request request)
     {
         // Try Self
@@ -93,7 +93,7 @@ public class Aggregate<T>
                 Apply((dynamic)new Event(Id, SequenceId, item));
         }
     }
-    
+
     public void Apply(IEvent<T> @event)
     {
         Apply(new Event(Id, SequenceId, @event));
@@ -108,7 +108,7 @@ public class Aggregate<T>
             var method = AggregateAssemblyUtil.StateToEventHandlersDict.GetValueOrDefault(state.Key)?.GetValueOrDefault(@event.Type);
             method?.Invoke(state.Value, parameters: new [] { payload } );
         }
-        
+
         // Track Events only if first time applying
         if (isFirstTime)
         {
@@ -151,6 +151,8 @@ public class Aggregate<T>
             });
         AllStates[_type.Name] = State;
     }
+
+    public bool Exists() => SequenceId > 1;
 
     public Snapshot<T> GetSnapshot() => new(Id, SequenceId, State, CreatedDate, UpdatedDate);
     public View<T> GetView() => new(Id, SequenceId, State, CreatedDate, UpdatedDate);
