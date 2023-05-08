@@ -17,13 +17,13 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
 {
     private readonly IPulsarAdminRESTAPIClient _admin;
     private readonly ILogger<PulsarTopicAdmin<T>> _logger;
-    private readonly PulsarConfigAttribute _pulsarAttribute;
+    private readonly PulsarNamespaceAttribute _pulsarAttribute;
 
     public PulsarTopicAdmin(IPulsarAdminRESTAPIClient admin, AttributeUtil attributeUtil, ILogger<PulsarTopicAdmin<T>> logger)
     {
         _admin = admin;
         _logger = logger;
-        _pulsarAttribute = attributeUtil.GetOne<PulsarConfigAttribute>(typeof(T));
+        _pulsarAttribute = attributeUtil.GetOne<PulsarNamespaceAttribute>(typeof(T));
     }
 
     public async Task RequireTopicAsync(string str, CancellationToken ct)

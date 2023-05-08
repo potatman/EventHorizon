@@ -15,6 +15,7 @@ public class PulsarTopicResolver : ITopicResolver
     private readonly AttributeUtil _attributeUtil;
     private const string DefaultTenant = "public";
     private const string DefaultNamespace = "default";
+    private const string TypeKey = "$type";
 
     public PulsarTopicResolver(AttributeUtil attributeUtil)
     {
@@ -27,13 +28,13 @@ public class PulsarTopicResolver : ITopicResolver
             ? EventStreamingConstants.Persistent
             : EventStreamingConstants.NonPersistent;
 
-        var pulsarAttr = _attributeUtil.GetOne<PulsarConfigAttribute>(type);
+        var pulsarAttr = _attributeUtil.GetOne<PulsarNamespaceAttribute>(type);
         var attributes = _attributeUtil.GetAll<StreamAttribute>(type);
         var topics = attributes
             .Select(x =>
             {
-                var tenant = pulsarAttr?.Tenant ?? DefaultTenant;
-                var @namespace = typeof(TM).Name ?? DefaultNamespace;
+                var tenant = (pulsarAttr?.Tenant ?? DefaultTenant).Replace(TypeKey, typeof(TM).Name);
+                var @namespace = (pulsarAttr?.Namespace ?? DefaultNamespace).Replace(TypeKey, typeof(TM).Name);
                 var topic = topicName == null ? x.Topic : $"{x.Topic}-{topicName}";
                 return $"{persistent}://{tenant}/{@namespace}/{topic}";
             })
