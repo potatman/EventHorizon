@@ -26,7 +26,7 @@ public class AggregateUnitTests
     public void TestAggregateFromEvents()
     {
         var events = Enumerable.Range(0, 5).Select(x => new AccountCredited(100)).ToArray();
-        var eventWrappers = events.Select(x => new Event(_streamId, 1, x)).ToArray();
+        var eventWrappers = events.Select((x,i) => new Event(_streamId, i, x)).ToArray();
         var messages = eventWrappers.Select(x => new MessageContext<Event>
             { Data = x, TopicData = new TopicData(Guid.NewGuid().ToString(), "topic", DateTime.UtcNow) }).ToArray();
         var aggregate = new Aggregate<Account>(messages);
@@ -34,6 +34,7 @@ public class AggregateUnitTests
         Assert.Equal(eventWrappers.Last().StreamId, aggregate.Id);
         Assert.Equal(eventWrappers.Last().SequenceId, aggregate.SequenceId);
         Assert.Equal(events.Sum(x => x.Amount), aggregate.State.Amount);
+        Assert.True(aggregate.Exists());
     }
 
     [Fact]
@@ -48,6 +49,7 @@ public class AggregateUnitTests
         Assert.Equal(snapshotWrapper.CreatedDate, aggregate.CreatedDate);
         Assert.Equal(snapshotWrapper.UpdatedDate, aggregate.UpdatedDate);
         Assert.Equal(state.Amount, aggregate.State.Amount);
+        Assert.True(aggregate.Exists());
     }
 
 
@@ -60,6 +62,7 @@ public class AggregateUnitTests
         Assert.Equal(1, aggregate.SequenceId);
         Assert.NotEqual(default, aggregate.CreatedDate);
         Assert.Equal(aggregate.CreatedDate, aggregate.UpdatedDate);
+        Assert.True(!aggregate.Exists());
     }
 
     [Fact]
