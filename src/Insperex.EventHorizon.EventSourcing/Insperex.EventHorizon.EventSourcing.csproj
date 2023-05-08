@@ -5,11 +5,15 @@
         <LangVersion>latest</LangVersion>
         <NoWarn>$(NoWarn)</NoWarn>
     </PropertyGroup>
-  
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
     <ItemGroup>
         <PackageReference Include="MassTransit.Abstractions" Version="8.0.15" />
     </ItemGroup>
-
+  
     <ItemGroup>
         <InternalsVisibleTo Include="Insperex.EventHorizon.EventSourcing.Test" />
     </ItemGroup>
