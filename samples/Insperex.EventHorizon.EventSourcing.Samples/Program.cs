@@ -21,7 +21,7 @@ public class Program
 {
     static async Task Main(string[] args)
     {
-        var opts = new WebApplicationOptions { EnvironmentName = "local" };
+        var opts = new WebApplicationOptions { EnvironmentName = "local", Args = args };
         var builder = WebApplication.CreateBuilder(opts);
 
         builder.Host.UseSerilog((_, config) => { config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture); });
@@ -37,17 +37,17 @@ public class Program
         {
             x.AddEventSourcing()
 
+                // Stores
+                .AddMongoDbSnapshotStore(builder.Configuration)
+                .AddElasticViewStore(builder.Configuration)
+                .AddPulsarEventStream(builder.Configuration)
+
                 // Hosted
                 .ApplyRequestsToSnapshot<Account>()
                 .ApplyEventsToView<SearchAccountView>(h =>
                     h.UseMiddleware<SearchAccountViewMiddleware>())
 
-                .AddSubscription<AccountConsumer, Event>()
-
-                // Stores
-                .AddMongoDbSnapshotStore(builder.Configuration)
-                .AddElasticViewStore(builder.Configuration)
-                .AddPulsarEventStream(builder.Configuration);
+                .AddSubscription<AccountConsumer, Event>();
         });
 
         var app = builder.Build();
