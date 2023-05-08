@@ -7,6 +7,7 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Util;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Insperex.EventHorizon.EventSourcing.Extensions
@@ -23,7 +24,13 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
             app.MapGet(type.Name + "/{id}", async (string id) =>
                 {
                     var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
-                    return Results.Ok(response.State);
+                    return response.Exists() ? Results.Ok(response.State) : Results.NotFound();
+                })
+                .WithTags(type.Name);
+            app.MapGet(type.Name + "/{id}/state-in-time", async (string id, [FromQuery] DateTime dateTime) =>
+                {
+                    var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
+                    return response.Exists() ? Results.Ok(response.State) : Results.NotFound();
                 })
                 .WithTags(type.Name);
 
