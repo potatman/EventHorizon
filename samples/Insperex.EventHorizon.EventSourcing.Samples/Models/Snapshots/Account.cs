@@ -3,6 +3,7 @@ using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Handlers;
+using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStore.MongoDb.Attributes;
 using Insperex.EventHorizon.EventStore.MongoDb.Models;
@@ -33,28 +34,28 @@ public class Account : IState,
 
     #region Requests
 
-    public AccountResponse Handle(OpenAccount request, List<IEvent> events)
+    public AccountResponse Handle(OpenAccount request, AggregateContext context)
     {
-        if(Amount == default)
-            events.Add(new AccountOpened(request.Amount));
+        if(!context.Exists)
+            context.AddEvent(new AccountOpened(request.Amount));
 
         return new AccountResponse();
     }
 
-    public AccountResponse Handle(Withdrawal request, List<IEvent> events)
+    public AccountResponse Handle(Withdrawal request, AggregateContext context)
     {
         if(Amount < request.Amount)
             return new AccountResponse(AccountResponseStatus.WithdrawalDenied);
 
         if(request.Amount != 0 && Amount >= request.Amount)
-            events.Add(new AccountDebited(request.Amount));
+            context.AddEvent(new AccountDebited(request.Amount));
 
         return new AccountResponse();
     }
 
-    public AccountResponse Handle(Deposit request, List<IEvent> events)
+    public AccountResponse Handle(Deposit request, AggregateContext context)
     {
-        events.Add(new AccountCredited(request.Amount));
+        context.AddEvent(new AccountCredited(request.Amount));
         return new AccountResponse();
     }
 
