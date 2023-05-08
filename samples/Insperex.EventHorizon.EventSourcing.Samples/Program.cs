@@ -47,7 +47,7 @@ public class Program
                 .ApplyEventsToView<SearchAccountView>(h =>
                     h.UseMiddleware<SearchAccountViewMiddleware>())
 
-                .AddSubscription<AccountConsumer, Event>();
+                .AddSubscription<AccountConsumer, Event>(s => s.AddStream<Account>());
         });
 
         var app = builder.Build();
