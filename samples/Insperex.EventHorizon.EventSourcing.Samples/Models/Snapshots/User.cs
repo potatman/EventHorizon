@@ -4,6 +4,7 @@ using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Handlers;
+using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.Interfaces;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Attributes;
@@ -20,10 +21,10 @@ public class User : IState,
     public string Id { get; set; }
     public string Name { get; set; }
 
-    public void Handle(ChangeUserName command, List<IEvent> events)
+    public void Handle(ChangeUserName command, AggregateContext context)
     {
         if(Name != command.Name)
-            events.Add(new UserNameChangedV2(command.Name));
+            context.AddEvent(new UserNameChangedV2(command.Name));
     }
 
     public void Apply(UserNameChangedV2 @event)

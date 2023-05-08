@@ -71,10 +71,10 @@ public class Aggregate<T>
         var payload = command.GetPayload();
         foreach (var state in AllStates)
         {
-            var list = new List<IEvent>();
+            var context = new AggregateContext(Exists());
             var method = AggregateAssemblyUtil.StateToCommandHandlersDict.GetValueOrDefault(state.Key)?.GetValueOrDefault(command.Type);
-            method?.Invoke(state.Value, parameters: new [] { payload, list } );
-            foreach(var item in list)
+            method?.Invoke(state.Value, parameters: new [] { payload, context } );
+            foreach(var item in context.Events)
                 Apply((dynamic)new Event(Id, SequenceId, item));
         }
     }
@@ -85,11 +85,11 @@ public class Aggregate<T>
         var payload = request.GetPayload();
         foreach (var state in AllStates)
         {
-            var list = new List<IEvent>();
+            var context = new AggregateContext(Exists());
             var method = AggregateAssemblyUtil.StateToRequestHandlersDict.GetValueOrDefault(state.Key)?.GetValueOrDefault(request.Type);
-            var result = method?.Invoke(state.Value, parameters: new [] { payload, list } );
+            var result = method?.Invoke(state.Value, parameters: new [] { payload, context } );
             Responses.Add(new Response(Id, request.Id, request.SenderId, result) { Status = Status, Error = Error});
-            foreach(var item in list)
+            foreach(var item in context.Events)
                 Apply((dynamic)new Event(Id, SequenceId, item));
         }
     }
