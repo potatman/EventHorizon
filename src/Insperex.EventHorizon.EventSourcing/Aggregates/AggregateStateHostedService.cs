@@ -25,7 +25,7 @@ public class AggregateStateHostedService<TParent, TAction, T> : IHostedService
         _aggregator = aggregator;
 
         _subscription = streamingClient.CreateSubscription<TAction>()
-            .SubscriptionName(typeof(T).Name)
+            .SubscriptionName($"Apply-{typeof(TAction).Name}-{typeof(T).Name}")
             .AddStream<T>()
             .OnBatch(async x =>
             {

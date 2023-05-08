@@ -3,7 +3,7 @@ using Insperex.EventHorizon.EventSourcing.Aggregates;
 using Insperex.EventHorizon.EventSourcing.Interfaces;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 
-namespace Insperex.EventHorizon.EventSourcing.Samples
+namespace Insperex.EventHorizon.EventSourcing.Samples.Middleware
 {
     public class SearchAccountViewMiddleware : IAggregateMiddleware<SearchAccountView>
     {
