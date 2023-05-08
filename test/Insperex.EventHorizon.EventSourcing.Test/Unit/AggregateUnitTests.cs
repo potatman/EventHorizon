@@ -50,6 +50,18 @@ public class AggregateUnitTests
         Assert.Equal(state.Amount, aggregate.State.Amount);
     }
 
+
+    [Fact]
+    public void TestAggregateFromOnlyStreamId()
+    {
+        var aggregate = new Aggregate<Account>(_streamId);
+
+        Assert.Equal(_streamId, aggregate.Id);
+        Assert.Equal(1, aggregate.SequenceId);
+        Assert.NotEqual(default, aggregate.CreatedDate);
+        Assert.Equal(aggregate.CreatedDate, aggregate.UpdatedDate);
+    }
+
     [Fact]
     public void TestApplyEventBasicView()
     {
