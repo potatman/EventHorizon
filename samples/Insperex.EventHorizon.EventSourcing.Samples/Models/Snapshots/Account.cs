@@ -28,7 +28,7 @@ public class Account : IState,
 {
     public string Id { get; set; }
 
-    [StreamKey]
+    [StreamPartitionKey]
     public string BankAccount { get; set; }
     public int Amount { get; set; }
 
