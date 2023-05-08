@@ -23,13 +23,15 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
             // Map Get
             var esClient = app.Services.GetRequiredService<EventSourcingClient<T>>();
             var aggregator = esClient.Aggregator().Build();
-            app.MapGet(type.Name + "/{id}", async (string id) =>
+            var group = app.MapGroup("api");
+
+            group.MapGet(type.Name + "/{id}", async (string id) =>
                 {
                     var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
                     return response.Exists() ? Results.Ok(response.State) : Results.NotFound();
                 })
                 .WithTags(type.Name);
-            app.MapGet(type.Name + "/{id}/state-in-time", async (string id, [FromQuery] DateTime dateTime) =>
+            group.MapGet(type.Name + "/{id}/state-in-time", async (string id, [FromQuery] DateTime dateTime) =>
                 {
                     var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
                     return response.Exists() ? Results.Ok(response.State) : Results.NotFound();
@@ -70,7 +72,8 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
             var sender = esClient.CreateSender().Build();
             var typeName = typeof(T).Name;
             var reqName = typeof(TReq).Name;
-            app.MapPost(typeName + "/{id}/" + reqName, async (string id, TReq req)  =>
+            app.MapGroup("api")
+                .MapPost(typeName + "/{id}/" + reqName, async (string id, TReq req)  =>
                 {
                     var response = await sender.SendAndReceiveAsync<T>(new Request(id, req));
                     var statusCode = response.First().StatusCode;
@@ -92,7 +95,8 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
 
             var typeName = typeof(T).Name;
             var reqName = typeof(TCmd).Name;
-            app.MapPost(typeName + "/{id}/" + reqName, async (string id, TCmd cmd)  =>
+            app.MapGroup("api")
+                .MapPost(typeName + "/{id}/" + reqName, async (string id, TCmd cmd)  =>
                 {
                     try
                     {
