@@ -3,7 +3,7 @@
 namespace Insperex.EventHorizon.Abstractions.Attributes;
 
 [AttributeUsage(AttributeTargets.Property, Inherited = true, AllowMultiple = true)]
-public sealed class StreamKeyAttribute : Attribute
+public sealed class StreamPartitionKeyAttribute : Attribute
 {
 
 }
