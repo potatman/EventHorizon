@@ -42,8 +42,8 @@ public class LockStoreUnitTest : IAsyncLifetime
 
         // Act
         var id = _faker.Random.AlphaNumeric(10);
-        using var lock1 = _lockFactory.CreateLock(id, TimeSpan.FromSeconds(5));
-        using var lock2 = _lockFactory.CreateLock(id, TimeSpan.FromSeconds(1));
+        await using var lock1 = _lockFactory.CreateLock(id, TimeSpan.FromSeconds(5));
+        await using var lock2 = _lockFactory.CreateLock(id, TimeSpan.FromSeconds(1));
         await lock1.WaitForLockAsync();
         await lock2.WaitForLockAsync();
 
@@ -56,8 +56,8 @@ public class LockStoreUnitTest : IAsyncLifetime
     {
         // Act
         var id = _faker.Random.AlphaNumeric(10);
-        using var lock1 = _lockFactory.CreateLock(id, TimeSpan.FromSeconds(120));
-        using var lock2 = _lockFactory.CreateLock(id, TimeSpan.FromSeconds(120));
+        await using var lock1 = _lockFactory.CreateLock(id, TimeSpan.FromSeconds(120));
+        await using var lock2 = _lockFactory.CreateLock(id, TimeSpan.FromSeconds(120));
         var isLocked1 = await lock1.TryLockAsync();
         var isLocked2 = await lock1.TryLockAsync();
 
