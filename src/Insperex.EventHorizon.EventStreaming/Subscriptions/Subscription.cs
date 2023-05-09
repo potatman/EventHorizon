@@ -16,7 +16,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.Subscriptions;
 
-public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
+public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, new()
 {
     private readonly SubscriptionConfig<T> _config;
     private readonly ILogger<Subscription<T>> _logger;
@@ -30,12 +30,6 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
         _config = config;
         _logger = logger;
         _consumer = factory.CreateConsumer(_config);
-    }
-
-    public void Dispose()
-    {
-        _disposed = true;
-        StopAsync().GetAwaiter().GetResult();
     }
 
     public Task<Subscription<T>> StartAsync()
@@ -60,7 +54,6 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
         //     await Task.Delay(TimeSpan.FromSeconds(1));
 
         // Cleanup
-        _consumer.Dispose();
         _logger.LogInformation("Stopped Subscription with config {@Config}", _config);
 
         return Task.FromResult(this);
@@ -167,5 +160,10 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
             _logger.LogError(ex, "Failed to process {Message}", ex.Message);
             await _consumer.NackAsync(batch);
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync();
     }
 }

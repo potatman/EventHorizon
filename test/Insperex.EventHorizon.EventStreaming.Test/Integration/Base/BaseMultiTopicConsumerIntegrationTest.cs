@@ -35,8 +35,8 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     {
         _events = EventStreamingFakers.RandomEventFaker.Generate(1000).ToArray();
         // Setup
-        using var publisher1 = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
-        using var publisher2 = _streamingClient.CreatePublisher<Event>().AddStream<Feed2PriceChanged>().Build();
+        await using var publisher1 = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
+        await using var publisher2 = _streamingClient.CreatePublisher<Event>().AddStream<Feed2PriceChanged>().Build();
 
         await publisher1.PublishAsync(_events.Take(_events.Length/2).ToArray());
         await publisher2.PublishAsync(_events.Skip(_events.Length/2).ToArray());
@@ -56,7 +56,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task SubscribeToMultipleTopics()
     {
         // Consume
-        using var subscription = await _streamingClient.CreateSubscription<Event>()
+        await using var subscription = await _streamingClient.CreateSubscription<Event>()
             .AddStream<Feed1PriceChanged>()
             .AddStream<Feed2PriceChanged>()
             .BatchSize(_events.Length/10)
@@ -76,8 +76,8 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
         var builder = _streamingClient.CreateSubscription<Event>()
             .BatchSize(_events.Length / 10);
 
-        using var subscription1 = await builder.AddStream<Feed1PriceChanged>().OnBatch(_handler.OnBatch).Build().StartAsync();
-        using var subscription2 = await builder.AddStream<Feed2PriceChanged>().OnBatch(_handler.OnBatch).Build().StartAsync();
+        await using var subscription1 = await builder.AddStream<Feed1PriceChanged>().OnBatch(_handler.OnBatch).Build().StartAsync();
+        await using var subscription2 = await builder.AddStream<Feed2PriceChanged>().OnBatch(_handler.OnBatch).Build().StartAsync();
 
         // Assert
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);

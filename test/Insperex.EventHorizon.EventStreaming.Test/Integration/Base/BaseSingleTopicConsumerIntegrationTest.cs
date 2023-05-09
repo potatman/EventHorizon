@@ -49,14 +49,14 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task TestSingleConsumer()
     {
         // Consume
-        using var subscription = await _streamingClient.CreateSubscription<Event>()
+        await using var subscription = await _streamingClient.CreateSubscription<Event>()
             .AddStream<Feed1PriceChanged>()
             .BatchSize(_events.Length / 10)
             .OnBatch(_handler.OnBatch)
             .Build()
             .StartAsync();
 
-        using var publisher = await _streamingClient.CreatePublisher<Event>()
+        await using var publisher = await _streamingClient.CreatePublisher<Event>()
             .AddStream<Feed1PriceChanged>()
             .Build()
             .PublishAsync(_events);
@@ -77,14 +77,14 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
             .BatchSize(_events.Length / 10)
             .OnBatch(_handler.OnBatch);
 
-        using var publisher = await _streamingClient.CreatePublisher<Event>()
+        await using var publisher = await _streamingClient.CreatePublisher<Event>()
             .AddStream<Feed1PriceChanged>()
             .Build()
             .PublishAsync(_events);
 
         // Consume
-        using var subscription1 = await builder.Build().StartAsync();
-        using var subscription2 = await builder.Build().StartAsync();
+        await using var subscription1 = await builder.Build().StartAsync();
+        await using var subscription2 = await builder.Build().StartAsync();
 
         // Assert
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);

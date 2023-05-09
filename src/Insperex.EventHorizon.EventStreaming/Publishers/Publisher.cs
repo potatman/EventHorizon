@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.Publishers;
 
-public class Publisher<T> : IDisposable
+public class Publisher<T> : IAsyncDisposable
     where T : class, ITopicMessage, new()
 {
     private readonly PublisherConfig _config;
@@ -23,12 +23,6 @@ public class Publisher<T> : IDisposable
         _logger = logger;
         _typeName = typeof(T).Name;
         _producer = factory.CreateProducer<T>(config);
-    }
-
-    public void Dispose()
-    {
-        _producer?.Dispose();
-        _producer = null;
     }
 
     public Task PublishAsync(string streamId, params object[] objs)
@@ -60,5 +54,10 @@ public class Publisher<T> : IDisposable
         }
 
         return this;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _producer.DisposeAsync();
     }
 }

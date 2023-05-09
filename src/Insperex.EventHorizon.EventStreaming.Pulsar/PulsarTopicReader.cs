@@ -10,7 +10,6 @@ using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Insperex.EventHorizon.EventStreaming.Readers;
 using Insperex.EventHorizon.EventStreaming.Util;
-using Microsoft.Extensions.Logging;
 using Pulsar.Client.Api;
 using Pulsar.Client.Common;
 using Range = Pulsar.Client.Api.Range;
@@ -81,12 +80,6 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
         return list.ToArray();
     }
 
-    public void Dispose()
-    {
-        _reader.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        _reader = null;
-    }
-
     private async Task<IReader<T>> GetReaderAsync()
     {
         if (_reader != null)
@@ -116,5 +109,11 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
         _reader = await builder.CreateAsync();
 
         return _reader;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if(_reader != null) await _reader.DisposeAsync();
+        _reader = null;
     }
 }

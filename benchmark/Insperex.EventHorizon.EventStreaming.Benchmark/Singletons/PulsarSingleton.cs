@@ -102,9 +102,9 @@ public class PulsarSingleton : IAsyncDisposable
             .ToArray();
 
         // Dispose All
-        foreach (var key in Readers.Keys) Readers[key]?.Dispose();
-        foreach (var key in Consumers.Keys) Consumers[key]?.Dispose();
-        foreach (var key in Publishers.Keys) Publishers[key]?.Dispose();
+        foreach (var key in Readers.Keys) await Readers[key].DisposeAsync();
+        foreach (var key in Consumers.Keys) await Consumers[key].DisposeAsync();
+        foreach (var key in Publishers.Keys) await Publishers[key].DisposeAsync();
 
         // Delete Topics
         foreach (var type in types)

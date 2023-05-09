@@ -35,7 +35,7 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
 
         // Publish Events
         _events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(1000).Select(x => new Event(x.Id, x)).ToArray();
-        using var publisher = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
+        await using var publisher = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
         await publisher.PublishAsync(_events);
         await Task.Delay(2000);
 
@@ -53,7 +53,7 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
     [Fact]
     public async Task TestReaderGetStreamId()
     {
-        using var reader = _streamingClient.CreateReader<Event>().AddStream<Feed1PriceChanged>().Keys(_streamId).Build();
+        await using var reader = _streamingClient.CreateReader<Event>().AddStream<Feed1PriceChanged>().Keys(_streamId).Build();
 
         var events = await reader.GetNextAsync(_events.Length);
 
