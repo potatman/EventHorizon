@@ -7,7 +7,7 @@ using Insperex.EventHorizon.EventStore.Models;
 
 namespace Insperex.EventHorizon.EventStore.Locks;
 
-public class LockDisposable : IDisposable
+public class LockDisposable : IAsyncDisposable
 {
     private readonly ICrudStore<Lock> _crudStore;
     private readonly string _id;
@@ -58,8 +58,8 @@ public class LockDisposable : IDisposable
         if (_isReleased || _ownsLock != true)
             return this;
 
-        await _crudStore.DeleteAsync(new[] { _id }, CancellationToken.None);
         _isReleased = true;
+        await _crudStore.DeleteAsync(new[] { _id }, CancellationToken.None);
         return this;
     }
 
@@ -71,11 +71,13 @@ public class LockDisposable : IDisposable
 
     private void OnExit(object sender, EventArgs e)
     {
-        ReleaseAsync().Wait();
+        if(!_isReleased)
+            ReleaseAsync().Wait();
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        ReleaseAsync().Wait();
+        if(!_isReleased)
+            await ReleaseAsync();
     }
 }

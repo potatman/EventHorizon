@@ -1,24 +1,23 @@
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming;
-using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Insperex.EventHorizon.EventStreaming.Util;
 
 namespace Insperex.EventHorizon.EventSourcing.Senders;
 
-public class SenderSubscriptionTracker : IDisposable
+public class SenderSubscriptionTracker : IAsyncDisposable
 {
     private readonly StreamingClient _streamingClient;
     private readonly Dictionary<Type, Subscription<Response>> _subscriptionDict = new ();
     private readonly Dictionary<string, MessageContext<Response>> _responseDict = new ();
     private readonly string _senderId;
+    private bool _cleaning;
 
     public SenderSubscriptionTracker(StreamingClient streamingClient)
     {
@@ -68,20 +67,29 @@ public class SenderSubscriptionTracker : IDisposable
         return responses.ToArray();
     }
 
-    public void Dispose()
+    private async Task CleanupAsync()
     {
-        OnExit(null, null);
+        _cleaning = true;
+        foreach (var group in _subscriptionDict)
+        {
+            // Stop Subscription
+            await group.Value.StopAsync();
+
+            // Delete Topic
+            await _streamingClient.GetAdmin<Response>().DeleteTopicAsync(group.Key, _senderId);
+        }
+        _subscriptionDict.Clear();
     }
 
     private void OnExit(object sender, EventArgs e)
     {
-        foreach (var group in _subscriptionDict)
-        {
-            // Stop Subscription
-            group.Value.StopAsync().Wait();
+        if(!_cleaning)
+            CleanupAsync().Wait();
+    }
 
-            // Delete Topic
-            _streamingClient.GetAdmin<Response>().DeleteTopicAsync(group.Key, _senderId).Wait();
-        }
+    public async ValueTask DisposeAsync()
+    {
+        if(!_cleaning)
+            await CleanupAsync();
     }
 }

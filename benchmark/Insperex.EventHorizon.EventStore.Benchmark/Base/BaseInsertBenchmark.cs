@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
@@ -23,7 +24,7 @@ public abstract class BaseInsertBenchmark
     {
         _provider = provider;
     }
-    
+
     [PerfSetup]
     public void Setup(BenchmarkContext context)
     {
@@ -34,26 +35,26 @@ public abstract class BaseInsertBenchmark
     }
 
     [PerfCleanup]
-    public void Cleanup()
+    public async Task Cleanup()
     {
-        _snapshotStore.DropDatabaseAsync(CancellationToken.None).Wait();
+        await _snapshotStore.DropDatabaseAsync(CancellationToken.None);
     }
 
-    [PerfBenchmark(Description = "Test Save Throughput", 
+    [PerfBenchmark(Description = "Test Save Throughput",
         NumberOfIterations = 3, RunMode = RunMode.Throughput, RunTimeMilliseconds = 1000, TestMode = TestMode.Test)]
     [CounterThroughputAssertion("TestCounter", MustBe.GreaterThan, 0.5d)]
-    public void BenchmarkBulkSave()
+    public async Task BenchmarkBulkSave()
     {
-        _snapshotStore.UpsertAsync(_snapshots, CancellationToken.None).Wait();
+        await _snapshotStore.UpsertAsync(_snapshots, CancellationToken.None);
         _counter.Increment();
     }
 
-    [PerfBenchmark(Description = "Test Insert Throughput", 
+    [PerfBenchmark(Description = "Test Insert Throughput",
         NumberOfIterations = 3, RunMode = RunMode.Throughput, RunTimeMilliseconds = 1000, TestMode = TestMode.Test)]
     [CounterThroughputAssertion("TestCounter", MustBe.GreaterThan, 0.5d)]
-    public void BenchmarkBulkInsert()
+    public async Task BenchmarkBulkInsert()
     {
-        _snapshotStore.InsertAsync(_snapshots, CancellationToken.None).Wait();
+        await _snapshotStore.InsertAsync(_snapshots, CancellationToken.None);
         _counter.Increment();
     }
 }
