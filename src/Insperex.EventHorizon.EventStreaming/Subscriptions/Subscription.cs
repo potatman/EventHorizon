@@ -44,19 +44,19 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         return Task.FromResult(this);
     }
 
-    public Task<Subscription<T>> StopAsync()
+    public async Task<Subscription<T>> StopAsync()
     {
-        if (!Running) return Task.FromResult(this);
+        if (!Running) return this;
 
         // Cancel
         Running = false;
-        // while (!Stopped)
-        //     await Task.Delay(TimeSpan.FromSeconds(1));
+        while (!Stopped)
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
 
         // Cleanup
         _logger.LogInformation("Stopped Subscription with config {@Config}", _config);
 
-        return Task.FromResult(this);
+        return this;
     }
 
     private async void Loop()
