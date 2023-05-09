@@ -14,7 +14,7 @@ using MongoDB.Driver;
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
 [Stream("account")]
-[PulsarConfig("test_bank")]
+[PulsarNamespace("test_bank", "$type")]
 [SnapshotStore("test_bank_snapshot_account")]
 [MongoCollection(ReadPreferenceMode = ReadPreferenceMode.SecondaryPreferred,
     ReadConcernLevel = ReadConcernLevel.Majority,
