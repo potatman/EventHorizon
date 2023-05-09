@@ -112,4 +112,11 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
         _backlogs.Clear();
         _consumers.Clear();
     }
+
+    public ValueTask DisposeAsync()
+    {
+        _backlogs.Clear();
+        _consumers.Clear();
+        return ValueTask.CompletedTask;
+    }
 }

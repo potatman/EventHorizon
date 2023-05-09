@@ -1,22 +1,18 @@
 ﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
-using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Extensions;
-using Insperex.EventHorizon.EventStreaming.Interfaces;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.Subscriptions;
 
-public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
+public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, new()
 {
     private readonly SubscriptionConfig<T> _config;
     private readonly ILogger<Subscription<T>> _logger;
@@ -32,12 +28,6 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
         _consumer = factory.CreateConsumer(_config);
     }
 
-    public void Dispose()
-    {
-        _disposed = true;
-        StopAsync().GetAwaiter().GetResult();
-    }
-
     public Task<Subscription<T>> StartAsync()
     {
         if (Running) return Task.FromResult(this);
@@ -50,20 +40,19 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
         return Task.FromResult(this);
     }
 
-    public Task<Subscription<T>> StopAsync()
+    public async Task<Subscription<T>> StopAsync()
     {
-        if (!Running) return Task.FromResult(this);
+        if (!Running) return this;
 
         // Cancel
         Running = false;
-        // while (!Stopped)
-        //     await Task.Delay(TimeSpan.FromSeconds(1));
+        while (!Stopped)
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
 
         // Cleanup
-        _consumer.Dispose();
         _logger.LogInformation("Stopped Subscription with config {@Config}", _config);
 
-        return Task.FromResult(this);
+        return this;
     }
 
     private async void Loop()
@@ -167,5 +156,11 @@ public class Subscription<T> : IDisposable where T : class, ITopicMessage, new()
             _logger.LogError(ex, "Failed to process {Message}", ex.Message);
             await _consumer.NackAsync(batch);
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        await StopAsync();
     }
 }

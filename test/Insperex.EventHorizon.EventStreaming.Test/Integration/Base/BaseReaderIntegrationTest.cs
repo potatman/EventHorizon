@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
+using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Samples.Models;
 using Insperex.EventHorizon.EventStreaming.Test.Fakers;
 using Insperex.EventHorizon.EventStreaming.Test.Util;
@@ -20,6 +21,7 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
     private string _streamId;
     private Event[] _events;
     private readonly StreamingClient _streamingClient;
+    private Publisher<Event> _publisher;
 
     protected BaseReaderIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
@@ -35,9 +37,8 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
 
         // Publish Events
         _events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(1000).Select(x => new Event(x.Id, x)).ToArray();
-        using var publisher = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
-        await publisher.PublishAsync(_events);
-        await Task.Delay(2000);
+        _publisher = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
+        await _publisher.PublishAsync(_events);
 
         // Setup
         _streamId = _events.Last().StreamId;
@@ -48,12 +49,13 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged));
+        await _publisher.DisposeAsync();
     }
 
     [Fact]
     public async Task TestReaderGetStreamId()
     {
-        using var reader = _streamingClient.CreateReader<Event>().AddStream<Feed1PriceChanged>().Keys(_streamId).Build();
+        await using var reader = _streamingClient.CreateReader<Event>().AddStream<Feed1PriceChanged>().Keys(_streamId).Build();
 
         var events = await reader.GetNextAsync(_events.Length);
 

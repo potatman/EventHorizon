@@ -30,8 +30,8 @@ public class InMemoryTopicReader<T> : ITopicReader<T> where T : class, ITopicMes
         return Task.FromResult(results);
     }
 
-
-    public void Dispose()
+    public ValueTask DisposeAsync()
     {
+        return ValueTask.CompletedTask;
     }
 }
