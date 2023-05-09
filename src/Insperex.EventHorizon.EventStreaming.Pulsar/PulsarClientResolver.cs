@@ -29,10 +29,15 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
 
         public IPulsarAdminRESTAPIClient GetAdminClient()
         {
-            return _admin ??= new PulsarAdminRESTAPIClient(new HttpClient
+            return _admin ??= new PulsarAdminRESTAPIClient(GetHttpClient());
+        }
+
+        public HttpClient GetHttpClient()
+        {
+            return new HttpClient
             {
                 BaseAddress = new Uri($"{_options.Value.AdminUrl}/admin/v2/")
-            });
+            };
         }
 
     }
