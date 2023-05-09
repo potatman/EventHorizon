@@ -36,14 +36,14 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        // Publish Events
         _events = EventStreamingFakers.RandomEventFaker.Generate(1000).ToArray();
-        // Setup
         _publisher1 = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
         _publisher2 = _streamingClient.CreatePublisher<Event>().AddStream<Feed2PriceChanged>().Build();
-
         await _publisher1.PublishAsync(_events.Take(_events.Length/2).ToArray());
         await _publisher2.PublishAsync(_events.Skip(_events.Length/2).ToArray());
 
+        // Setup
         _stopwatch = Stopwatch.StartNew();
     }
 
