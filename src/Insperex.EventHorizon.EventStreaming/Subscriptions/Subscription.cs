@@ -1,15 +1,11 @@
 ﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
-using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Extensions;
-using Insperex.EventHorizon.EventStreaming.Interfaces;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 using Microsoft.Extensions.Logging;
@@ -164,6 +160,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
         await StopAsync();
     }
 }
