@@ -10,9 +10,9 @@ public abstract record PriceChanged(string Id, int Price) : IEvent;
 
 
 [Stream("feed1")]
-[PulsarConfig("test_pricing")]
+[PulsarNamespace("test_pricing", "$type")]
 public record Feed1PriceChanged(string Id, int Price) : PriceChanged (Id, Price);
 
 [Stream("feed2")]
-[PulsarConfig("test_pricing")]
+[PulsarNamespace("test_pricing", "$type")]
 public record Feed2PriceChanged(string Id, int Price) : PriceChanged (Id, Price);
