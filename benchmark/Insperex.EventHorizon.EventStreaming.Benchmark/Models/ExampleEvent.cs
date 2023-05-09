@@ -8,7 +8,7 @@ using ProtoBuf;
 namespace Insperex.EventHorizon.EventStreaming.Benchmark.Models;
 
 [Stream("benchmark")]
-[PulsarConfig("test_benchmark")]
+[PulsarNamespace("test_benchmark", "$type")]
 public class ExampleEvent : IEvent
 {
     public string Property1 { get; set; }
