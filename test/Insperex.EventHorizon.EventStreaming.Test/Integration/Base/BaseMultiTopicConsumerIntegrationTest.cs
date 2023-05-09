@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
+using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Samples.Models;
 using Insperex.EventHorizon.EventStreaming.Test.Fakers;
 using Insperex.EventHorizon.EventStreaming.Test.Shared;
@@ -22,6 +23,8 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     private Event[] _events;
     private readonly StreamingClient _streamingClient;
     private readonly ListStreamConsumer<Event> _handler;
+    private Publisher<Event> _publisher1;
+    private Publisher<Event> _publisher2;
 
     protected BaseMultiTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
@@ -35,11 +38,11 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     {
         _events = EventStreamingFakers.RandomEventFaker.Generate(1000).ToArray();
         // Setup
-        await using var publisher1 = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
-        await using var publisher2 = _streamingClient.CreatePublisher<Event>().AddStream<Feed2PriceChanged>().Build();
+        _publisher1 = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
+        _publisher2 = _streamingClient.CreatePublisher<Event>().AddStream<Feed2PriceChanged>().Build();
 
-        await publisher1.PublishAsync(_events.Take(_events.Length/2).ToArray());
-        await publisher2.PublishAsync(_events.Skip(_events.Length/2).ToArray());
+        await _publisher1.PublishAsync(_events.Take(_events.Length/2).ToArray());
+        await _publisher2.PublishAsync(_events.Skip(_events.Length/2).ToArray());
 
         _stopwatch = Stopwatch.StartNew();
     }
@@ -49,6 +52,8 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged));
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed2PriceChanged));
+        await _publisher1.DisposeAsync();
+        await _publisher2.DisposeAsync();
     }
 
     [Fact]

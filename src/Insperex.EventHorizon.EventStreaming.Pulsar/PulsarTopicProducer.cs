@@ -51,7 +51,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
 
             var key = func?.GetValue(message)?.ToString() ?? message.StreamId;
             var msg = producer.NewMessage(message, key);
-            await producer.SendAsync(msg);
+            await producer.SendAndForgetAsync(msg);
         }
     }
 
