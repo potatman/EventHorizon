@@ -40,7 +40,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
 
         await publisher1.PublishAsync(_events.Take(_events.Length/2).ToArray());
         await publisher2.PublishAsync(_events.Skip(_events.Length/2).ToArray());
-        await Task.Delay(4000);
+        await Task.Delay(5000);
 
         _stopwatch = Stopwatch.StartNew();
     }
