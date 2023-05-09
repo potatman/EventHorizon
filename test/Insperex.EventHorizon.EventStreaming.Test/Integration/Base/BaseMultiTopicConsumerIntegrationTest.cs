@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
+using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Samples.Models;
 using Insperex.EventHorizon.EventStreaming.Test.Fakers;
 using Insperex.EventHorizon.EventStreaming.Test.Shared;
@@ -22,26 +23,27 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     private Event[] _events;
     private readonly StreamingClient _streamingClient;
     private readonly ListStreamConsumer<Event> _handler;
+    private Publisher<Event> _publisher1;
+    private Publisher<Event> _publisher2;
 
     protected BaseMultiTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
         _outputHelper = outputHelper;
         _streamingClient = provider.GetRequiredService<StreamingClient>();
-        _timeout = TimeSpan.FromSeconds(15);
+        _timeout = TimeSpan.FromSeconds(20);
         _handler = new ListStreamConsumer<Event>();
     }
 
     public async Task InitializeAsync()
     {
+        // Publish Events
         _events = EventStreamingFakers.RandomEventFaker.Generate(1000).ToArray();
+        _publisher1 = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
+        _publisher2 = _streamingClient.CreatePublisher<Event>().AddStream<Feed2PriceChanged>().Build();
+        await _publisher1.PublishAsync(_events.Take(_events.Length/2).ToArray());
+        await _publisher2.PublishAsync(_events.Skip(_events.Length/2).ToArray());
+
         // Setup
-        using var publisher1 = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
-        using var publisher2 = _streamingClient.CreatePublisher<Event>().AddStream<Feed2PriceChanged>().Build();
-
-        await publisher1.PublishAsync(_events.Take(_events.Length/2).ToArray());
-        await publisher2.PublishAsync(_events.Skip(_events.Length/2).ToArray());
-        await Task.Delay(4000);
-
         _stopwatch = Stopwatch.StartNew();
     }
 
@@ -50,13 +52,15 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged));
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed2PriceChanged));
+        await _publisher1.DisposeAsync();
+        await _publisher2.DisposeAsync();
     }
 
     [Fact]
     public async Task SubscribeToMultipleTopics()
     {
         // Consume
-        using var subscription = await _streamingClient.CreateSubscription<Event>()
+        await using var subscription = await _streamingClient.CreateSubscription<Event>()
             .AddStream<Feed1PriceChanged>()
             .AddStream<Feed2PriceChanged>()
             .BatchSize(_events.Length/10)
@@ -76,8 +80,8 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
         var builder = _streamingClient.CreateSubscription<Event>()
             .BatchSize(_events.Length / 10);
 
-        using var subscription1 = await builder.AddStream<Feed1PriceChanged>().OnBatch(_handler.OnBatch).Build().StartAsync();
-        using var subscription2 = await builder.AddStream<Feed2PriceChanged>().OnBatch(_handler.OnBatch).Build().StartAsync();
+        await using var subscription1 = await builder.AddStream<Feed1PriceChanged>().OnBatch(_handler.OnBatch).Build().StartAsync();
+        await using var subscription2 = await builder.AddStream<Feed2PriceChanged>().OnBatch(_handler.OnBatch).Build().StartAsync();
 
         // Assert
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);

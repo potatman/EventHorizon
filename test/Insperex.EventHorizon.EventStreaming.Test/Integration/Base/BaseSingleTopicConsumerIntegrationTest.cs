@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
+using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Samples.Models;
 using Insperex.EventHorizon.EventStreaming.Test.Fakers;
 using Insperex.EventHorizon.EventStreaming.Test.Shared;
@@ -22,6 +23,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     private readonly TimeSpan _timeout;
     private Event[] _events;
     private readonly ListStreamConsumer<Event> _handler;
+    private Publisher<Event> _publisher;
 
     protected BaseSingleTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
@@ -31,42 +33,40 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         _handler = new ListStreamConsumer<Event>();
     }
 
-    public Task InitializeAsync()
+    public async Task InitializeAsync()
     {
-        // Publish
+        // Publish Events
         _events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(1000).Select(x => new Event(x.Id, x)).ToArray();
+        _publisher = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
+        await _publisher.PublishAsync(_events);
+
+        // Setup
         _stopwatch = Stopwatch.StartNew();
-        return Task.CompletedTask;
     }
 
     public async Task DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged));
+        await _publisher.DisposeAsync();
     }
 
     [Fact]
     public async Task TestSingleConsumer()
     {
         // Consume
-        using var subscription = await _streamingClient.CreateSubscription<Event>()
+        await using var subscription = await _streamingClient.CreateSubscription<Event>()
             .AddStream<Feed1PriceChanged>()
             .BatchSize(_events.Length / 10)
             .OnBatch(_handler.OnBatch)
             .Build()
             .StartAsync();
 
-        using var publisher = await _streamingClient.CreatePublisher<Event>()
-            .AddStream<Feed1PriceChanged>()
-            .Build()
-            .PublishAsync(_events);
-
         // Wait for List
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);
 
         // Assert
         AssertUtil.AssertEventsValid(_events, _handler.List.ToArray());
-
     }
 
     [Fact]
@@ -77,14 +77,9 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
             .BatchSize(_events.Length / 10)
             .OnBatch(_handler.OnBatch);
 
-        using var publisher = await _streamingClient.CreatePublisher<Event>()
-            .AddStream<Feed1PriceChanged>()
-            .Build()
-            .PublishAsync(_events);
-
         // Consume
-        using var subscription1 = await builder.Build().StartAsync();
-        using var subscription2 = await builder.Build().StartAsync();
+        await using var subscription1 = await builder.Build().StartAsync();
+        await using var subscription2 = await builder.Build().StartAsync();
 
         // Assert
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);

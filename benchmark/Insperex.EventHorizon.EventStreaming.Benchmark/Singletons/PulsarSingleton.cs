@@ -2,23 +2,21 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Bogus;
-using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.Benchmark.Models;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
-using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Insperex.EventHorizon.EventStreaming.Readers;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Insperex.EventHorizon.EventStreaming.Test.Util;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Insperex.EventHorizon.EventStreaming.Benchmark.Singletons;
 
-public class PulsarSingleton : IDisposable
+public class PulsarSingleton : IAsyncDisposable
 {
     public static readonly PulsarSingleton Instance = new();
 
@@ -95,8 +93,7 @@ public class PulsarSingleton : IDisposable
         return list.ToArray();
     }
 
-
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         var types = Readers.Select(x => x.Key)
             .Concat(Consumers.Select(x => x.Key))
@@ -105,12 +102,12 @@ public class PulsarSingleton : IDisposable
             .ToArray();
 
         // Dispose All
-        foreach (var key in Readers.Keys) Readers[key]?.Dispose();
-        foreach (var key in Consumers.Keys) Consumers[key]?.Dispose();
-        foreach (var key in Publishers.Keys) Publishers[key]?.Dispose();
+        foreach (var key in Readers.Keys) await Readers[key].DisposeAsync();
+        foreach (var key in Consumers.Keys) await Consumers[key].DisposeAsync();
+        foreach (var key in Publishers.Keys) await Publishers[key].DisposeAsync();
 
         // Delete Topics
         foreach (var type in types)
-            StreamClient.Value.GetAdmin<Event>().DeleteTopicAsync(type, ct: CancellationToken.None).Wait();
+            await StreamClient.Value.GetAdmin<Event>().DeleteTopicAsync(type, ct: CancellationToken.None);
     }
 }

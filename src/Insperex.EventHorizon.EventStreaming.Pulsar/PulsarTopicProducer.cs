@@ -55,12 +55,6 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         }
     }
 
-    public void Dispose()
-    {
-        _producer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        _producer = null;
-    }
-
     private async Task<IProducer<T>> GetProducerAsync()
     {
         if (_producer != null) return _producer;
@@ -85,4 +79,9 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         return _producer;
     }
 
+    public async ValueTask DisposeAsync()
+    {
+        if(_producer != null) await _producer.DisposeAsync();
+        _producer = null;
+    }
 }

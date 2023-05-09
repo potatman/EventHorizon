@@ -7,8 +7,6 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Attributes
     {
         public string Tenant { get; set; }
         public string Namespace { get; set; }
-        public string CommandNamespace { get; set; }
-        public string RequestNamespace { get; set; }
         public int RetentionTimeInMinutes { get; set; }
         public int RetentionSizeInMb { get; set; }
 

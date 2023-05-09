@@ -75,7 +75,7 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
             try
             {
                 var dataSource = new MongoDbSource(_mongoClient, bucketId, _loggerFactory.CreateLogger<MongoDbSource>());
-                using var publisher = _streamingClient.CreatePublisher<Event>().AddTopic(topic).Build();
+                await using var publisher = _streamingClient.CreatePublisher<Event>().AddTopic(topic).Build();
 
                 if (!await dataSource.AnyAsync(ct))
                 {

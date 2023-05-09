@@ -93,12 +93,6 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             await consumer.NegativeAcknowledge(_messageIdDict[message.TopicData.Id]);
     }
 
-    public void Dispose()
-    {
-        _consumer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        _consumer = null;
-    }
-
     private async Task<IConsumer<T>> GetConsumerAsync()
     {
         if (_consumer != null)
@@ -137,5 +131,11 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
         // Return
         return _consumer = consumer;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if(_consumer != null) await _consumer.DisposeAsync();
+        _consumer = null;
     }
 }

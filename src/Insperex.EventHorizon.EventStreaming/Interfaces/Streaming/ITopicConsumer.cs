@@ -6,7 +6,7 @@ using Insperex.EventHorizon.Abstractions.Models;
 
 namespace Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 
-public interface ITopicConsumer<T> : IDisposable
+public interface ITopicConsumer<T> : IAsyncDisposable
     where T : ITopicMessage
 {
     Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct);

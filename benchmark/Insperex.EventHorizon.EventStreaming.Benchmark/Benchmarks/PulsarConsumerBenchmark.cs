@@ -1,5 +1,5 @@
 ﻿using System.Threading;
-using Insperex.EventHorizon.Abstractions.Models;
+using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.Benchmark.Models;
 using Insperex.EventHorizon.EventStreaming.Benchmark.Singletons;
@@ -38,9 +38,9 @@ public class PulsarConsumerBenchmark
     [PerfBenchmark(Description = "Test Pulsar Publisher throughput",
         NumberOfIterations = 3, RunMode = RunMode.Throughput, RunTimeMilliseconds = 1000, TestMode = TestMode.Test)]
     [CounterThroughputAssertion("TestCounter", MustBe.GreaterThan, 1.0d)]
-    public void BenchmarkBulk()
+    public async Task BenchmarkBulk()
     {
-        _consumer.NextBatchAsync(CancellationToken.None).Wait();
+        await _consumer.NextBatchAsync(CancellationToken.None);
         _counter.Increment();
     }
 }
