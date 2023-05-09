@@ -92,7 +92,7 @@ public class Aggregator<TParent, T>
 
     public async Task<Response[]> HandleAsync<TM>(TM[] messages, CancellationToken ct) where TM : ITopicMessage
     {
-        var responses = new List<Response>();
+        var responses = new Dictionary<string, Response>();
         Dictionary<string, Aggregate<T>> aggregateDict;
         var retryCount = 0;
         do
@@ -111,9 +111,10 @@ public class Aggregator<TParent, T>
             await SaveAllAsync(aggregateDict);
 
             // Add Successful Responses
-            responses.AddRange(aggregateDict.Values
-                .Where(x => x.Error == null)
-                .SelectMany(x => x.Responses).ToArray());
+            var successfulResponses = aggregateDict.Values.Where(x => x.Error == null)
+                .SelectMany(x => x.Responses).ToArray();
+            foreach (var response in successfulResponses)
+                responses[response.RequestId] = response;
 
             // Setup for Next Iteration, If Any Failures
             messages = messages
@@ -123,11 +124,13 @@ public class Aggregator<TParent, T>
             retryCount = ++retryCount;
         } while (_config.RetryLimit != retryCount && messages.Any());
 
-        responses.AddRange(aggregateDict.Values
-            .Where(x => x.Error == null)
-            .SelectMany(x => x.Responses).ToArray());
+        // Add Failed Responses
+        var failedResponses = aggregateDict.Values.Where(x => x.Error != null)
+            .SelectMany(x => x.Responses).ToArray();
+        foreach (var response in failedResponses)
+            responses[response.RequestId] = response;
 
-        return responses.Distinct().ToArray();
+        return responses.Values.ToArray();
     }
 
     private void TriggerHandle<TM>(TM[] messages, Dictionary<string, Aggregate<T>> aggregateDict) where TM : ITopicMessage
