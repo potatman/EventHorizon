@@ -10,23 +10,32 @@ using Insperex.EventHorizon.Abstractions.Util;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Insperex.EventHorizon.EventSourcing.Extensions
 {
-    /// <summary>
-    /// Api Routing for Minimal Apis
-    /// </summary>
     public static class WebApplicationExtensions
     {
+        /// <summary>
+        /// Api Routing for Minimal WebApis
+        /// </summary>
         public static void MapEventSourcingEndpoints<T>(this WebApplication app) where T : class, IState, new()
+        {
+            MapEventSourcingEndpoints<T>(app as IEndpointRouteBuilder);
+        }
+
+        /// <summary>
+        /// Api Routing for Generic WebApis
+        /// </summary>
+        public static void MapEventSourcingEndpoints<T>(this IEndpointRouteBuilder endpointRouteBuilder) where T : class, IState, new()
         {
             var type = typeof(T);
 
             // Map Get
-            var esClient = app.Services.GetRequiredService<EventSourcingClient<T>>();
+            var esClient = endpointRouteBuilder.ServiceProvider.GetRequiredService<EventSourcingClient<T>>();
             var aggregator = esClient.Aggregator().Build();
-            var group = app.MapGroup("api");
+            var group = endpointRouteBuilder.MapGroup("api");
 
             group.MapGet(type.Name + "/{id}", async (string id) =>
                 {
@@ -50,7 +59,7 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
             {
                 var requestArgs = request.Value.GetGenericArguments();
                 var generic = methodReq?.MakeGenericMethod(request.Key, requestArgs[1], requestArgs[0]);
-                generic?.Invoke(obj: null, parameters: new object[] { app });
+                generic?.Invoke(obj: null, parameters: new object[] { endpointRouteBuilder });
             }
 
             // Map Commands
@@ -62,20 +71,20 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
             {
                 var requestArgs = command.Value.GetGenericArguments();
                 var generic = methodCmd?.MakeGenericMethod(command.Key, requestArgs[0]);
-                generic?.Invoke(obj: null, parameters: new object[] { app });
+                generic?.Invoke(obj: null, parameters: new object[] { endpointRouteBuilder });
             }
         }
 
-        private static void MapRequest<TReq, TRes, T>(this WebApplication app)
+        private static void MapRequest<TReq, TRes, T>(IEndpointRouteBuilder endpointRouteBuilder)
             where T : class, IState, new()
             where TReq : IRequest<T, TRes>
             where TRes : class, IResponse<T>
         {
-            var esClient = app.Services.GetRequiredService<EventSourcingClient<T>>();
+            var esClient = endpointRouteBuilder.ServiceProvider.GetRequiredService<EventSourcingClient<T>>();
             var sender = esClient.CreateSender().Build();
             var typeName = typeof(T).Name;
             var reqName = typeof(TReq).Name;
-            app.MapGroup("api")
+            endpointRouteBuilder.MapGroup("api")
                 .MapPost(typeName + "/{id}/" + reqName, async (string id, TReq req)  =>
                 {
                     var response = await sender.SendAndReceiveAsync<T>(new Request(id, req));
@@ -90,15 +99,15 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                 .WithTags(typeName);
         }
 
-        private static void MapCommand<TCmd, T>(this WebApplication app)
+        private static void MapCommand<TCmd, T>(IEndpointRouteBuilder endpointRouteBuilder)
             where T : class, IState, new()
             where TCmd : ICommand<T>
         {
-            var sender = app.Services.GetRequiredService<EventSourcingClient<T>>().CreateSender().Build();
+            var sender = endpointRouteBuilder.ServiceProvider.GetRequiredService<EventSourcingClient<T>>().CreateSender().Build();
 
             var typeName = typeof(T).Name;
             var reqName = typeof(TCmd).Name;
-            app.MapGroup("api")
+            endpointRouteBuilder.MapGroup("api")
                 .MapPost(typeName + "/{id}/" + reqName, async (string id, TCmd cmd)  =>
                 {
                     try
