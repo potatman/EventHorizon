@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Net;
 using System.Text.Json;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
@@ -151,7 +152,7 @@ public class AggregateUnitTests
 
         // Assert Results
         var result = JsonSerializer.Deserialize<AccountResponse>(agg.Responses.First().Payload);
-        Assert.Equal(AccountResponseStatus.Success, result!.Status);
+        Assert.Equal(HttpStatusCode.OK, result!.StatusCode);
     }
 
     [Fact]
@@ -174,7 +175,8 @@ public class AggregateUnitTests
         // Assert Results
         var result = agg.Responses.First();
         var actual = JsonSerializer.Deserialize<AccountResponse>(result.Payload);
-        Assert.Equal(AccountResponseStatus.WithdrawalDenied, actual!.Status);
+        Assert.Equal(HttpStatusCode.InternalServerError, actual.StatusCode);
+        Assert.Equal(AccountConstants.WithdrawalDenied, actual.Error);
     }
 
     [Fact]

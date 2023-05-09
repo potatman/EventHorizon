@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Extensions;
@@ -75,32 +76,12 @@ public class SenderIntegrationTest : IAsyncLifetime
 
         _sender = _host.Services.GetRequiredService<SenderBuilder>()
             .Timeout(TimeSpan.FromSeconds(30))
-            .GetErrorResult((status, error) =>
-            {
-                return status switch
-                {
-                    AggregateStatus.CommandTimedOut => new AccountResponse(AccountResponseStatus.CommandTimedOut),
-                    AggregateStatus.LoadSnapshotFailed => new AccountResponse(AccountResponseStatus.LoadSnapshotFailed),
-                    AggregateStatus.SaveSnapshotFailed => new AccountResponse(AccountResponseStatus.SaveSnapshotFailed),
-                    AggregateStatus.SaveEventsFailed => new AccountResponse(AccountResponseStatus.SaveEventsFailed),
-                    _ => throw new Exception($"Unhandled ResultStatus {status} => {error}")
-                };
-            })
+            .GetErrorResult((status, error) => new AccountResponse(status, error))
             .Build();
 
         _sender2 = _host.Services.GetRequiredService<SenderBuilder>()
             .Timeout(TimeSpan.FromSeconds(30))
-            .GetErrorResult((status, error) =>
-            {
-                return status switch
-                {
-                    AggregateStatus.CommandTimedOut => new AccountResponse(AccountResponseStatus.CommandTimedOut),
-                    AggregateStatus.LoadSnapshotFailed => new AccountResponse(AccountResponseStatus.LoadSnapshotFailed),
-                    AggregateStatus.SaveSnapshotFailed => new AccountResponse(AccountResponseStatus.SaveSnapshotFailed),
-                    AggregateStatus.SaveEventsFailed => new AccountResponse(AccountResponseStatus.SaveEventsFailed),
-                    _ => throw new Exception($"Unhandled ResultStatus {status} => {error}")
-                };
-            })
+            .GetErrorResult((status, error) => new AccountResponse(status, error))
             .Build();
 
         _eventSourcingClient = _host.Services.GetRequiredService<EventSourcingClient<Account>>();
@@ -135,7 +116,7 @@ public class SenderIntegrationTest : IAsyncLifetime
         await Task.WhenAll(result1, result2, result3, result4, result5);
 
         // Assert Status
-        Assert.Equal(AccountResponseStatus.Success, result1.Result.Status);
+        Assert.Equal(HttpStatusCode.OK, result1.Result.StatusCode);
 
         // Assert Account
         var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
@@ -164,7 +145,8 @@ public class SenderIntegrationTest : IAsyncLifetime
         var result = await _sender.SendAndReceiveAsync(streamId, command);
 
         // Assert
-        Assert.Equal(AccountResponseStatus.WithdrawalDenied, result.Status);
+        Assert.Equal(HttpStatusCode.InternalServerError, result.StatusCode);
+        Assert.Equal(AccountConstants.WithdrawalDenied, result.Error);
     }
 
     [Fact]
@@ -172,23 +154,13 @@ public class SenderIntegrationTest : IAsyncLifetime
     {
         var sender = _host.Services.GetRequiredService<SenderBuilder>()
             .Timeout(TimeSpan.Zero)
-            .GetErrorResult((status, error) =>
-            {
-                return status switch
-                {
-                    AggregateStatus.CommandTimedOut => new AccountResponse(AccountResponseStatus.CommandTimedOut),
-                    AggregateStatus.LoadSnapshotFailed => new AccountResponse(AccountResponseStatus.LoadSnapshotFailed),
-                    AggregateStatus.SaveSnapshotFailed => new AccountResponse(AccountResponseStatus.SaveSnapshotFailed),
-                    AggregateStatus.SaveEventsFailed => new AccountResponse(AccountResponseStatus.SaveEventsFailed),
-                    _ => throw new Exception($"Unhandled ResultStatus {status} => {error}")
-                };
-            })
+            .GetErrorResult((status, error) => new AccountResponse(status, error))
             .Build();
 
         // Send Command
         var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(10);
         var command = new OpenAccount(100);
         var result = await sender.SendAndReceiveAsync(streamId, command);
-        Assert.Equal(AccountResponseStatus.CommandTimedOut, result.Status);
+        Assert.Equal(HttpStatusCode.RequestTimeout, result.StatusCode);
     }
 }

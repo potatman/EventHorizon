@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
@@ -12,7 +13,7 @@ public class SenderBuilder
 {
     private readonly SenderSubscriptionTracker _subscriptionTracker;
     private readonly StreamingClient _streamingClient;
-    private Func<AggregateStatus, string, IResponse> _getErrorResult;
+    private Func<HttpStatusCode, string, IResponse> _getErrorResult;
     private TimeSpan _timeout = TimeSpan.FromSeconds(120);
 
     public SenderBuilder(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient)
@@ -27,7 +28,7 @@ public class SenderBuilder
         return this;
     }
 
-    public SenderBuilder GetErrorResult(Func<AggregateStatus, string, IResponse> getErrorResult)
+    public SenderBuilder GetErrorResult(Func<HttpStatusCode, string, IResponse> getErrorResult)
     {
         _getErrorResult = getErrorResult;
         return this;

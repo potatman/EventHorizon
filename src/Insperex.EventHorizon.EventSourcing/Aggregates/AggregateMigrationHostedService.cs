@@ -31,7 +31,7 @@ namespace Insperex.EventHorizon.EventSourcing.Aggregates
                         .HandleAsync(events, batch.CancellationToken);
 
                     var failedIds = responses
-                        .Where(x => x.Status != AggregateStatus.Ok)
+                        .Where(x => x.Error != null)
                         .Select(x => x.StreamId)
                         .ToArray();
 

@@ -12,7 +12,6 @@ public class Response : ITopicMessage
     public string StreamId { get; set; }
     public string Type { get; set; }
     public string Payload { get; set; }
-    public AggregateStatus Status { get; set; }
     public HttpStatusCode StatusCode { get; set; }
     public string Error { get; set; }
 

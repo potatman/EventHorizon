@@ -24,7 +24,6 @@ public class Aggregate<T>
     internal readonly List<Response> Responses = new();
     private readonly Type _type = typeof(T);
     private Dictionary<string, object> AllStates { get; set; }
-    public AggregateStatus Status { get; private set; }
     public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
     public bool IsDirty { get; private set; }
     public string Error { get; private set; }
@@ -90,7 +89,7 @@ public class Aggregate<T>
             var context = new AggregateContext(Exists());
             var method = AggregateAssemblyUtil.StateToRequestHandlersDict.GetValueOrDefault(state.Key)?.GetValueOrDefault(request.Type);
             var result = method?.Invoke(state.Value, parameters: new [] { payload, context } );
-            Responses.Add(new Response(Id, request.Id, request.SenderId, result) { Status = Status, Error = Error, StatusCode = StatusCode });
+            Responses.Add(new Response(Id, request.Id, request.SenderId, result) { Error = Error, StatusCode = StatusCode });
             foreach(var item in context.Events)
                 Apply((dynamic)new Event(Id, SequenceId, item));
         }
@@ -126,15 +125,13 @@ public class Aggregate<T>
         UpdatedDate = DateTime.UtcNow;
     }
 
-    public void SetStatus(AggregateStatus status, HttpStatusCode statusCode, string error = null)
+    public void SetStatus(HttpStatusCode statusCode, string error = null)
     {
-        Status = status;
         Error = error;
         StatusCode = statusCode;
         foreach (var response in Responses)
         {
             response.StatusCode = statusCode;
-            response.Status = status;
             response.Error = error;
         }
     }

@@ -88,7 +88,7 @@ public class Sender
         foreach (var request in requestDict.Values)
             if (!responseDict.ContainsKey(request.Id))
                 responseDict[request.Id] = new Response(request.StreamId, request.Id, _subscriptionTracker.GetSenderId(),
-                    _config.GetErrorResult?.Invoke(AggregateStatus.CommandTimedOut, string.Empty)) { Status = AggregateStatus.CommandTimedOut, StatusCode = HttpStatusCode.RequestTimeout };
+                    _config.GetErrorResult?.Invoke(HttpStatusCode.RequestTimeout, string.Empty));
 
         return responseDict.Values.ToArray();
     }

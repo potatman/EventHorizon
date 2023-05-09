@@ -1,3 +1,4 @@
+using System.Net;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
@@ -14,18 +15,9 @@ public record AccountDebited(int Amount) : IEvent<Account>;
 public record AccountCredited(int Amount) : IEvent<Account>;
 
 // Response
-public record AccountResponse(AccountResponseStatus Status = AccountResponseStatus.Success, string Error = null) : IResponse<Account>;
+public record AccountResponse(HttpStatusCode StatusCode = HttpStatusCode.OK, string Error = null) : IResponse<Account>;
 
-public enum AccountResponseStatus
+public static class AccountConstants
 {
-    Success,
-    WithdrawalDenied,
-    // ----- Internal Errors Below ----
-    CommandTimedOut,
-    LoadSnapshotFailed,
-    HandlerFailed,
-    BeforeSaveFailed,
-    AfterSaveFailed,
-    SaveSnapshotFailed,
-    SaveEventsFailed,
+    public const string WithdrawalDenied = "Insufficient Funds";
 }

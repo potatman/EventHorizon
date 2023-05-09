@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Net;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
@@ -46,7 +47,7 @@ public class Account : IState,
     public AccountResponse Handle(Withdrawal request, AggregateContext context)
     {
         if(Amount < request.Amount)
-            return new AccountResponse(AccountResponseStatus.WithdrawalDenied);
+            return new AccountResponse(HttpStatusCode.InternalServerError, AccountConstants.WithdrawalDenied);
 
         if(request.Amount != 0 && Amount >= request.Amount)
             context.AddEvent(new AccountDebited(request.Amount));
