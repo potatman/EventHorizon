@@ -27,7 +27,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     {
         _outputHelper = outputHelper;
         _streamingClient = provider.GetRequiredService<StreamingClient>();
-        _timeout = TimeSpan.FromSeconds(15);
+        _timeout = TimeSpan.FromSeconds(20);
         _handler = new ListStreamConsumer<Event>();
     }
 
@@ -40,7 +40,6 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
 
         await publisher1.PublishAsync(_events.Take(_events.Length/2).ToArray());
         await publisher2.PublishAsync(_events.Skip(_events.Length/2).ToArray());
-        await Task.Delay(5000);
 
         _stopwatch = Stopwatch.StartNew();
     }
