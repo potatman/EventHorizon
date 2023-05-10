@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
@@ -77,6 +78,9 @@ public class AggregateBuilder<TParent, T>
             RetryLimit = _retryLimit,
             Middleware = _middleware,
         };
+
+        // Create Store
+        _crudStore.Setup(CancellationToken.None).Wait();
 
         // Validate Handlers if Enabled
         if(config.IsValidationEnabled)

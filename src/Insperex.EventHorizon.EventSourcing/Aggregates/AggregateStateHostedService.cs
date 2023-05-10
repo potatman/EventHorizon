@@ -38,8 +38,6 @@ public class AggregateStateHostedService<TParent, TAction, T> : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        await _aggregator.SetupAsync();
-
         // Try to Refresh any Missing or Outdated Snapshots
         if (_aggregator.GetConfig().IsRebuildEnabled)
             await _aggregator.RebuildAllAsync(cancellationToken);

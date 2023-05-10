@@ -41,11 +41,6 @@ public class Aggregator<TParent, T>
         return _config;
     }
 
-    public Task SetupAsync()
-    {
-        return _crudStore.Setup(CancellationToken.None);
-    }
-
     public async Task RebuildAllAsync(CancellationToken ct)
     {
         var minDateTime = await _crudStore.GetLastUpdatedDateAsync(ct);
