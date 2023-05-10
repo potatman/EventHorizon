@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
@@ -51,16 +52,16 @@ public class SenderSubscriptionTracker : IAsyncDisposable
         _subscriptionDict[type] = subscription;
     }
 
-    public Response[] GetResponses(string[] responseIds, Func<AggregateStatus, string, IResponse> configGetErrorResult)
+    public Response[] GetResponses(string[] responseIds, Func<HttpStatusCode, string, IResponse> configGetErrorResult)
     {
         var responses = new List<Response>();
         foreach (var responseId in responseIds)
             if (_responseDict.TryGetValue(responseId, out var value))
             {
                 // Add Response, Make Custom if needed
-                responses.Add(value.Data.Status != AggregateStatus.Ok
+                responses.Add(value.Data.Error != null
                     ? new Response(value.Data.StreamId, value.Data.RequestId, _senderId,
-                        configGetErrorResult(value.Data.Status, value.Data.Error)) { Status = value.Data.Status }
+                        configGetErrorResult(value.Data.StatusCode, value.Data.Error))
                     : value.Data);
             }
 

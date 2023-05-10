@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces;
@@ -91,7 +92,7 @@ public class Aggregator<TParent, T>
 
     public async Task<Response[]> HandleAsync<TM>(TM[] messages, CancellationToken ct) where TM : ITopicMessage
     {
-        var responses = new List<Response>();
+        var responses = new Dictionary<string, Response>();
         Dictionary<string, Aggregate<T>> aggregateDict;
         var retryCount = 0;
         do
@@ -110,23 +111,26 @@ public class Aggregator<TParent, T>
             await SaveAllAsync(aggregateDict);
 
             // Add Successful Responses
-            responses.AddRange(aggregateDict.Values
-                .Where(x => x.Status == AggregateStatus.Ok)
-                .SelectMany(x => x.Responses).ToArray());
+            var successfulResponses = aggregateDict.Values.Where(x => x.Error == null)
+                .SelectMany(x => x.Responses).ToArray();
+            foreach (var response in successfulResponses)
+                responses[response.RequestId] = response;
 
             // Setup for Next Iteration, If Any Failures
             messages = messages
-                .Where(x => aggregateDict[x.StreamId].Status != AggregateStatus.Ok)
+                .Where(x => aggregateDict[x.StreamId].Error != null)
                 .ToArray();
 
             retryCount = ++retryCount;
         } while (_config.RetryLimit != retryCount && messages.Any());
 
-        responses.AddRange(aggregateDict.Values
-            .Where(x => x.Status == AggregateStatus.Ok)
-            .SelectMany(x => x.Responses).ToArray());
+        // Add Failed Responses
+        var failedResponses = aggregateDict.Values.Where(x => x.Error != null)
+            .SelectMany(x => x.Responses).ToArray();
+        foreach (var response in failedResponses)
+            responses[response.RequestId] = response;
 
-        return responses.Distinct().ToArray();
+        return responses.Values.ToArray();
     }
 
     private void TriggerHandle<TM>(TM[] messages, Dictionary<string, Aggregate<T>> aggregateDict) where TM : ITopicMessage
@@ -145,12 +149,12 @@ public class Aggregator<TParent, T>
             }
             catch (Exception e)
             {
-                agg.SetStatus(AggregateStatus.HandlerFailed, e.Message);
+                agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
             }
         }
 
         // OnCompleted Hook
-        var passed = aggregateDict.Values.Where(x => x.Status == AggregateStatus.Ok).ToArray();
+        var passed = aggregateDict.Values.Where(x => x.Error == null).ToArray();
         try
         {
             _config.Middleware?.BeforeSave(passed);
@@ -158,7 +162,7 @@ public class Aggregator<TParent, T>
         catch (Exception e)
         {
             foreach (var agg in passed)
-                agg.SetStatus(AggregateStatus.BeforeSaveFailed, e.Message);
+                agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
         }
     }
 
@@ -171,17 +175,17 @@ public class Aggregator<TParent, T>
         await PublishEventsAsync(aggregateDict);
 
         // Log Groups of failed snapshots
-        var aggStatusLookup = aggregateDict.Values.ToLookup(x => x.Status);
+        var aggStatusLookup = aggregateDict.Values.ToLookup(x => x.Error);
         foreach (var group in aggStatusLookup)
         {
-            if (group.Key == AggregateStatus.Ok) continue;
+            if (group.Key == null) continue;
             var first = group.First();
             _logger.LogError("{State} {Count} had {Status} => {Error}",
-                typeof(T).Name, group.Count(), first.Status, first.Error);
+                typeof(T).Name, group.Count(), first.StatusCode, first.Error);
         }
 
         // OnCompleted Hook
-        var passed = aggregateDict.Values.Where(x => x.Status == AggregateStatus.Ok).ToArray();
+        var passed = aggregateDict.Values.Where(x => x.Error == null).ToArray();
         try
         {
             _config.Middleware?.AfterSave(passed);
@@ -189,7 +193,7 @@ public class Aggregator<TParent, T>
         catch (Exception e)
         {
             foreach (var agg in passed)
-                agg.SetStatus(AggregateStatus.BeforeSaveFailed, e.Message);
+                agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
         }
     }
 
@@ -199,7 +203,7 @@ public class Aggregator<TParent, T>
         {
             // Save Snapshots and then track failures
             var parents = aggregateDict.Values
-                .Where(x => x.Status == AggregateStatus.Ok)
+                .Where(x => x.Error == null)
                 .Where(x => x.IsDirty)
                 .Select(x => new TParent
                 {
@@ -216,21 +220,25 @@ public class Aggregator<TParent, T>
 
             var results = await _crudStore.UpsertAsync(parents, CancellationToken.None);
             foreach (var id in results.FailedIds)
-                aggregateDict[id].SetStatus(AggregateStatus.SaveSnapshotFailed);
+                aggregateDict[id].SetStatus(HttpStatusCode.InternalServerError, "Snapshot Failed to Save");
             foreach (var id in results.PassedIds)
+            {
+                aggregateDict[id].SetStatus(aggregateDict[id].SequenceId == 1?
+                    HttpStatusCode.Created : HttpStatusCode.OK);
                 aggregateDict[id].SequenceId++;
+            }
         }
         catch (Exception ex)
         {
             foreach (var aggregate in aggregateDict.Values)
-                aggregate.SetStatus(AggregateStatus.SaveSnapshotFailed, ex.Message);
+                aggregate.SetStatus(HttpStatusCode.InternalServerError, ex.Message);
         }
     }
 
     private async Task PublishEventsAsync(Dictionary<string, Aggregate<T>> aggregateDict)
     {
         var events = aggregateDict.Values
-            .Where(x => x.Status == AggregateStatus.Ok)
+            .Where(x => x.Error == null)
             .SelectMany(x => x.Events)
             .ToArray();
 
@@ -247,7 +255,7 @@ public class Aggregator<TParent, T>
             _logger.LogError(ex, "Failed to publish events");
             var streamIds = events.Select(x => x.StreamId).Distinct().ToArray();
             foreach (var streamId in streamIds)
-                aggregateDict[streamId].SetStatus(AggregateStatus.SaveEventsFailed);
+                aggregateDict[streamId].SetStatus(HttpStatusCode.InternalServerError, ex.Message);
         }
     }
 
@@ -274,7 +282,7 @@ public class Aggregator<TParent, T>
         {
             aggregate.Events.Clear();
             aggregate.Responses.Clear();
-            aggregate.SetStatus(AggregateStatus.Ok);
+            aggregate.SetStatus(HttpStatusCode.OK);
         }
     }
 
@@ -303,7 +311,7 @@ public class Aggregator<TParent, T>
                 .ToDictionary(x => x.Id);
 
             // OnCompleted Hook
-            var passed = aggregateDict.Values.Where(x => x.Status == AggregateStatus.Ok).ToArray();
+            var passed = aggregateDict.Values.Where(x => x.Error == null).ToArray();
             try
             {
                 _config.Middleware?.OnLoad(passed);
@@ -311,7 +319,7 @@ public class Aggregator<TParent, T>
             catch (Exception e)
             {
                 foreach (var agg in passed)
-                    agg.SetStatus(AggregateStatus.OnLoadFailed, e.Message);
+                    agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
             }
 
             return aggregateDict;
@@ -323,7 +331,7 @@ public class Aggregator<TParent, T>
                 .Select(x =>
                 {
                     var agg = new Aggregate<T>(x);
-                    agg.SetStatus(AggregateStatus.LoadSnapshotFailed, ex.Message);
+                    agg.SetStatus(HttpStatusCode.InternalServerError, ex.Message);
                     return agg;
                 })
                 .ToDictionary(x => x.Id);
