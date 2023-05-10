@@ -9,6 +9,7 @@ using Insperex.EventHorizon.EventSourcing.Util;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
+using Insperex.EventHorizon.EventStore.Locks;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +30,7 @@ public class AggregateBuilder<TParent, T>
     private bool _isRebuildEnabled;
     private int _retryLimit = 5;
     private IAggregateMiddleware<T> _middleware;
+    private readonly LockFactory<T> _lockFactory;
 
     public AggregateBuilder(
         IServiceProvider serviceProvider,
@@ -38,6 +40,7 @@ public class AggregateBuilder<TParent, T>
         _crudStore = typeof(TParent).Name == typeof(Snapshot<>).Name?
             (ICrudStore<TParent>)serviceProvider.GetRequiredService<ISnapshotStoreFactory<T>>().GetSnapshotStore() :
             (ICrudStore<TParent>)serviceProvider.GetRequiredService<IViewStoreFactory<T>>().GetViewStore();
+        _lockFactory = serviceProvider.GetRequiredService<LockFactory<T>>();
         _validationUtil = serviceProvider.GetRequiredService<ValidationUtil>();
         _serviceProvider = serviceProvider;
         _streamingClient = streamingClient;
@@ -80,7 +83,10 @@ public class AggregateBuilder<TParent, T>
         };
 
         // Create Store
-        _crudStore.Setup(CancellationToken.None).Wait();
+        var @lock = _lockFactory.CreateLock($"Migrate-{typeof(T)}");
+        @lock.WaitForLockAsync().GetAwaiter().GetResult();
+        _crudStore.Setup(CancellationToken.None).GetAwaiter().GetResult();
+        @lock.DisposeAsync().GetAwaiter().GetResult();
 
         // Validate Handlers if Enabled
         if(config.IsValidationEnabled)
