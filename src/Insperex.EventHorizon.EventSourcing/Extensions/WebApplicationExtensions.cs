@@ -51,7 +51,8 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                 })
                 .WithTags(type.Name)
                 .Produces<T>()
-                .Produces(StatusCodes.Status404NotFound);
+                .Produces(StatusCodes.Status404NotFound)
+                .Produces(StatusCodes.Status500InternalServerError);
             group.MapGet(type.Name + "/{id}/state-in-time", async (string id, [FromQuery] DateTime dateTime) =>
                 {
                     try
@@ -66,7 +67,8 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                 })
                 .WithTags(type.Name)
                 .Produces<T>()
-                .Produces(StatusCodes.Status404NotFound);
+                .Produces(StatusCodes.Status404NotFound)
+                .Produces(StatusCodes.Status500InternalServerError);
 
             // Map Requests
             var requests = AssemblyUtil.ActionDict.Values
@@ -119,8 +121,9 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                     };
                 })
                 .WithTags(typeName)
-                .Produces<T>()
-                .Produces<T>(StatusCodes.Status201Created);
+                .Produces<TRes>()
+                .Produces<TRes>(StatusCodes.Status201Created)
+                .Produces(StatusCodes.Status500InternalServerError);
         }
 
         private static void MapCommand<TCmd, T>(IEndpointRouteBuilder endpointRouteBuilder)
@@ -145,8 +148,8 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                     }
                 })
                 .WithTags(typeName)
-                .Produces<T>()
-                .Produces<T>(StatusCodes.Status409Conflict);
+                .Produces(StatusCodes.Status200OK)
+                .Produces(StatusCodes.Status500InternalServerError);
         }
     }
 }
