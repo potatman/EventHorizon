@@ -32,9 +32,6 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Extensions
             configurator.Collection.AddSingleton(typeof(Admin<>));
             configurator.Collection.AddSingleton<AttributeUtil>();
 
-            configurator.Collection.AddHealthChecks()
-                .AddCheck<PulsarHealthCheck>(nameof(PulsarHealthCheck));
-
             return configurator;
         }
     }

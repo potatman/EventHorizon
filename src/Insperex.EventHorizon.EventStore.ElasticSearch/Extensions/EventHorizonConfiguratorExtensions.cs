@@ -35,8 +35,5 @@ public static class EventHorizonConfiguratorExtensions
         configurator.Collection.Configure<ElasticConfig>(config.GetSection("ElasticSearch"));
         configurator.Collection.AddSingleton(typeof(LockFactory<>));
         configurator.Collection.AddSingleton<AttributeUtil>();
-
-        configurator.Collection.AddHealthChecks()
-            .AddElasticsearch(config.GetSection("ElasticSearch").Get<ElasticConfig>().Uris.First());
     }
 }
