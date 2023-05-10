@@ -39,16 +39,30 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
 
             group.MapGet(type.Name + "/{id}", async (string id) =>
                 {
-                    var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
-                    return response.Exists() ? Results.Ok(response.State) : Results.NotFound();
+                    try
+                    {
+                        var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
+                        return response.Exists() ? Results.Ok(response.State) : Results.NotFound();
+                    }
+                    catch (Exception e)
+                    {
+                        return Results.Problem(e.StackTrace, title: e.Message);
+                    }
                 })
                 .WithTags(type.Name)
                 .Produces<T>()
                 .Produces(StatusCodes.Status404NotFound);
             group.MapGet(type.Name + "/{id}/state-in-time", async (string id, [FromQuery] DateTime dateTime) =>
                 {
-                    var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
-                    return response.Exists() ? Results.Ok(response.State) : Results.NotFound();
+                    try
+                    {
+                        var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
+                        return response.Exists() ? Results.Ok(response.State) : Results.NotFound();
+                    }
+                    catch (Exception e)
+                    {
+                        return Results.Problem(e.StackTrace, title: e.Message);
+                    }
                 })
                 .WithTags(type.Name)
                 .Produces<T>()
@@ -92,7 +106,11 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                 .MapPost(typeName + "/{id}/" + reqName, async (string id, TReq req)  =>
                 {
                     var response = await sender.SendAndReceiveAsync<T>(new Request(id, req));
-                    var statusCode = response.First().StatusCode;
+                    var first = response.First();
+                    var statusCode = first.StatusCode;
+                    if ((int)statusCode > 300)
+                        return Results.Problem(first.Error, title: first.Error);
+
                     return statusCode switch
                     {
                         HttpStatusCode.OK => Results.Ok(response),
@@ -123,7 +141,7 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                     }
                     catch (Exception e)
                     {
-                        return Results.Conflict(e);
+                        return Results.Problem(e.StackTrace, title: e.Message);
                     }
                 })
                 .WithTags(typeName)
