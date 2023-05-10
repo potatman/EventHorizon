@@ -40,8 +40,5 @@ public static class EventHorizonConfiguratorExtensions
         configurator.Collection.Configure<MongoConfig>(config.GetSection("MongoDb"));
         configurator.Collection.AddSingleton(typeof(LockFactory<>));
         configurator.Collection.AddSingleton<AttributeUtil>();
-
-        configurator.Collection.AddHealthChecks()
-            .AddMongoDb(config.GetSection("MongoDb").Get<MongoConfig>().ConnectionString);
     }
 }

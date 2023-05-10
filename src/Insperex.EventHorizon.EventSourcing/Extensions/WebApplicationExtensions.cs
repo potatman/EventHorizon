@@ -39,20 +39,36 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
 
             group.MapGet(type.Name + "/{id}", async (string id) =>
                 {
-                    var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
-                    return response.Exists() ? Results.Ok(response.State) : Results.NotFound();
+                    try
+                    {
+                        var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
+                        return response.Exists() ? Results.Ok(response.State) : Results.NotFound();
+                    }
+                    catch (Exception e)
+                    {
+                        return Results.Problem(e.StackTrace, title: e.Message);
+                    }
                 })
                 .WithTags(type.Name)
                 .Produces<T>()
-                .Produces(StatusCodes.Status404NotFound);
+                .Produces(StatusCodes.Status404NotFound)
+                .Produces(StatusCodes.Status500InternalServerError);
             group.MapGet(type.Name + "/{id}/state-in-time", async (string id, [FromQuery] DateTime dateTime) =>
                 {
-                    var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
-                    return response.Exists() ? Results.Ok(response.State) : Results.NotFound();
+                    try
+                    {
+                        var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
+                        return response.Exists() ? Results.Ok(response.State) : Results.NotFound();
+                    }
+                    catch (Exception e)
+                    {
+                        return Results.Problem(e.StackTrace, title: e.Message);
+                    }
                 })
                 .WithTags(type.Name)
                 .Produces<T>()
-                .Produces(StatusCodes.Status404NotFound);
+                .Produces(StatusCodes.Status404NotFound)
+                .Produces(StatusCodes.Status500InternalServerError);
 
             // Map Requests
             var requests = AssemblyUtil.ActionDict.Values
@@ -92,7 +108,11 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                 .MapPost(typeName + "/{id}/" + reqName, async (string id, TReq req)  =>
                 {
                     var response = await sender.SendAndReceiveAsync<T>(new Request(id, req));
-                    var statusCode = response.First().StatusCode;
+                    var first = response.First();
+                    var statusCode = first.StatusCode;
+                    if ((int)statusCode > 300)
+                        return Results.Problem(first.Error, title: first.Error);
+
                     return statusCode switch
                     {
                         HttpStatusCode.OK => Results.Ok(response),
@@ -101,8 +121,9 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                     };
                 })
                 .WithTags(typeName)
-                .Produces<T>()
-                .Produces<T>(StatusCodes.Status201Created);
+                .Produces<TRes>()
+                .Produces<TRes>(StatusCodes.Status201Created)
+                .Produces(StatusCodes.Status500InternalServerError);
         }
 
         private static void MapCommand<TCmd, T>(IEndpointRouteBuilder endpointRouteBuilder)
@@ -123,12 +144,12 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                     }
                     catch (Exception e)
                     {
-                        return Results.Conflict(e);
+                        return Results.Problem(e.StackTrace, title: e.Message);
                     }
                 })
                 .WithTags(typeName)
-                .Produces<T>()
-                .Produces<T>(StatusCodes.Status409Conflict);
+                .Produces(StatusCodes.Status200OK)
+                .Produces(StatusCodes.Status500InternalServerError);
         }
     }
 }

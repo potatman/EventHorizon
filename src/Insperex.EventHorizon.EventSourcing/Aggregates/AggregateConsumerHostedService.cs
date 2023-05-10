@@ -10,7 +10,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace Insperex.EventHorizon.EventSourcing.Aggregates;
 
-public class AggregateStateHostedService<TParent, TAction, T> : IHostedService
+public class AggregateConsumerHostedService<TParent, TAction, T> : IHostedService
     where TParent : class, IStateParent<T>, new()
     where T : class, IState
     where TAction : class, ITopicMessage, new()
@@ -18,7 +18,7 @@ public class AggregateStateHostedService<TParent, TAction, T> : IHostedService
     private readonly Aggregator<TParent, T> _aggregator;
     private readonly Subscription<TAction> _subscription;
 
-    public AggregateStateHostedService(
+    public AggregateConsumerHostedService(
         StreamingClient streamingClient,
         Aggregator<TParent, T> aggregator)
     {

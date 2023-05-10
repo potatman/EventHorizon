@@ -25,8 +25,8 @@ public class Aggregate<T>
     private readonly Type _type = typeof(T);
     private Dictionary<string, object> AllStates { get; set; }
     public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
-    public bool IsDirty { get; private set; }
     public string Error { get; private set; }
+    public bool IsDirty { get; private set; }
     public string Id { get; set; }
     public long SequenceId { get; set; }
     public T State { get; set; }
@@ -146,7 +146,7 @@ public class Aggregate<T>
             .ToDictionary(x => x.Name, x =>
             {
                 var state = Activator.CreateInstance(x.PropertyType);
-                ((dynamic)state).Id = Id;
+                ((dynamic)state)!.Id = Id;
                 x.SetValue(State, state);
                 return state;
             });
