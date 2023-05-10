@@ -25,7 +25,7 @@ public class LockDisposable : IAsyncDisposable
         AppDomain.CurrentDomain.ProcessExit += OnExit;
     }
 
-    public async Task WaitForLockAsync()
+    public async Task<LockDisposable> WaitForLockAsync()
     {
         do
         {
@@ -33,6 +33,7 @@ public class LockDisposable : IAsyncDisposable
             if (!_ownsLock)
                 await Task.Delay(200);
         } while (!_ownsLock);
+        return this;
     }
 
     public async Task<bool> TryLockAsync()

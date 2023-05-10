@@ -83,8 +83,7 @@ public class AggregateBuilder<TParent, T>
         };
 
         // Create Store
-        var @lock = _lockFactory.CreateLock($"Migrate-{typeof(T)}");
-        @lock.WaitForLockAsync().GetAwaiter().GetResult();
+        var @lock = _lockFactory.CreateLock($"Migrate-{typeof(T).Name}").WaitForLockAsync().GetAwaiter().GetResult();
         _crudStore.Setup(CancellationToken.None).GetAwaiter().GetResult();
         @lock.DisposeAsync().GetAwaiter().GetResult();
 
