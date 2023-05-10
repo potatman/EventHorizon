@@ -38,12 +38,6 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
         var list = new List<MessageContext<T>>();
         var reader = await GetReaderAsync();
 
-        // Move After StartDateTime
-        if (_config.StartDateTime != null)
-        {
-            await reader.SeekAsync(_config.StartDateTime.Value.Ticks);
-        }
-
         Message<T> message;
         do
         {
@@ -107,6 +101,10 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
                 .ToArray());
 
         _reader = await builder.CreateAsync();
+
+        // Move After StartDateTime
+        if (_config.StartDateTime != null)
+            await _reader.SeekAsync(_config.StartDateTime.Value.Ticks);
 
         return _reader;
     }
