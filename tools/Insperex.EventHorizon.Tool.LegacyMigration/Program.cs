@@ -4,6 +4,7 @@ using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.EventStore.MongoDb.Extensions;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
 using Insperex.EventHorizon.Tool.LegacyMigration.HostedServices;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -19,7 +20,7 @@ public class Program
             {
                 services.AddEventHorizon(x =>
                 {
-                    x.AddPulsarEventStream(hostContext.Configuration);
+                    x.AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                 });
 
                 // Runs Migration

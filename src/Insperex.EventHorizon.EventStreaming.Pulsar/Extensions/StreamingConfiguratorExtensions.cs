@@ -16,10 +16,10 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Extensions
 {
     public static class StreamingConfiguratorExtensions
     {
-        public static EventHorizonConfigurator AddPulsarEventStream(this EventHorizonConfigurator configurator, IConfiguration config)
+        public static EventHorizonConfigurator AddPulsarEventStream(this EventHorizonConfigurator configurator, Action<PulsarConfig> onConfig)
         {
             // Add Admin and Factory
-            configurator.Collection.Configure<PulsarConfig>(config.GetSection("Pulsar"));
+            configurator.Collection.Configure(onConfig);
             configurator.Collection.AddSingleton<PulsarClientResolver>();
             configurator.Collection.AddSingleton(typeof(ITopicAdmin<>), typeof(PulsarTopicAdmin<>));
             configurator.Collection.AddSingleton(typeof(IStreamFactory), typeof(PulsarStreamFactory));

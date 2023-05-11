@@ -8,6 +8,7 @@ using Insperex.EventHorizon.EventStore.ElasticSearch.Extensions;
 using Insperex.EventHorizon.EventStore.Ignite.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
 using Insperex.EventHorizon.EventStore.MongoDb.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
@@ -20,12 +21,12 @@ public static class HostTestUtil
     public static IHost GetElasticHost(ITestOutputHelper output)
     {
         return GetHostBase(output)
-            .ConfigureServices((hostContext, services) =>
+            .ConfigureServices((context, services) =>
             {
                 services.AddEventHorizon(x =>
                 {
-                    x.AddElasticSnapshotStore(hostContext.Configuration)
-                        .AddElasticViewStore(hostContext.Configuration);
+                    x.AddElasticSnapshotStore(context.Configuration.GetSection("ElasticSearch").Bind)
+                        .AddElasticViewStore(context.Configuration.GetSection("ElasticSearch").Bind);
                 });
             })
             .Build()
@@ -35,12 +36,12 @@ public static class HostTestUtil
     public static IHost GetIgniteHost(ITestOutputHelper output)
     {
         return GetHostBase(output)
-            .ConfigureServices((hostContext, services) =>
+            .ConfigureServices((context, services) =>
             {
                 services.AddEventHorizon(x =>
                 {
-                    x.AddElasticSnapshotStore(hostContext.Configuration)
-                        .AddElasticViewStore(hostContext.Configuration);
+                    x.AddIgniteSnapshotStore(context.Configuration.GetSection("Ignite").Bind)
+                        .AddIgniteViewStore(context.Configuration.GetSection("Ignite").Bind);
                 });
             })
             .Build()
@@ -65,12 +66,12 @@ public static class HostTestUtil
     public static IHost GetMongoDbHost(ITestOutputHelper output)
     {
         return GetHostBase(output)
-            .ConfigureServices((hostContext, services) =>
+            .ConfigureServices((context, services) =>
             {
                 services.AddEventHorizon(x =>
                 {
-                    x.AddMongoDbSnapshotStore(hostContext.Configuration)
-                        .AddMongoDbViewStore(hostContext.Configuration);
+                    x.AddMongoDbSnapshotStore(context.Configuration.GetSection("MongoDb").Bind)
+                        .AddMongoDbViewStore(context.Configuration.GetSection("MongoDb").Bind);
                 });
             })
             .Build()

@@ -1,4 +1,5 @@
-﻿using Insperex.EventHorizon.Abstractions;
+﻿using System;
+using Insperex.EventHorizon.Abstractions;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Locks;
@@ -20,24 +21,24 @@ public static class EventHorizonConfiguratorExtensions
         BsonSerializer.RegisterSerializer(new ObjectSerializer(_ => true));
     }
 
-    public static EventHorizonConfigurator AddMongoDbSnapshotStore(this EventHorizonConfigurator configurator, IConfiguration config)
+    public static EventHorizonConfigurator AddMongoDbSnapshotStore(this EventHorizonConfigurator configurator, Action<MongoConfig> onConfig)
     {
-        AddMongoDbStore(configurator, config);
+        AddMongoDbStore(configurator, onConfig);
         configurator.Collection.AddSingleton(typeof(ISnapshotStoreFactory<>), typeof(MongoStoreFactory<>));
         configurator.Collection.AddSingleton(typeof(ILockStoreFactory<>), typeof(MongoStoreFactory<>));
         return configurator;
     }
 
-    public static EventHorizonConfigurator AddMongoDbViewStore(this EventHorizonConfigurator configurator, IConfiguration config)
+    public static EventHorizonConfigurator AddMongoDbViewStore(this EventHorizonConfigurator configurator, Action<MongoConfig> onConfig)
     {
-        AddMongoDbStore(configurator, config);
+        AddMongoDbStore(configurator, onConfig);
         configurator.Collection.AddSingleton(typeof(IViewStoreFactory<>), typeof(MongoStoreFactory<>));
         return configurator;
     }
 
-    private static void AddMongoDbStore(this EventHorizonConfigurator configurator, IConfiguration config)
+    private static void AddMongoDbStore(this EventHorizonConfigurator configurator, Action<MongoConfig> onConfig)
     {
-        configurator.Collection.Configure<MongoConfig>(config.GetSection("MongoDb"));
+        configurator.Collection.Configure(onConfig);
         configurator.Collection.AddSingleton(typeof(LockFactory<>));
         configurator.Collection.AddSingleton<AttributeUtil>();
     }
