@@ -8,6 +8,7 @@ using Insperex.EventHorizon.EventStreaming.Samples.Handlers;
 using Insperex.EventHorizon.EventStreaming.Samples.HostedServices;
 using Insperex.EventHorizon.EventStreaming.Samples.Models;
 using Insperex.EventHorizon.EventStreaming.Subscriptions.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -19,7 +20,7 @@ public class Program
     static async Task Main(string[] args)
     {
         await Host.CreateDefaultBuilder(args)
-            .ConfigureServices((hostContext, services) =>
+            .ConfigureServices((context, services) =>
             {
                 // Feeds that Generate Data
                 services.AddHostedService<Feed1HostedService>();
@@ -29,7 +30,7 @@ public class Program
                 {
                     // Add Stream
                     // x.AddInMemoryEventStream();
-                    x.AddPulsarEventStream(hostContext.Configuration);
+                    x.AddPulsarEventStream(context.Configuration.GetSection("Pulsar").Bind);
 
                     // Add Hosted Subscription
                     x.AddSubscription<PriceChangeTracker, Event>(h =>

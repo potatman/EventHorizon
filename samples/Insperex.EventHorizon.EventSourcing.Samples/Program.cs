@@ -13,6 +13,7 @@ using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
 using Insperex.EventHorizon.EventStreaming.Subscriptions.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -41,9 +42,9 @@ public class Program
                             x.AddEventSourcing()
 
                                 // Stores
-                                .AddMongoDbSnapshotStore(context.Configuration)
-                                .AddElasticViewStore(context.Configuration)
-                                .AddPulsarEventStream(context.Configuration)
+                                .AddMongoDbSnapshotStore(context.Configuration.GetSection("MongoDb").Bind)
+                                .AddElasticViewStore(context.Configuration.GetSection("ElasticSearch").Bind)
+                                .AddPulsarEventStream(context.Configuration.GetSection("Pulsar").Bind)
 
                                 // Hosted
                                 .ApplyRequestsToSnapshot<Account>()

@@ -3,6 +3,7 @@ using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Testing;
 using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
@@ -19,7 +20,7 @@ public static class HostTestUtil
             {
                 services.AddEventHorizon(x =>
                 {
-                    x.AddPulsarEventStream(hostContext.Configuration);
+                    x.AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                 });
             })
             .Build()
