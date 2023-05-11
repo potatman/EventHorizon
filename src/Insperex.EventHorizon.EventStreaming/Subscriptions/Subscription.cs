@@ -18,8 +18,8 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
     private readonly ILogger<Subscription<T>> _logger;
     private readonly ITopicConsumer<T> _consumer;
     private bool _disposed;
-    private bool Running { get; set; }
-    private bool Stopped { get; set; }
+    private bool _running;
+    private bool _stopped;
 
     public Subscription(IStreamFactory factory, SubscriptionConfig<T> config, ILogger<Subscription<T>> logger)
     {
@@ -30,9 +30,9 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
 
     public Task<Subscription<T>> StartAsync()
     {
-        if (Running) return Task.FromResult(this);
-        Running = true;
-        Stopped = false;
+        if (_running) return Task.FromResult(this);
+        _running = true;
+        _stopped = false;
         Task.Run(Loop);
 
         _logger.LogInformation("Started Subscription with config {@Config}", _config);
@@ -42,11 +42,11 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
 
     public async Task<Subscription<T>> StopAsync()
     {
-        if (!Running) return this;
+        if (!_running) return this;
 
         // Cancel
-        Running = false;
-        while (!Stopped)
+        _running = false;
+        while (!_stopped)
             await Task.Delay(TimeSpan.FromMilliseconds(250));
 
         // Cleanup
@@ -57,7 +57,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
 
     private async void Loop()
     {
-        while (Running)
+        while (_running)
         {
             try
             {
@@ -72,7 +72,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
                 _logger.LogError(ex, "Unhandled Exception {Message}", ex.Message);
             }
         }
-        Stopped = true;
+        _stopped = true;
     }
 
     private async Task RunIteration()
