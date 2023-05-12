@@ -102,7 +102,8 @@ public class MessageRecoveryHandler<T>: ITopicConsumer<T> where T : ITopicMessag
         }
     }
 
-    public void Dispose()
+    public ValueTask DisposeAsync()
     {
+        return ValueTask.CompletedTask;
     }
 }

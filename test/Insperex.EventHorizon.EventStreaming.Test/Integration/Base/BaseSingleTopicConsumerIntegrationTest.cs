@@ -94,7 +94,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task TestSingleConsumerWithFailures()
     {
         // Consume
-        using var subscription = await _streamingClient.CreateSubscription<Event>()
+        await using var subscription = await _streamingClient.CreateSubscription<Event>()
             .AddStream<Feed1PriceChanged>()
             .BatchSize(_events.Length / 10)
             .GuaranteeMessageOrderOnFailure(true)
@@ -106,7 +106,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
             .Build()
             .StartAsync();
 
-        using var publisher = await _streamingClient.CreatePublisher<Event>()
+        await using var publisher = await _streamingClient.CreatePublisher<Event>()
             .AddStream<Feed1PriceChanged>()
             .Build()
             .PublishAsync(_events);

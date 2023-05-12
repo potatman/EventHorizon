@@ -67,14 +67,14 @@ public class PulsarAdminApiTests: IAsyncLifetime
             .BatchSize(100)
             .OnBatch((context) => Task.CompletedTask);
 
-        using var publisher = await _streamingClient.CreatePublisher<Event>()
+        await using var publisher = await _streamingClient.CreatePublisher<Event>()
             .AddStream<Feed1PriceChanged>()
             .Build()
             .PublishAsync(_events);
 
         // Set up subscriptions (so that key hash ranges get resolved on broker.
-        using var subscription1 = await builder.Build().StartAsync();
-        using var subscription2 = await builder.Build().StartAsync();
+        await using var subscription1 = await builder.Build().StartAsync();
+        await using var subscription2 = await builder.Build().StartAsync();
         using var httpClient = _pulsarClientResolver.GetAdminHttpClient();
 
         await Task.Delay(TimeSpan.FromSeconds(1));
