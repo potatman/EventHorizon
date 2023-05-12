@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -129,16 +129,14 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         {
             await _config.OnBatch(context);
 
-            // Ack/Nack Lists
-            await _consumer.AckAsync(context.AckList.ToArray());
-            await _consumer.NackAsync(context.NackList.ToArray());
-
             // Auto-Ack
-            var list = batch
+            var autoAcks = batch
                 .Where(x => !context.NackList.Contains(x))
                 .Where(x => !context.AckList.Contains(x))
                 .ToArray();
-            await _consumer.AckAsync(list.ToArray());
+            context.AckList.AddRange(autoAcks);
+
+            await _consumer.FinalizeBatchAsync(context.AckList.ToArray(), context.NackList.ToArray());
 
             // Logging
             var min = batch.Min(x => x.TopicData.CreatedDate);
@@ -154,7 +152,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         {
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _logger.LogError(ex, "Failed to process {Message}", ex.Message);
-            await _consumer.NackAsync(batch);
+            await _consumer.FinalizeBatchAsync(Array.Empty<MessageContext<T>>(), batch);
         }
     }
 

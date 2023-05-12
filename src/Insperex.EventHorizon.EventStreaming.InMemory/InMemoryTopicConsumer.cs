@@ -88,7 +88,13 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
         return list.ToArray();
     }
 
-    public Task AckAsync(params MessageContext<T>[] messages)
+    public async Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
+    {
+        await AckAsync(acks);
+        await NackAsync(nacks);
+    }
+
+    private Task AckAsync(params MessageContext<T>[] messages)
     {
         var topics = messages.GroupBy(x => x.TopicData.Topic).ToArray();
         foreach (var topic in topics)
@@ -97,7 +103,7 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
         return Task.CompletedTask;
     }
 
-    public Task NackAsync(params MessageContext<T>[] messages)
+    private Task NackAsync(params MessageContext<T>[] messages)
     {
         AckAsync(messages);
 

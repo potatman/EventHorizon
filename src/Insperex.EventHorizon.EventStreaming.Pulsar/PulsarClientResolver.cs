@@ -29,16 +29,12 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
 
         public IPulsarAdminRESTAPIClient GetAdminClient()
         {
-            return _admin ??= new PulsarAdminRESTAPIClient(GetHttpClient());
+            return _admin ??= new PulsarAdminRESTAPIClient(GetAdminHttpClient());
         }
 
-        public HttpClient GetHttpClient()
+        public HttpClient GetAdminHttpClient()
         {
-            return new HttpClient
-            {
-                BaseAddress = new Uri($"{_options.Value.AdminUrl}/admin/v2/")
-            };
+            return new HttpClient {BaseAddress = new Uri($"{_options.Value.AdminUrl}/admin/v2/")};
         }
-
     }
 }
