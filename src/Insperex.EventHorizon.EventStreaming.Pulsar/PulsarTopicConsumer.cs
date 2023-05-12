@@ -77,7 +77,13 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
     }
 
-    public async Task AckAsync(params MessageContext<T>[] messages)
+    public async Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
+    {
+        await AckAsync(acks);
+        await NackAsync(nacks);
+    }
+
+    private async Task AckAsync(params MessageContext<T>[] messages)
     {
         var consumer = await GetConsumerAsync();
         if (messages?.Any() != true) return;
@@ -85,7 +91,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             await consumer.AcknowledgeAsync(_messageIdDict[message.TopicData.Id]);
     }
 
-    public async Task NackAsync(params MessageContext<T>[] messages)
+    private async Task NackAsync(params MessageContext<T>[] messages)
     {
         var consumer = await GetConsumerAsync();
         if (messages?.Any() != true) return;
@@ -123,6 +129,13 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
         if (_config.BatchSize != null)
             builder = builder.ReceiverQueueSize(_config.BatchSize.Value);
+
+        if (_config.RetryBackoffPolicy != null)
+            // This Pulsar client does not support the NegativeAckRedeliveryBackoffPolicy as
+            // discussed here: https://pulsar.apache.org/docs/2.11.x/concepts-messaging/#negative-acknowledgment
+            // However, if there is a retry backoff policy specified, then we would probably
+            // not be using this consumer anyway but instead be using OrderGuaranteedPulsarTopicConsumer.
+            builder = builder.NegativeAckRedeliveryDelay(_config.RetryBackoffPolicy.MinDelay);
 
         var consumer = await builder.SubscribeAsync();
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -24,6 +24,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     private Event[] _events;
     private readonly ListStreamConsumer<Event> _handler;
     private Publisher<Event> _publisher;
+    private readonly PartialNackListStreamConsumer _partialNackHandler;
 
     protected BaseSingleTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
@@ -31,12 +32,15 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         _timeout = TimeSpan.FromSeconds(30);
         _streamingClient = provider.GetRequiredService<StreamingClient>();
         _handler = new ListStreamConsumer<Event>();
+        _partialNackHandler = new(_outputHelper, 0.03, 3, 2, 100);
     }
 
     public async Task InitializeAsync()
     {
         // Publish Events
-        _events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(1000).Select(x => new Event(x.Id, x)).ToArray();
+        int sequenceId = 0;
+        _events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(1000)
+            .Select(x => new Event(x.Id, ++sequenceId, x)).ToArray();
         _publisher = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
         await _publisher.PublishAsync(_events);
 
@@ -84,5 +88,36 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         // Assert
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);
         AssertUtil.AssertEventsValid(_events, _handler.List.ToArray());
+    }
+
+    [Fact]
+    public async Task TestSingleConsumerWithFailures()
+    {
+        // Consume
+        using var subscription = await _streamingClient.CreateSubscription<Event>()
+            .AddStream<Feed1PriceChanged>()
+            .BatchSize(_events.Length / 10)
+            .GuaranteeMessageOrderOnFailure(true)
+            .RetryBackoffPolicy(p =>
+                p.MinDelay(TimeSpan.FromMilliseconds(10))
+                .MaxDelay(TimeSpan.FromSeconds(15))
+                .Multiplier(2))
+            .OnBatch(_partialNackHandler.OnBatch) // Will nack at least some messages.
+            .Build()
+            .StartAsync();
+
+        using var publisher = await _streamingClient.CreatePublisher<Event>()
+            .AddStream<Feed1PriceChanged>()
+            .Build()
+            .PublishAsync(_events);
+
+        // Wait for List
+        await WaitUtil.WaitForTrue(() => _events.Length <= _partialNackHandler.List.Count, _timeout);
+
+        _partialNackHandler.Report();
+
+        // Assert
+        // Expecting the advanced failure handling to preserve message ordering despite the nacks.
+        AssertUtil.AssertEventsValid(_events, _partialNackHandler.List.ToArray());
     }
 }

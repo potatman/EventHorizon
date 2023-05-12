@@ -13,5 +13,7 @@ public class SubscriptionConfig<T> where T : ITopicMessage
     public DateTime? StartDateTime { get; set; }
     public TimeSpan NoBatchDelay { get; set; }
     public bool? IsBeginning { get; set; }
+    public bool IsMessageOrderGuaranteedOnFailure { get; set; }
+    public BackoffPolicy RetryBackoffPolicy { get; set; }
     public Func<SubscriptionContext<T>, Task> OnBatch { get; set; }
 }

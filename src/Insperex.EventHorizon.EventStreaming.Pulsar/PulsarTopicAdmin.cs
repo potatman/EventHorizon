@@ -1,12 +1,13 @@
 ﻿using System;
+using System.Linq;
+using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
-using Insperex.EventHorizon.EventStreaming.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Attributes;
-using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Microsoft.Extensions.Logging;
 using SharpPulsar.Admin.v2;
@@ -15,13 +16,15 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
 public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
 {
+    private readonly PulsarClientResolver _clientResolver;
     private readonly IPulsarAdminRESTAPIClient _admin;
     private readonly ILogger<PulsarTopicAdmin<T>> _logger;
     private readonly PulsarNamespaceAttribute _pulsarAttribute;
 
-    public PulsarTopicAdmin(IPulsarAdminRESTAPIClient admin, AttributeUtil attributeUtil, ILogger<PulsarTopicAdmin<T>> logger)
+    public PulsarTopicAdmin(PulsarClientResolver clientResolver, AttributeUtil attributeUtil, ILogger<PulsarTopicAdmin<T>> logger)
     {
-        _admin = admin;
+        _clientResolver = clientResolver;
+        _admin = _clientResolver.GetAdminClient();
         _logger = logger;
         _pulsarAttribute = attributeUtil.GetOne<PulsarNamespaceAttribute>(typeof(T));
     }
@@ -60,6 +63,53 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
             if (ex.StatusCode != 404)
                 throw;
         }
+    }
+
+    public async Task<JsonElement> GetTopicStats(string str, CancellationToken ct,
+        bool authoritative = false, bool getPreciseBacklog = false,
+        bool subscriptionBacklogSize = true, bool getEarliestTimeInBacklog = false)
+    {
+        using var httpClient = _clientResolver.GetAdminHttpClient();
+
+        var topic = PulsarTopicParser.Parse(str);
+        var parameters = new string[]
+        {
+            $"authoritative={authoritative.ToString().ToLowerInvariant()}",
+            $"getPreciseBacklog={getPreciseBacklog.ToString().ToLowerInvariant()}",
+            $"subscriptionBacklogSize={subscriptionBacklogSize.ToString().ToLowerInvariant()}",
+            $"getEarliestTimeInBacklog={getEarliestTimeInBacklog.ToString().ToLowerInvariant()}",
+        };
+        var url = $"{topic.ApiRoot}/stats?{string.Join('&', parameters)}";
+
+        var response = await httpClient.GetAsync(url, ct);
+        response.EnsureSuccessStatusCode();
+        var responseBody = await response.Content.ReadAsStringAsync(ct);
+        return JsonDocument.Parse(responseBody).RootElement;
+    }
+
+    public async Task<JsonElement[]> GetTopicConsumerKeyHashRanges(string topic, string subscriptionName,
+        string consumerName, CancellationToken ct)
+    {
+        var stats = await GetTopicStats(topic, ct, subscriptionBacklogSize: false);
+
+        var subscriptionsRoot = stats.GetProperty("subscriptions");
+        var subscriptions = subscriptionsRoot.EnumerateObject().Select(p => p.Name).ToArray();
+        var fullSubscriptionName = subscriptions.Single(s => s.Contains(subscriptionName));
+        var consumers = subscriptionsRoot
+            .GetProperty(fullSubscriptionName)
+            .GetProperty("consumers")
+            .EnumerateArray();
+
+        foreach (var consumer in consumers)
+        {
+            if (consumer.TryGetProperty("consumerName", out var consumerNameProp) &&
+                consumerNameProp.GetString() == consumerName)
+            {
+                return consumer.GetProperty("keyHashRanges").EnumerateArray().ToArray();
+            }
+        }
+
+        return null;
     }
 
     private async Task RequireNamespace(string tenant, string nameSpace, CancellationToken ct)
