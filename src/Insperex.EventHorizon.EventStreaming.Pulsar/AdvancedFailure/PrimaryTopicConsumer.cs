@@ -156,9 +156,9 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
             await consumer.AcknowledgeAsync(messageId);
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _consumer?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        if(_consumer != null) await _consumer.DisposeAsync();
         _consumer = null;
     }
 

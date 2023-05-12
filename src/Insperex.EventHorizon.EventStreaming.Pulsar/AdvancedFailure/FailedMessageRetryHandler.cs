@@ -53,7 +53,8 @@ public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : ITopicMes
         }
     }
 
-    public void Dispose()
+    public ValueTask DisposeAsync()
     {
+        return ValueTask.CompletedTask;
     }
 }

@@ -81,9 +81,9 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         };
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _primaryTopicConsumer.Dispose();
+        await _primaryTopicConsumer.DisposeAsync();
     }
 
     public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
