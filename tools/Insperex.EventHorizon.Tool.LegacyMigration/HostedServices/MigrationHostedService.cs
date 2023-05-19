@@ -120,7 +120,7 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
             while (true)
             {
                 var list = new List<Event>();
-                for (var i = 0; i < 10000; i++)
+                for (var i = 0; i < size; i++)
                 {
                     var item = await reader.ReadAsync();
                     list.Add(item);

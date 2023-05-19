@@ -7,11 +7,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Insperex.EventHorizon.EventStore\Insperex.EventHorizon.EventStore.csproj" />
+        <PackageReference Include="MongoDB.Driver" Version="2.19.1" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="MongoDB.Driver" Version="2.19.1" />
+        <ProjectReference Include="..\Insperex.EventHorizon.EventStore\Insperex.EventHorizon.EventStore.csproj" />
     </ItemGroup>
 
 </Project>
