@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <NoWarn>$(NoWarn)</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="MassTransit.Abstractions" Version="8.0.15" />
+    </ItemGroup>
+  
+    <ItemGroup>
+        <InternalsVisibleTo Include="Insperex.EventHorizon.EventSourcing.Test" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Insperex.EventHorizon.EventStore\Insperex.EventHorizon.EventStore.csproj" />
+        <ProjectReference Include="..\Insperex.EventHorizon.EventStreaming\Insperex.EventHorizon.EventStreaming.csproj" />
+    </ItemGroup>
+
+</Project>
