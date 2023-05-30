@@ -21,6 +21,7 @@ public class Program
                 services.AddEventHorizon(x =>
                 {
                     x.AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
+                    x.AddMongoDbSnapshotStore(hostContext.Configuration.GetSection("MongoDb").Bind);
                 });
 
                 // Runs Migration
