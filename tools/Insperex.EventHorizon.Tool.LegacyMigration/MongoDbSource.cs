@@ -10,6 +10,8 @@ using Insperex.EventHorizon.Tool.LegacyMigration.Models;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Insperex.EventHorizon.Tool.LegacyMigration
 {
@@ -57,9 +59,19 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration
                     {
                         var streamId = item["StreamId"].AsString;
                         var type = item["Type"].AsString;
-                        var payload = item["Payload"].ToString();
-                        return new Event { StreamId = streamId, Type = type, Payload = payload };
+
+                        // Convert Payload to Json
+                        var dotnetValue = BsonTypeMapper.MapToDotNetValue(item["Payload"]);
+                        var payload = JsonConvert.SerializeObject(dotnetValue);
+
+                        // Remove _t
+                        var obj = JsonConvert.DeserializeObject<JObject>(payload);
+                        obj.Property("_t")?.Remove();
+                        var json = JsonConvert.SerializeObject(obj);
+
+                        return new Event { StreamId = streamId, Type = type, Payload = json };
                     })
+                    .Where(x => x != null)
                     .ToArray();
             }
             _currentBatch = Array.Empty<BsonDocument>();
