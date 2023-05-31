@@ -14,22 +14,19 @@ namespace Insperex.EventHorizon.EventSourcing;
 
 public class EventSourcingClient<T> where T : class, IState, new()
 {
-    private readonly AggregateBuilder<Snapshot<T>, T> _aggregateBuilder;
     private readonly IServiceProvider _serviceProvider;
     private readonly SenderBuilder _senderBuilder;
 
     public EventSourcingClient(
         SenderBuilder senderBuilder,
-        AggregateBuilder<Snapshot<T>, T> aggregateBuilder,
         IServiceProvider serviceProvider)
     {
         _senderBuilder = senderBuilder;
-        _aggregateBuilder = aggregateBuilder;
         _serviceProvider = serviceProvider;
     }
 
     public SenderBuilder CreateSender() => _senderBuilder;
-    public AggregateBuilder<Snapshot<T>, T> Aggregator() => _aggregateBuilder;
+    public AggregateBuilder<Snapshot<T>, T> Aggregator() => _serviceProvider.GetRequiredService<AggregateBuilder<Snapshot<T>, T>>();
     public ICrudStore<Snapshot<T>> GetSnapshotStore() => _serviceProvider.GetRequiredService<ISnapshotStoreFactory<T>>().GetSnapshotStore();
     public ICrudStore<View<T>> GetViewStore() => _serviceProvider.GetRequiredService<IViewStoreFactory<T>>().GetViewStore();
 }
