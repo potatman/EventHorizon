@@ -15,7 +15,7 @@ public class Publisher<T> : IAsyncDisposable
     private readonly PublisherConfig _config;
     private readonly ILogger<Publisher<T>> _logger;
     private readonly string _typeName;
-    private ITopicProducer<T> _producer;
+    private readonly ITopicProducer<T> _producer;
 
     public Publisher(IStreamFactory factory, PublisherConfig config, ILogger<Publisher<T>> logger)
     {

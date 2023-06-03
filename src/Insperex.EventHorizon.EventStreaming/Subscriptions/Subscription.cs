@@ -92,7 +92,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         using var activity = TraceConstants.ActivitySource.StartActivity();
         try
         {
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             var batch = await _consumer.NextBatchAsync(cts.Token);
             activity?.SetTag(TraceConstants.Tags.Count, batch?.Length ?? 0);
             activity?.SetStatus(ActivityStatusCode.Ok);

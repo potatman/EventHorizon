@@ -89,7 +89,7 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
                     await publisher.PublishAsync(item);
                     await dataSource.SaveState(ct);
                     count += item.Length;
-                    _logger.LogInformation("Total Sent: {Count}", count);
+                    _logger.LogInformation("{bucketId} Total Sent: {Count}", bucketId, count);
                 }
             }
             catch (Exception e)
