@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
@@ -9,6 +9,7 @@ using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 using Insperex.EventHorizon.EventStreaming.Util;
+using Microsoft.Extensions.Logging;
 using Pulsar.Client.Api;
 using Pulsar.Client.Common;
 using Pulsar.Client.Otel;
@@ -24,33 +25,58 @@ public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
 {
     private readonly PulsarClientResolver _clientResolver;
     private readonly PulsarTopicAdmin<T> _admin;
+    private readonly ILogger<FailureStateTopic<T>> _logger;
     private readonly PulsarTopic _topic;
-    private IProducer<StreamFailureStateEvent<T>> _producer;
+    private IProducer<StreamState> _producer;
     private readonly string _publisherName;
-    private readonly OTelProducerInterceptor.OTelProducerInterceptor<StreamFailureStateEvent<T>> _intercept;
+    private ITableView<StreamState> _tableView;
+    private readonly OTelProducerInterceptor.OTelProducerInterceptor<StreamState> _intercept;
 
     public FailureStateTopic(SubscriptionConfig<T> subscriptionConfig, PulsarClientResolver clientResolver,
-        PulsarTopicAdmin<T> admin)
+        PulsarTopicAdmin<T> admin, ILogger<FailureStateTopic<T>> logger)
     {
         _clientResolver = clientResolver;
         _admin = admin;
+        _logger = logger;
         _topic = Topic(subscriptionConfig.Topics.First(), subscriptionConfig.SubscriptionName);
         _publisherName = NameUtil.AssemblyNameWithGuid;
-        _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<StreamFailureStateEvent<T>>(
+        _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<StreamState>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
     }
 
     public async Task InitializeAsync(CancellationToken ct)
     {
-        await _admin.RequireTopicAsync(_topic.ToString(), ct);
+        if (_tableView == null)
+        {
+            try
+            {
+                await _admin.RequireTopicAsync(_topic.ToString(), ct);
+                _tableView = await GetTableViewAsync();
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Something went wrong when initializing failure state topic.");
+                throw;
+            }
+        }
     }
 
-    private async Task<IProducer<StreamFailureStateEvent<T>>> GetProducerAsync()
+    public async Task Publish(params StreamState[] streamUpdates)
+    {
+        var producer = await GetProducerAsync();
+        foreach (var streamUpdate in streamUpdates)
+        {
+            var message = producer.NewMessage(streamUpdate, streamUpdate.StreamId);
+            await producer.SendAndForgetAsync(message);
+        }
+    }
+
+    private async Task<IProducer<StreamState>> GetProducerAsync()
     {
         if (_producer != null) return _producer;
 
         var client = await _clientResolver.GetPulsarClientAsync();
-        var builder = client.NewProducer(Schema.JSON<StreamFailureStateEvent<T>>())
+        var builder = client.NewProducer(Schema.JSON<StreamState>())
             .ProducerName(_publisherName)
             .BlockIfQueueFull(true)
             .BatchBuilder(BatchBuilder.KeyBased)
@@ -65,42 +91,38 @@ public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
         return _producer;
     }
 
-    public async IAsyncEnumerable<StreamFailureStateEvent<T>> ReadEvents(PulsarKeyHashRanges keyHashRanges,
-        [EnumeratorCancellation] CancellationToken ct)
+    public IEnumerable<StreamState> GetStreams()
     {
-        await using var reader = await GetReader(keyHashRanges);
+        return _tableView.Values
+            .Where(s => s.Topics?.Keys.Any() == true);
+    }
 
-        while (!reader.HasReachedEndOfTopic && await reader.HasMessageAvailableAsync())
+    public IEnumerable<StreamState> FindStreams(string[] streamIds)
+    {
+        foreach (var streamId in streamIds)
         {
-            var message = await reader.ReadNextAsync(ct);
-            yield return message.GetValue();
+            var streamState = _tableView.GetValueOrDefault(streamId);
+            if (streamState?.Topics?.Keys.Any() == true)
+                yield return streamState;
         }
     }
 
-    private async Task<IReader<StreamFailureStateEvent<T>>> GetReader(PulsarKeyHashRanges keyHashRanges )
+    public StreamState FindStream(string streamId)
+    {
+        var streamState = _tableView.GetValueOrDefault(streamId);
+        return streamState?.Topics?.Keys.Any() == true ? streamState : null;
+    }
+
+    private async Task<ITableView<StreamState>> GetTableViewAsync()
     {
         var client = await _clientResolver.GetPulsarClientAsync();
-        return await client.NewReader(Schema.JSON<StreamFailureStateEvent<T>>())
+        return await client.NewTableViewBuilder(Schema.JSON<StreamState>())
             .Topic(_topic.ToString())
-            .ReaderName(NameUtil.AssemblyNameWithGuid)
-            .ReceiverQueueSize(1000)
-            .StartMessageId(MessageId.Earliest)
-            .KeyHashRange(keyHashRanges.ToRangeArray())
             .CreateAsync();
     }
 
-    public async Task PublishEvents(params StreamFailureStateEvent<T>[] events)
-    {
-        var producer = await GetProducerAsync();
-        foreach (var evt in events)
-        {
-            var msg = producer.NewMessage(evt, evt.StreamId);
-            await producer.SendAndForgetAsync(msg);
-        }
-    }
-
     /// <summary>
-    /// Based on primary topic and the subscription to it, provides failure state
+    /// Based on subscription, provides failure state
     /// topic info.
     /// </summary>
     public static PulsarTopic Topic(string primaryTopicName, string subscriptionName)

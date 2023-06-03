@@ -61,7 +61,8 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
                 continue;
 
             // Stop at EndDateTime
-            if (_config.EndDateTime != null && new DateTime(message.PublishTime) > _config.EndDateTime)
+            if (_config.EndDateTime != null
+                && PulsarMessageMapper.PublishDateFromTimestamp(message.PublishTime) > _config.EndDateTime)
                 break;
 
             list.Add(new MessageContext<T>

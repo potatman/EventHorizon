@@ -10,7 +10,7 @@ public static class EventStreamingFakers
     private static readonly Faker<string> StreamIdFaker = new Faker<string>()
         .CustomInstantiator(f => f.Random.Guid().ToString());
 
-    private static readonly string[] StreamIds =
+    public static readonly string[] StreamIds =
         Enumerable.Range(1, 100)
             .Select(i => StreamIdFaker.Generate())
             .ToArray();

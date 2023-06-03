@@ -28,12 +28,16 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
 
     protected BaseSingleTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
+        Provider = provider;
         _outputHelper = outputHelper;
         _timeout = TimeSpan.FromSeconds(30);
         _streamingClient = provider.GetRequiredService<StreamingClient>();
         _handler = new ListStreamConsumer<Event>();
-        _partialNackHandler = new(_outputHelper, 0.03, 3, 2, 100);
+        _partialNackHandler = new(_outputHelper, 0.03, 3, 2,
+            100, true);
     }
+
+    protected IServiceProvider Provider { get; init; }
 
     public async Task InitializeAsync()
     {
@@ -48,7 +52,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         _stopwatch = Stopwatch.StartNew();
     }
 
-    public async Task DisposeAsync()
+    public virtual async Task DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged));
@@ -95,6 +99,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     {
         // Consume
         await using var subscription = await _streamingClient.CreateSubscription<Event>()
+            .SubscriptionName("Fails")
             .AddStream<Feed1PriceChanged>()
             .BatchSize(_events.Length / 10)
             .GuaranteeMessageOrderOnFailure(true)
@@ -105,11 +110,6 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
             .OnBatch(_partialNackHandler.OnBatch) // Will nack at least some messages.
             .Build()
             .StartAsync();
-
-        await using var publisher = await _streamingClient.CreatePublisher<Event>()
-            .AddStream<Feed1PriceChanged>()
-            .Build()
-            .PublishAsync(_events);
 
         // Wait for List
         await WaitUtil.WaitForTrue(() => _events.Length <= _partialNackHandler.List.Count, _timeout);

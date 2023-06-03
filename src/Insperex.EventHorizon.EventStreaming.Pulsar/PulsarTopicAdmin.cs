@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Attributes;
+using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Microsoft.Extensions.Logging;
 using SharpPulsar.Admin.v2;
@@ -65,7 +66,7 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         }
     }
 
-    public async Task<JsonElement> GetTopicStats(string str, CancellationToken ct,
+    private async Task<JsonElement> GetTopicStatsJson(string str, CancellationToken ct,
         bool authoritative = false, bool getPreciseBacklog = false,
         bool subscriptionBacklogSize = true, bool getEarliestTimeInBacklog = false)
     {
@@ -87,10 +88,10 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         return JsonDocument.Parse(responseBody).RootElement;
     }
 
-    public async Task<JsonElement[]> GetTopicConsumerKeyHashRanges(string topic, string subscriptionName,
+    public async Task<PulsarKeyHashRanges> GetTopicConsumerKeyHashRanges(string topic, string subscriptionName,
         string consumerName, CancellationToken ct)
     {
-        var stats = await GetTopicStats(topic, ct, subscriptionBacklogSize: false);
+        var stats = await GetTopicStatsJson(topic, ct, subscriptionBacklogSize: false);
 
         var subscriptionsRoot = stats.GetProperty("subscriptions");
         var subscriptions = subscriptionsRoot.EnumerateObject().Select(p => p.Name).ToArray();
@@ -105,11 +106,33 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
             if (consumer.TryGetProperty("consumerName", out var consumerNameProp) &&
                 consumerNameProp.GetString() == consumerName)
             {
-                return consumer.GetProperty("keyHashRanges").EnumerateArray().ToArray();
+                var jsonRanges = consumer.GetProperty("keyHashRanges").EnumerateArray().ToArray();
+                return BuildKeyHashRanges(jsonRanges);
             }
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Create an instance of <see cref="PulsarKeyHashRanges"/> from the JSON output
+    /// of the stats query in the Pulsar Admin API./>
+    /// </summary>
+    /// <param name="keyHashRanges">
+    /// JSON elements - each being string containing serialized JSON array of two numbers.
+    /// (e.g. "[445382,445383]"
+    /// </param>
+    /// <returns>New instance of <see cref="PulsarKeyHashRanges"/>.</returns>
+    private static PulsarKeyHashRanges BuildKeyHashRanges(JsonElement[] keyHashRanges)
+    {
+        ArgumentNullException.ThrowIfNull(keyHashRanges);
+
+        var ranges = keyHashRanges
+            .Select(r => JsonValue.Parse(r.GetString()).AsArray().ToArray())
+            .Select(r => (r[0].GetValue<int>(), r[1].GetValue<int>()))
+            .ToArray();
+
+        return new PulsarKeyHashRanges {Ranges = ranges};
     }
 
     private async Task RequireNamespace(string tenant, string nameSpace, CancellationToken ct)

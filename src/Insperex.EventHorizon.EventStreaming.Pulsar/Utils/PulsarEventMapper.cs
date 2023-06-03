@@ -11,6 +11,18 @@ public static class PulsarMessageMapper
         return new TopicData(
             id,
             topic ?? x.MessageId.TopicName,
-            new DateTime(x.PublishTime));
+            PublishDateFromTimestamp(x.PublishTime));
+    }
+
+    public static DateTime PublishDateFromTimestamp(long epochMilliseconds)
+    {
+        var dateTimeOffset = DateTimeOffset.FromUnixTimeMilliseconds(epochMilliseconds);
+        return dateTimeOffset.UtcDateTime;
+    }
+
+    public static long PublishTimestampFromDate(DateTime dateTime)
+    {
+        var dateTimeOffset = new DateTimeOffset(dateTime);
+        return dateTimeOffset.ToUnixTimeMilliseconds();
     }
 }

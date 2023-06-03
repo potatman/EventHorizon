@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using Avro.File;
+using Pulsar.Client.Common;
 using Range = Pulsar.Client.Api.Range;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar.Models
@@ -13,7 +11,18 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Models
     /// </summary>
     public sealed class PulsarKeyHashRanges: IEquatable<PulsarKeyHashRanges>
     {
-        public (int, int)[] Ranges { get; init; }
+        private readonly (int, int)[] _sortedRanges;
+
+        public (int, int)[] Ranges
+        {
+            get => _sortedRanges;
+            init
+            {
+                _sortedRanges = value
+                    .OrderBy(v => v.Item1)
+                    .ToArray();
+            }
+        }
 
         public bool Equals(PulsarKeyHashRanges other)
         {
@@ -28,6 +37,15 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Models
             return !Ranges.Where((t, i) => t != otherRanges[i]).Any();
         }
 
+        /// <summary>
+        /// Return true if the given key is part of the hash ranges.
+        /// </summary>
+        public bool IsMatch(string key)
+        {
+            var hash = MurmurHash3.Hash(key) % 65536;
+            return IsMatch(hash);
+        }
+
         public Range[] ToRangeArray()
         {
             return this.Ranges
@@ -35,25 +53,36 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Models
                 .ToArray();
         }
 
-        /// <summary>
-        /// Create an instance of <see cref="PulsarKeyHashRanges"/> from the JSON output
-        /// of the stats query in the Pulsar Admin API./>
-        /// </summary>
-        /// <param name="keyHashRanges">
-        /// JSON elements - each being string containing serialized JSON array of two numbers.
-        /// (e.g. "[445382,445383]"
-        /// </param>
-        /// <returns>New instance of <see cref="PulsarKeyHashRanges"/>.</returns>
-        public static PulsarKeyHashRanges Create(JsonElement[] keyHashRanges)
+        private bool IsMatch(int hash)
         {
-            ArgumentNullException.ThrowIfNull(keyHashRanges);
+            // Binary search to find range where hash would fit.
 
-            var ranges = keyHashRanges
-                .Select(r => JsonValue.Parse(r.GetString()).AsArray().ToArray())
-                .Select(r => (r[0].GetValue<int>(), r[1].GetValue<int>()))
-                .ToArray();
+            var left = 0;
+            var right = _sortedRanges.Length - 1;
 
-            return new PulsarKeyHashRanges {Ranges = ranges};
+            while (left <= right)
+            {
+                var midPoint = left + ((right - left) / 2);
+                var rangeToCheck = _sortedRanges[midPoint];
+
+                if (hash >= rangeToCheck.Item1 && hash <= rangeToCheck.Item2)
+                {
+                    // Match!
+                    return true;
+                }
+                else if (hash < rangeToCheck.Item1)
+                {
+                    // Focus search to the left.
+                    right = midPoint - 1;
+                }
+                else
+                {
+                    // Focus search to the right.
+                    left = midPoint + 1;
+                }
+            }
+
+            return false;
         }
     }
 }

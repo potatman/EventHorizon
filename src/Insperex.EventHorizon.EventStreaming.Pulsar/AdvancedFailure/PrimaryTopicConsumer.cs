@@ -11,6 +11,7 @@ using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Insperex.EventHorizon.EventStreaming.Tracing;
+using Microsoft.Extensions.Logging;
 using Pulsar.Client.Api;
 using Pulsar.Client.Common;
 using Pulsar.Client.Otel;
@@ -25,8 +26,8 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopicMessage, new()
 {
     private readonly StreamFailureState<T> _streamFailureState;
-    private readonly MessageRecoveryTopic<T> _messageRecoveryTopic;
     private readonly PulsarClientResolver _clientResolver;
+    private readonly ILogger<PrimaryTopicConsumer<T>> _logger;
     private readonly SubscriptionConfig<T> _config;
     private readonly ITopicAdmin<T> _admin;
     private readonly string _consumerName;
@@ -36,15 +37,15 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
 
     public PrimaryTopicConsumer(
         StreamFailureState<T> streamFailureState,
-        MessageRecoveryTopic<T> messageRecoveryTopic,
         PulsarClientResolver clientResolver,
+        ILogger<PrimaryTopicConsumer<T>> logger,
         SubscriptionConfig<T> config,
         ITopicAdmin<T> admin,
         string consumerName)
     {
         _streamFailureState = streamFailureState;
-        _messageRecoveryTopic = messageRecoveryTopic;
         _clientResolver = clientResolver;
+        _logger = logger;
         _config = config;
         _admin = admin;
         _consumerName = consumerName;
@@ -52,50 +53,34 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
     }
 
-    public async Task InitializeAsync(CancellationToken ct)
+    public async Task InitializeAsync()
     {
-        await _messageRecoveryTopic.InitializeAsync(ct);
+        await GetConsumerAsync();
     }
 
     public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
     {
         try
         {
-            var consumer = await GetConsumerAsync();
-            var messages = await consumer.BatchReceiveAsync(ct);
+            var messagesToRelay = await NextNormalBatch(ct);
 
-            var triagedMessages = messages
-                .Select(m =>
-                (
-                    Data: m.GetValue(),
-                    OriginalMessage: m,
-                    Topic: _config.Topics.Length == 1 ? _config.Topics.First() : m.MessageId.TopicName
-                ))
-                .ToLookup(m => _streamFailureState.IsStreamInNormalState(m.Data.StreamId));
-
-            if (triagedMessages[false].Any())
-            {
-                await ForwardRecoveryMessages(triagedMessages[false].ToArray());
-            }
-
-            var messagesForConsumer = triagedMessages[true].ToArray();
-
-            if (!messagesForConsumer.Any())
+            if (!messagesToRelay.Any())
             {
                 await Task.Delay(_config.NoBatchDelay, ct);
-                return null;
+                return Array.Empty<MessageContext<T>>();
             }
 
-            _messageIds = messagesForConsumer
+            _messageIds = messagesToRelay
                 .Select(m => m.OriginalMessage.MessageId)
                 .ToArray();
 
-            var contexts = messagesForConsumer
-                .Select((x,i) =>
+            var contexts = messagesToRelay
+                .Select(x =>
                     new MessageContext<T>
                     {
                         Data = x.Data,
-                        TopicData = PulsarMessageMapper.MapTopicData(i.ToString(CultureInfo.InvariantCulture),
+                        TopicData = PulsarMessageMapper.MapTopicData(
+                            x.OriginalMessage.SequenceId.ToString(CultureInfo.InvariantCulture),
                             x.OriginalMessage, x.Topic)
                     })
                 .ToArray();
@@ -109,20 +94,35 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         }
     }
 
-    private async Task ForwardRecoveryMessages((T Data, Message<T> OriginalMessage, string Topic)[] recoveryMessages)
+    private async Task<(T Data, Message<T> OriginalMessage, string Topic)[]> NextNormalBatch(CancellationToken ct)
     {
-        var messagesForRecoveryTopic = recoveryMessages
+        var consumer = await GetConsumerAsync();
+        var messages = await consumer.BatchReceiveAsync(ct);
+
+        var messageDetails = messages
             .Select(m =>
-                new RecoveryMessage<T>
-                {
-                    StreamId = m.Data.StreamId,
-                    Payload = m.Data,
-                    PublishTime = new DateTime(m.OriginalMessage.PublishTime),
-                    Topic = m.Topic,
-                })
+            (
+                Data: m.GetValue(),
+                OriginalMessage: m,
+                Topic: _config.Topics.Length == 1 ? _config.Topics.First() : m.MessageId.TopicName
+            ))
             .ToArray();
 
-        await _messageRecoveryTopic.PublishMessages(messagesForRecoveryTopic);
+        var streamIdsFromMessages = messageDetails
+            .Select(c => c.Data.StreamId)
+            .Distinct()
+            .ToArray();
+
+        var streamIdsInNonNormalState =
+            _streamFailureState.FindStreams(streamIdsFromMessages)
+            .Select(s => s.StreamId)
+            .ToHashSet();
+
+        var messagesToRelay = messageDetails
+            .Where(m => !streamIdsInNonNormalState.Contains(m.Data.StreamId))
+            .ToArray();
+
+        return messagesToRelay;
     }
 
     public async Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
@@ -138,11 +138,10 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
                 .Where(r => !r.IsSuccess)
                 .Select(r => r.Message)
                 .FirstOrDefault();
-            var anyFailed = firstFailedMessage != null;
 
-            if (anyFailed)
+            if (firstFailedMessage != null)
             {
-                await _streamFailureState.MessageProcessingFailed(firstFailedMessage);
+                await _streamFailureState.MessageFailed(firstFailedMessage);
             }
         }
 

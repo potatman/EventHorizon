@@ -21,6 +21,8 @@ public class PartialNackListStreamConsumer : IStreamConsumer<Event>
     private readonly int _numStreamsToFail;
     private readonly int _maxNacksPerMessage;
     private readonly int _maxTotalNacks;
+    private int _redeliveredMessages;
+    private readonly bool _verbose;
     private int _totalNacks;
     private long _totalMessagesProcessed;
     private readonly HashSet<string> _streams = new();
@@ -30,32 +32,53 @@ public class PartialNackListStreamConsumer : IStreamConsumer<Event>
     private readonly Random _random = new();
 
     public PartialNackListStreamConsumer(ITestOutputHelper outputHelper,
-        double failureRate, int numStreamsToFail, int maxNacksPerMessage, int maxTotalNacks)
+        double failureRate, int numStreamsToFail, int maxNacksPerMessage, int maxTotalNacks,
+        bool verbose = false)
     {
         _outputHelper = outputHelper;
         _failureRate = failureRate;
         _numStreamsToFail = numStreamsToFail;
         _maxNacksPerMessage = maxNacksPerMessage;
         _maxTotalNacks = maxTotalNacks;
+        _verbose = verbose;
     }
 
     public readonly BlockingCollection<MessageContext<Event>> List = new();
 
     public Task OnBatch(SubscriptionContext<Event> context)
     {
+        var nackedStreamsInThisBatch = new HashSet<string>();
+
         foreach (var message in context.Messages)
         {
-            if (!_acceptedMessages.Contains(MessageKey(message)))
+            var alreadyNackedThisStream = nackedStreamsInThisBatch.Contains(message.Data.StreamId);
+            var alreadyAcceptedThisMessage = _acceptedMessages.Contains(MessageKey(message));
+
+            if (alreadyAcceptedThisMessage) _redeliveredMessages++;
+
+            // Extra reporting
+            if (_verbose)
+            {
+                if (alreadyNackedThisStream)
+                    _outputHelper.WriteLine($"Handler: {message.Data.StreamId}: {message.Data.SequenceId} (ignore: prev nack)");
+                if (alreadyAcceptedThisMessage)
+                    _outputHelper.WriteLine($"Handler: {message.Data.StreamId}: {message.Data.SequenceId} (ignore: accepted already!!)");
+            }
+
+            if (!alreadyNackedThisStream && !alreadyAcceptedThisMessage)
             {
                 _streams.Add(message.Data.StreamId);
 
                 if (ShouldNackMessage(message))
                 {
+                    if (_verbose) _outputHelper.WriteLine($"Handler: {message.Data.StreamId}: {message.Data.SequenceId} NACK");
                     context.Nack(message);
+                    nackedStreamsInThisBatch.Add(message.Data.StreamId);
                     MarkMessageAsNacked(message);
                 }
                 else
                 {
+                    if (_verbose) _outputHelper.WriteLine($"Handler: {message.Data.StreamId}: {message.Data.SequenceId} accept");
                     List.Add(message);
                     _acceptedMessages.Add(MessageKey(message));
                 }
@@ -74,6 +97,7 @@ public class PartialNackListStreamConsumer : IStreamConsumer<Event>
         _outputHelper.WriteLine($" - Total nacks: {_totalNacks}");
         _outputHelper.WriteLine($" - Messages failed at least once: {_messageFailures.Count}");
         _outputHelper.WriteLine($" - Messages in final list: {List.Count}");
+        _outputHelper.WriteLine($" - Previously-accepted message redeliveries: {_redeliveredMessages}");
         _outputHelper.WriteLine($" - Total streams: {_streams.Count}");
         _outputHelper.WriteLine($" - Streams failed at least once: {_failedStreams.Count}");
     }
@@ -123,6 +147,6 @@ public class PartialNackListStreamConsumer : IStreamConsumer<Event>
 
     private static string MessageKey(MessageContext<Event> message)
     {
-        return $"{message.TopicData.Topic}-{message.Data.SequenceId}";
+        return $"{message.TopicData.Topic}-{message.Data.StreamId}-{message.TopicData.Id}";
     }
 }
