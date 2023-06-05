@@ -28,9 +28,9 @@ public class IndexDatabase
         return _indexes[$"{topic}-{subscription}-{consumer}"];
     }
 
-    public void Increment(string topic, string subscription, int consumer, long increment)
+    public void SetCurrentSequence(string topic, string subscription, int consumer, long sequence)
     {
-        _indexes[$"{topic}-{subscription}-{consumer}"] += increment;
+        _indexes[$"{topic}-{subscription}-{consumer}"] = sequence;
     }
 
     public void DeleteTopic(string str)

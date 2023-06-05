@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Insperex.EventHorizon.EventStreaming.Subscriptions;
 
-namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
+namespace Insperex.EventHorizon.EventStreaming.Subscriptions;
 
 public class RetrySchedule
 {

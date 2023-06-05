@@ -102,6 +102,8 @@ public class PartialNackListStreamConsumer : IStreamConsumer<Event>
         _outputHelper.WriteLine($" - Streams failed at least once: {_failedStreams.Count}");
     }
 
+    public int RedeliveredMessages => _redeliveredMessages;
+
     private bool ShouldNackMessage(MessageContext<Event> message)
     {
         if (_totalNacks >= _maxTotalNacks)

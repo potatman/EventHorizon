@@ -115,6 +115,8 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         await WaitUtil.WaitForTrue(() => _events.Length <= _partialNackHandler.List.Count, _timeout);
 
         _partialNackHandler.Report();
+        Assert.True(_partialNackHandler.RedeliveredMessages == 0,
+            $"There were {_partialNackHandler.RedeliveredMessages} redeliveries of previously-accepted messages. Should not have any!");
 
         // Assert
         // Expecting the advanced failure handling to preserve message ordering despite the nacks.
