@@ -60,9 +60,9 @@ public class PartialNackListStreamConsumer : IStreamConsumer<Event>
             if (_verbose)
             {
                 if (alreadyNackedThisStream)
-                    _outputHelper.WriteLine($"Handler: {message.Data.StreamId}: {message.Data.SequenceId} (ignore: prev nack)");
+                    _outputHelper.WriteLine($"Handler: {MessageKey(message)}: (ignore: prev nack)");
                 if (alreadyAcceptedThisMessage)
-                    _outputHelper.WriteLine($"Handler: {message.Data.StreamId}: {message.Data.SequenceId} (ignore: accepted already!!)");
+                    _outputHelper.WriteLine($"Handler: {MessageKey(message)}: (ignore: accepted already!!)");
             }
 
             if (!alreadyNackedThisStream && !alreadyAcceptedThisMessage)
@@ -71,14 +71,14 @@ public class PartialNackListStreamConsumer : IStreamConsumer<Event>
 
                 if (ShouldNackMessage(message))
                 {
-                    if (_verbose) _outputHelper.WriteLine($"Handler: {message.Data.StreamId}: {message.Data.SequenceId} NACK");
+                    if (_verbose) _outputHelper.WriteLine($"Handler: {MessageKey(message)}: NACK");
                     context.Nack(message);
                     nackedStreamsInThisBatch.Add(message.Data.StreamId);
                     MarkMessageAsNacked(message);
                 }
                 else
                 {
-                    if (_verbose) _outputHelper.WriteLine($"Handler: {message.Data.StreamId}: {message.Data.SequenceId} accept");
+                    if (_verbose) _outputHelper.WriteLine($"Handler: {MessageKey(message)}: accept");
                     List.Add(message);
                     _acceptedMessages.Add(MessageKey(message));
                 }

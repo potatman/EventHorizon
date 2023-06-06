@@ -129,12 +129,12 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
     {
         var results = acks.Select(a => (IsSuccess: true, Message: a))
             .Concat(nacks.Select(n => (IsSuccess: false, Message: n)));
-        var resultsByStream = results
-            .ToLookup(r => r.Message.Data.StreamId);
+        var resultsByTopicStream = results
+            .ToLookup(r => (r.Message.TopicData.Topic, r.Message.Data.StreamId));
 
-        foreach (var streamResults in resultsByStream)
+        foreach (var topicStreamResults in resultsByTopicStream)
         {
-            var firstFailedMessage = streamResults
+            var firstFailedMessage = topicStreamResults
                 .Where(r => !r.IsSuccess)
                 .Select(r => r.Message)
                 .FirstOrDefault();
