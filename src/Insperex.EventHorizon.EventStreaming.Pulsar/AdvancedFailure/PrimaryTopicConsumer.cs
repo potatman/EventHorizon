@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -111,11 +108,12 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
 
         var topicStreamsFromMessages = messageDetails
             .Select(c => (c.Topic, c.Data.StreamId))
-            .ToHashSet();
+            .Distinct()
+            .ToArray();
 
         var topicStreamState = _streamFailureState
             .FindTopicStreams(topicStreamsFromMessages)
-            .ToDictionary(ts => (ts.Topic.TopicName, ts.StreamId), ts => ts.Topic);
+            .ToDictionary(ts => (ts.Topic, ts.StreamId));
 
         var messagesToRelay = messageDetails
             .Where(m =>
@@ -140,20 +138,11 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         return messagesToRelay;
     }
 
-    private async Task ResolveUpToDateTopicStreams((string Topic, string StreamId)[] topicStreamState)
+    private async Task ResolveUpToDateTopicStreams((string Topic, string StreamId)[] topicStreams)
     {
-        var streamsWithUpToDateTopics = topicStreamState
-            .GroupBy(ts => ts.StreamId)
-            .Select(s => new
-            {
-                StreamId = s.Key,
-                Topics = s.Select(st => st.Topic).ToArray()
-            })
-            .ToArray();
-
-        foreach (var stream in streamsWithUpToDateTopics)
+        foreach (var topicStream in topicStreams)
         {
-            await _streamFailureState.StreamTopicsResolved(stream.StreamId, stream.Topics);
+            await _streamFailureState.TopicStreamResolved(topicStream.Topic, topicStream.StreamId);
         }
     }
 

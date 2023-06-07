@@ -1,10 +1,15 @@
 ﻿using System;
+using System.Text;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 
-public sealed class TopicState
+/// <summary>
+/// Record of the state of one stream in a topic (in or out of failure mode.)
+/// </summary>
+public class TopicStreamState
 {
-    public string TopicName { get; set; }
+    public string Topic { get; set; }
+    public string StreamId { get; set; }
     public long LastSequenceId { get; set; }
     public DateTime LastMessagePublishTime { get; set; }
     public int TimesRetried { get; set; }
@@ -17,10 +22,11 @@ public sealed class TopicState
     /// consumer can pick up messages for it.
     /// </summary>
     public bool IsUpToDate { get; set; }
+    /// <summary>
+    /// If this is true, then this record is no longer active.
+    /// </summary>
+    public bool IsResolved { get; set; }
 
-    public string ToString(bool includeName)
-    {
-        var nameStr = includeName ? $"name={TopicName}," : string.Empty;
-        return $"[{nameStr}seq={LastSequenceId},pub={LastMessagePublishTime:s},retr#={TimesRetried},next={NextRetry:s}]";
-    }
+    public override string ToString() =>
+        $"[{Topic}=>{StreamId}seq={LastSequenceId},pub={LastMessagePublishTime:s},retr#={TimesRetried},next={NextRetry:s},uptodt={IsUpToDate}]";
 }

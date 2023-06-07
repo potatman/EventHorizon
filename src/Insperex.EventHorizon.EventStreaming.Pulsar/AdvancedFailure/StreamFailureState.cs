@@ -49,70 +49,43 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
 
     #region Queries
 
-    public IEnumerable<StreamState> StreamsForRetry()
+    public IEnumerable<TopicStreamState> TopicStreamsForRetry()
     {
-        return _failureStateTopic.GetStreams()
-            .Select(s => new StreamState
-            {
-                StreamId = s.StreamId,
-                Topics = s.Topics
-                    .Where(t =>
-                        !t.Value.IsUpToDate
-                        && (!t.Value.NextRetry.HasValue || DateTime.UtcNow >= t.Value.NextRetry.Value))
-                    .ToDictionary(t => t.Key, t => t.Value)
-            })
-            .Where(s => s.Topics.Any());
+        return _failureStateTopic.GetTopicStreams()
+            .Where(ts =>
+                !ts.IsUpToDate
+                && (!ts.NextRetry.HasValue || DateTime.UtcNow >= ts.NextRetry.Value));
     }
 
     /// <summary>
     /// Searches for given topic/streams and returns their status.
     /// </summary>
-    public (string StreamId, TopicState Topic)[] FindTopicStreams(
-        HashSet<(string Topic, string StreamId)> topicStreams)
+    public TopicStreamState[] FindTopicStreams((string Topic, string StreamId)[] topicStreams)
     {
-        var streamIds = topicStreams.Select(ts => ts.StreamId).Distinct().ToArray();
-        var streams = _failureStateTopic.FindStreams(streamIds).ToArray();
-
-        return streams
-            .SelectMany(s => s.Topics.Select(t =>
-                new {Key = (t.Key, s.StreamId), Topic = t.Value}))
-            .Where(ts => topicStreams.Contains(ts.Key))
-            .Select(ts => (ts.Key.StreamId, ts.Topic))
-            .ToArray();
+        return _failureStateTopic.FindTopicStreams(topicStreams).ToArray();
     }
 
     #endregion Queries
 
     #region Commands
 
-    public async Task StreamTopicsUpToDate(string streamId, string[] topics)
+    public async Task TopicStreamUpToDate(string topic, string streamId)
     {
-        var streamState = _failureStateTopic.FindStream(streamId);
-        var anyUpdates = false;
-
-        foreach (var topic in streamState.Topics.Keys)
+        var state = _failureStateTopic.FindTopicStream((topic, streamId));
+        if (state != null)
         {
-            if (!streamState.Topics[topic].IsUpToDate && topics.Contains(topic))
-            {
-                streamState.Topics[topic].IsUpToDate = true;
-                anyUpdates = true;
-            }
+            state.IsUpToDate = true;
+            await _failureStateTopic.Publish(state);
         }
-
-        if (anyUpdates) await _failureStateTopic.Publish(streamState);
     }
 
-    public async Task StreamTopicsResolved(string streamId, string[] topics)
+    public async Task TopicStreamResolved(string topic, string streamId)
     {
-        var streamState = _failureStateTopic.FindStream(streamId);
-
-        if (streamState != null)
+        var state = _failureStateTopic.FindTopicStream((topic, streamId));
+        if (state != null)
         {
-            streamState.Topics = streamState.Topics
-                .Where(kv => !kv.Value.IsUpToDate || !topics.Contains(kv.Key))
-                .ToDictionary(kv => kv.Key, kv => kv.Value);
-
-            await _failureStateTopic.Publish(streamState);
+            state.IsResolved = true;
+            await _failureStateTopic.Publish(state);
         }
     }
 
@@ -120,58 +93,40 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
     {
         _logger.LogInformation($"Msg FAIL: {message.TopicData.Topic} => {message.Data.StreamId} => {message.TopicData.Id}");
 
-        var streamState = EnsureTopicForStream(message);
-        var topicState = streamState.Topics[message.TopicData.Topic];
+        var state = EnsureTopicForStream(message);
 
-        if (topicState.NextRetry.HasValue) topicState.TimesRetried++;
+        if (state.NextRetry.HasValue) state.TimesRetried++;
 
-        var nextRetryInterval = _retrySchedule.NextInterval(topicState.TimesRetried);
-        topicState.NextRetry = message.TopicData.CreatedDate.Add(nextRetryInterval);
+        var nextRetryInterval = _retrySchedule.NextInterval(state.TimesRetried);
+        state.NextRetry = message.TopicData.CreatedDate.Add(nextRetryInterval);
 
-        await _failureStateTopic.Publish(streamState);
+        await _failureStateTopic.Publish(state);
     }
 
     public async Task MessageSucceeded(MessageContext<T> message)
     {
-        var streamState = EnsureTopicForStream(message);
-        var topicState = streamState.Topics[message.TopicData.Topic];
+        var state = EnsureTopicForStream(message);
 
-        topicState.TimesRetried = 0;
-        topicState.NextRetry = null;
+        state.TimesRetried = 0;
+        state.NextRetry = null;
 
-        await _failureStateTopic.Publish(streamState);
+        await _failureStateTopic.Publish(state);
     }
 
-    private StreamState EnsureTopicForStream(MessageContext<T> message)
+    private TopicStreamState EnsureTopicForStream(MessageContext<T> message)
     {
         var streamId = message.Data.StreamId;
         var topic = message.TopicData.Topic;
         long.TryParse(message.TopicData.Id, CultureInfo.InvariantCulture, out var sequenceId);
         var messagePublishTime = message.TopicData.CreatedDate;
 
-        var streamState = _failureStateTopic.FindStream(streamId) ?? new StreamState {StreamId = streamId};
-        streamState.Topics ??= new();
+        var state = _failureStateTopic.FindTopicStream((topic, streamId))
+                    ?? new TopicStreamState { Topic = topic, StreamId = streamId, TimesRetried = 0, NextRetry = null };
 
-        var topics = streamState.Topics;
-        if (!topics.ContainsKey(topic))
-        {
-            topics.Add(topic, new TopicState
-            {
-                TopicName = topic,
-                LastSequenceId = sequenceId,
-                LastMessagePublishTime = messagePublishTime,
-                TimesRetried = 0,
-                NextRetry = null,
-            });
-        }
-        else
-        {
-            var topicState = topics[topic];
-            topicState.LastSequenceId = sequenceId;
-            topicState.LastMessagePublishTime = messagePublishTime;
-        }
+        state.LastSequenceId = sequenceId;
+        state.LastMessagePublishTime = messagePublishTime;
 
-        return streamState;
+        return state;
     }
 
     #endregion Commands

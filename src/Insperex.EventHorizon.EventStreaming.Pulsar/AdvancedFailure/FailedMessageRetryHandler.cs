@@ -1,15 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
-using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
-using Insperex.EventHorizon.EventStreaming.Readers;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Microsoft.Extensions.Logging;
 
@@ -42,15 +38,15 @@ public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, IT
     {
         _logger.LogInformation("Next batch start");
 
-        var streamsForRetry = _streamFailureState.StreamsForRetry()
-            .Where(s => KeyHashRanges.IsMatch(s.StreamId))
+        var topicStreamsForRetry = _streamFailureState.TopicStreamsForRetry()
+            .Where(ts => KeyHashRanges.IsMatch(ts.StreamId))
             .Take(MaxStreams)
             .ToArray();
 
-        _logger.LogInformation($"Streams for retry: {streamsForRetry.Length}");
-        if (streamsForRetry.Length == 0) return Array.Empty<MessageContext<T>>();
+        _logger.LogInformation($"Topic/streams for retry: {topicStreamsForRetry.Length}");
+        if (topicStreamsForRetry.Length == 0) return Array.Empty<MessageContext<T>>();
 
-        var reader = new FailedMessageRetryReader<T>(streamsForRetry, _batchSize, _clientResolver, _logger);
+        var reader = new FailedMessageRetryReader<T>(topicStreamsForRetry, _batchSize, _clientResolver, _logger);
 
         try
         {
@@ -61,7 +57,7 @@ public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, IT
                 // If we didn't get a full batch, that may mean some streams have been fully resolved.
                 // Check if any streams didn't get any messages (and aren't still expecting a retry at some stage).
 
-                await MarkTopicStreamsUpToDate(messages, streamsForRetry);
+                await MarkTopicStreamsUpToDate(messages, topicStreamsForRetry);
             }
 
             _logger.LogInformation("Next batch end");
@@ -75,29 +71,21 @@ public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, IT
         }
     }
 
-    private async Task MarkTopicStreamsUpToDate(MessageContext<T>[] messages, StreamState[] streamsForRetry)
+    private async Task MarkTopicStreamsUpToDate(MessageContext<T>[] messages, TopicStreamState[] topicStreamsForRetry)
     {
-        var messageStreamTopics = messages
-            .Select(m => (m.Data.StreamId, m.TopicData.Topic))
+        var messageTopicStreams = messages
+            .Select(m => (m.TopicData.Topic, m.Data.StreamId))
             .ToHashSet();
 
-        var resolvedStreamTopics = streamsForRetry
-            .SelectMany(s => s.Topics.Select(t => new
-            {
-                TopicName = t.Key, s.StreamId, Topic = t.Value
-            }))
-            .Where(st => !st.Topic.NextRetry.HasValue)
-            .Where(st => !messageStreamTopics.Contains((st.StreamId, st.TopicName)))
-            .GroupBy(st => st.StreamId)
-            .Select(st => new
-            {
-                StreamId = st.Key, Topics = st.Select(t => t.TopicName).ToArray()
-            })
+        var upToDateTopicStreams = topicStreamsForRetry
+            .Where(ts =>
+                !ts.NextRetry.HasValue
+                && !messageTopicStreams.Contains((ts.Topic, ts.StreamId)))
             .ToArray();
 
-        foreach (var resolvedTopicStream in resolvedStreamTopics)
+        foreach (var topicStream in upToDateTopicStreams)
         {
-            await _streamFailureState.StreamTopicsUpToDate(resolvedTopicStream.StreamId, resolvedTopicStream.Topics);
+            await _streamFailureState.TopicStreamUpToDate(topicStream.Topic, topicStream.StreamId);
         }
     }
 

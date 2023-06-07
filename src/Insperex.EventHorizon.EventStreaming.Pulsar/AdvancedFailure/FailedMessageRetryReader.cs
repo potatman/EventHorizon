@@ -26,15 +26,8 @@ public class FailedMessageRetryReader<T> where T : class, ITopicMessage, new()
     private readonly PulsarClientResolver _clientResolver;
     private readonly ILogger _logger;
 
-    // Inputs
-    private readonly StreamState[] _streamsForRetry;
     private readonly int _bufferSize;
-
-    /// <summary>
-    /// Two-tier lookup, first by topic, then by stream.
-    /// </summary>
-    private Dictionary<string, Dictionary<string, TopicState>> _topicStreamDict;
-
+    private readonly Dictionary<(string Topic, string StreamId), TopicStreamState> _topicStreams;
     private Dictionary<string, Queue<Message<T>>> _topicQueues;
     private Dictionary<string, bool> _topicContinueReading;
     /// <summary>
@@ -43,11 +36,12 @@ public class FailedMessageRetryReader<T> where T : class, ITopicMessage, new()
     private Dictionary<string, MessageId> _topicLastReadMessage;
 
     public FailedMessageRetryReader(
-        StreamState[] streamsForRetry, int bufferSize,
+        TopicStreamState[] topicStreamsForRetry, int bufferSize,
         PulsarClientResolver clientResolver,
         ILogger logger)
     {
-        _streamsForRetry = streamsForRetry;
+        _topicStreams = topicStreamsForRetry
+            .ToDictionary(ts => (ts.Topic, ts.StreamId));
         _bufferSize = bufferSize;
         _clientResolver = clientResolver;
         _logger = logger;
@@ -90,15 +84,15 @@ public class FailedMessageRetryReader<T> where T : class, ITopicMessage, new()
 
     private bool IsMessageEligible(Message<T> message, string streamId, string topic, DateTime asOf)
     {
-        var topicData = _topicStreamDict[topic].GetValueOrDefault(streamId);
+        var topicStream = _topicStreams.GetValueOrDefault((topic, streamId));
 
-        if (topicData != null)
+        if (topicStream != null)
         {
-            return topicData.NextRetry.HasValue
+            return topicStream.NextRetry.HasValue
                     // Failure retry mode - would need to reprocess last message since it had failed.
-                    ? asOf >= topicData.NextRetry.Value && message.SequenceId >= topicData.LastSequenceId
+                    ? asOf >= topicStream.NextRetry.Value && message.SequenceId >= topicStream.LastSequenceId
                     // Recovery mode - last message will have already been successfully processed.
-                    : message.SequenceId > topicData.LastSequenceId;
+                    : message.SequenceId > topicStream.LastSequenceId;
         }
 
         return false;
@@ -152,7 +146,10 @@ public class FailedMessageRetryReader<T> where T : class, ITopicMessage, new()
 
     private async Task<IReader<T>> GetTopicReader(string topic)
     {
-        var topicStreams = _topicStreamDict[topic];
+        var topicStreams = _topicStreams
+            .Where(ts => ts.Key.Topic == topic)
+            .Select(ts => ts.Value)
+            .ToArray();
         var client = await _clientResolver.GetPulsarClientAsync();
         var lastMessageId = _topicLastReadMessage.GetValueOrDefault(topic);
 
@@ -164,7 +161,7 @@ public class FailedMessageRetryReader<T> where T : class, ITopicMessage, new()
             .StartMessageId(lastMessageId ?? MessageId.Earliest)
             .KeyHashRange(
                 topicStreams
-                    .Select(s => MurmurHash3.Hash(s.Key) % 65536)
+                    .Select(ts => MurmurHash3.Hash(ts.StreamId) % 65536)
                     .Select(x => new Range(x, x))
                     .ToArray())
             .CreateAsync();
@@ -173,7 +170,7 @@ public class FailedMessageRetryReader<T> where T : class, ITopicMessage, new()
         {
             // Seek to start timestamp.
             var seekTime = topicStreams
-                .Min(s => s.Value.LastMessagePublishTime);
+                .Min(s => s.LastMessagePublishTime);
             var seekTimestamp = PulsarMessageMapper.PublishTimestampFromDate(seekTime);
             await reader.SeekAsync(seekTimestamp);
         }
@@ -183,22 +180,16 @@ public class FailedMessageRetryReader<T> where T : class, ITopicMessage, new()
 
     private void InitializeDataStructures()
     {
-        var topicStreamLookup = _streamsForRetry
-            .SelectMany(s => s.Topics.Select(t => new { s.StreamId, Topic = t.Value }))
-            .ToLookup(st => st.Topic.TopicName);
+        var topics = _topicStreams.Keys
+            .Select(ts => ts.Topic)
+            .Distinct()
+            .ToArray();
 
-        _topicQueues = topicStreamLookup
-            .ToDictionary(ts => ts.Key, _ => new Queue<Message<T>>());
+        _topicQueues = topics
+            .ToDictionary(t => t, _ => new Queue<Message<T>>());
 
-        _topicStreamDict = topicStreamLookup
-            .ToDictionary(
-                group => group.Key, // Topic
-                group => group.ToDictionary(
-                    item => item.StreamId,
-                    item => item.Topic));
-
-        _topicContinueReading = topicStreamLookup
-            .ToDictionary(ts => ts.Key, _ => true);
+        _topicContinueReading = topics
+            .ToDictionary(t => t, _ => true);
 
         _topicLastReadMessage = new();
     }

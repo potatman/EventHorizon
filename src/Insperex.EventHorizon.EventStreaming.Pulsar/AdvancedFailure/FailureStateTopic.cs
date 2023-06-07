@@ -27,10 +27,10 @@ public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
     private readonly PulsarTopicAdmin<T> _admin;
     private readonly ILogger<FailureStateTopic<T>> _logger;
     private readonly PulsarTopic _topic;
-    private IProducer<StreamState> _producer;
+    private IProducer<TopicStreamState> _producer;
     private readonly string _publisherName;
-    private ITableView<StreamState> _tableView;
-    private readonly OTelProducerInterceptor.OTelProducerInterceptor<StreamState> _intercept;
+    private ITableView<TopicStreamState> _tableView;
+    private readonly OTelProducerInterceptor.OTelProducerInterceptor<TopicStreamState> _intercept;
 
     public FailureStateTopic(SubscriptionConfig<T> subscriptionConfig, PulsarClientResolver clientResolver,
         PulsarTopicAdmin<T> admin, ILogger<FailureStateTopic<T>> logger)
@@ -40,7 +40,7 @@ public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
         _logger = logger;
         _topic = Topic(subscriptionConfig.Topics.First(), subscriptionConfig.SubscriptionName);
         _publisherName = NameUtil.AssemblyNameWithGuid;
-        _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<StreamState>(
+        _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<TopicStreamState>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
     }
 
@@ -61,22 +61,22 @@ public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
         }
     }
 
-    public async Task Publish(params StreamState[] streamUpdates)
+    public async Task Publish(params TopicStreamState[] updates)
     {
         var producer = await GetProducerAsync();
-        foreach (var streamUpdate in streamUpdates)
+        foreach (var update in updates)
         {
-            var message = producer.NewMessage(streamUpdate, streamUpdate.StreamId);
+            var message = producer.NewMessage(update, update.Key());
             await producer.SendAndForgetAsync(message);
         }
     }
 
-    private async Task<IProducer<StreamState>> GetProducerAsync()
+    private async Task<IProducer<TopicStreamState>> GetProducerAsync()
     {
         if (_producer != null) return _producer;
 
         var client = await _clientResolver.GetPulsarClientAsync();
-        var builder = client.NewProducer(Schema.JSON<StreamState>())
+        var builder = client.NewProducer(Schema.JSON<TopicStreamState>())
             .ProducerName(_publisherName)
             .BlockIfQueueFull(true)
             .BatchBuilder(BatchBuilder.KeyBased)
@@ -91,32 +91,32 @@ public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
         return _producer;
     }
 
-    public IEnumerable<StreamState> GetStreams()
+    public IEnumerable<TopicStreamState> GetTopicStreams()
     {
         return _tableView.Values
-            .Where(s => s.Topics?.Keys.Any() == true);
+            .Where(ts => !ts.IsResolved);
     }
 
-    public IEnumerable<StreamState> FindStreams(string[] streamIds)
+    public IEnumerable<TopicStreamState> FindTopicStreams((string Topic, string StreamId)[] topicStreams)
     {
-        foreach (var streamId in streamIds)
+        foreach (var topicStream in topicStreams)
         {
-            var streamState = _tableView.GetValueOrDefault(streamId);
-            if (streamState?.Topics?.Keys.Any() == true)
-                yield return streamState;
+            var state = _tableView.GetValueOrDefault(topicStream.Key());
+            if (!state.IsResolved)
+                yield return state;
         }
     }
 
-    public StreamState FindStream(string streamId)
+    public TopicStreamState FindTopicStream((string Topic, string StreamId) topicStream)
     {
-        var streamState = _tableView.GetValueOrDefault(streamId);
-        return streamState?.Topics?.Keys.Any() == true ? streamState : null;
+        var state = _tableView.GetValueOrDefault(topicStream.Key());
+        return state == null || state.IsResolved ? null : state;
     }
 
-    private async Task<ITableView<StreamState>> GetTableViewAsync()
+    private async Task<ITableView<TopicStreamState>> GetTableViewAsync()
     {
         var client = await _clientResolver.GetPulsarClientAsync();
-        return await client.NewTableViewBuilder(Schema.JSON<StreamState>())
+        return await client.NewTableViewBuilder(Schema.JSON<TopicStreamState>())
             .Topic(_topic.ToString())
             .CreateAsync();
     }
