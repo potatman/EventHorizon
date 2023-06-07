@@ -102,7 +102,7 @@ public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
         foreach (var topicStream in topicStreams)
         {
             var state = _tableView.GetValueOrDefault(topicStream.Key());
-            if (!state.IsResolved)
+            if (state is {IsResolved: false})
                 yield return state;
         }
     }

@@ -36,8 +36,6 @@ public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, IT
 
     public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
     {
-        _logger.LogInformation("Next batch start");
-
         var topicStreamsForRetry = _streamFailureState.TopicStreamsForRetry()
             .Where(ts => KeyHashRanges.IsMatch(ts.StreamId))
             .Take(MaxStreams)
@@ -57,6 +55,7 @@ public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, IT
                 // If we didn't get a full batch, that may mean some streams have been fully resolved.
                 // Check if any streams didn't get any messages (and aren't still expecting a retry at some stage).
 
+                _logger.LogInformation("Some topic/streams might be up to date");
                 await MarkTopicStreamsUpToDate(messages, topicStreamsForRetry);
             }
 
@@ -93,7 +92,7 @@ public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, IT
 
     public async Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
     {
-        _logger.LogInformation("Finalize batch start");
+        _logger.LogInformation("Finalize retry/recovery batch start");
 
         var results = acks.Select(a => (IsSuccess: true, Message: a))
             .Concat(nacks.Select(n => (IsSuccess: false, Message: n)));
@@ -118,7 +117,7 @@ public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, IT
             }
         }
 
-        _logger.LogInformation("Next batch end");
+        _logger.LogInformation("Finalize retry/recovery batch end");
     }
 
     public ValueTask DisposeAsync()

@@ -71,6 +71,7 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
 
     public async Task TopicStreamUpToDate(string topic, string streamId)
     {
+        _logger.LogInformation($"Up to date: {topic} => {streamId}");
         var state = _failureStateTopic.FindTopicStream((topic, streamId));
         if (state != null)
         {
@@ -81,6 +82,7 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
 
     public async Task TopicStreamResolved(string topic, string streamId)
     {
+        _logger.LogInformation($"Resolved: {topic} => {streamId}");
         var state = _failureStateTopic.FindTopicStream((topic, streamId));
         if (state != null)
         {
@@ -105,6 +107,8 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
 
     public async Task MessageSucceeded(MessageContext<T> message)
     {
+        _logger.LogInformation($"Msg SUCCEED: {message.TopicData.Topic} => {message.Data.StreamId} => {message.TopicData.Id}");
+
         var state = EnsureTopicForStream(message);
 
         state.TimesRetried = 0;

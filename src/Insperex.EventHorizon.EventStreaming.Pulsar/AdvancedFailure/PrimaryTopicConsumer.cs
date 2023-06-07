@@ -62,6 +62,8 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         {
             var messagesToRelay = await NextNormalBatch(ct);
 
+            _logger.LogInformation($"Normal batch: {messagesToRelay.Length} messages");
+
             if (!messagesToRelay.Any())
             {
                 await Task.Delay(_config.NoBatchDelay, ct);
@@ -167,6 +169,8 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         }
 
         await AckToPulsarAsync();
+
+        _logger.LogInformation("Done normal batch");
     }
 
     private async Task AckToPulsarAsync()
