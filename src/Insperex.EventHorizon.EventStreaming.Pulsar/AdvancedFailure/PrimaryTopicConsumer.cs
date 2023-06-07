@@ -35,7 +35,6 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
     private MessageId[] _messageIds;
     private IConsumer<T> _consumer;
-    private Dictionary<string, DateTime?> _topicLastMessageTime;
 
     public PrimaryTopicConsumer(
         StreamFailureState<T> streamFailureState,
@@ -53,18 +52,12 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         _consumerName = consumerName;
         _intercept = new OtelConsumerInterceptor.OTelConsumerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
-        _topicLastMessageTime = _config.Topics.ToDictionary(t => t, _ => (DateTime?)null);
     }
 
     public async Task InitializeAsync()
     {
         await GetConsumerAsync();
     }
-
-    /// <summary>
-    /// Represents the latest publish time of any message read from this topic by this consumer.
-    /// </summary>
-    public IReadOnlyDictionary<string, DateTime?> TopicLastMessageTime => _topicLastMessageTime;
 
     public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
     {
@@ -116,8 +109,6 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
             ))
             .ToArray();
 
-        UpdateTopicLastMessageTimes(messageDetails);
-
         var topicStreamsFromMessages = messageDetails
             .Select(c => (c.Topic, c.Data.StreamId))
             .ToHashSet();
@@ -154,30 +145,6 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         foreach (var stream in streamsWithUpToDateTopics)
         {
             await _streamFailureState.StreamTopicsResolved(stream.StreamId, stream.Topics);
-        }
-    }
-
-    private void UpdateTopicLastMessageTimes((T Data, Message<T> OriginalMessage, string Topic)[] messageDetails)
-    {
-        if (messageDetails.Any())
-        {
-            var topicLatestMessages = messageDetails
-                .GroupBy(m => m.Topic)
-                .Select(t => new
-                {
-                    Topic = t.Key,
-                    MaxPublishDate = PulsarMessageMapper.PublishDateFromTimestamp(
-                        t.Max(m => m.OriginalMessage.PublishTime))
-                })
-                .ToArray();
-
-            foreach (var topicLatestMessage in topicLatestMessages)
-            {
-                if (_topicLastMessageTime.ContainsKey(topicLatestMessage.Topic))
-                {
-                    _topicLastMessageTime[topicLatestMessage.Topic] = topicLatestMessage.MaxPublishDate;
-                }
-            }
         }
     }
 

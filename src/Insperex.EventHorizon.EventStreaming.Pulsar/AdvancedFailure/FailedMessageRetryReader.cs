@@ -22,8 +22,6 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 /// <typeparam name="T">Topic message type.</typeparam>
 public class FailedMessageRetryReader<T> where T : class, ITopicMessage, new()
 {
-    private static readonly TimeSpan MessageCatchupMargin = TimeSpan.FromMilliseconds(1);
-
     // Dependencies.
     private readonly PulsarClientResolver _clientResolver;
     private readonly ILogger _logger;
@@ -31,10 +29,6 @@ public class FailedMessageRetryReader<T> where T : class, ITopicMessage, new()
     // Inputs
     private readonly StreamState[] _streamsForRetry;
     private readonly int _bufferSize;
-    /// <summary>
-    /// For each topic, last message time reached by primary consumer.
-    /// </summary>
-    private readonly IReadOnlyDictionary<string, DateTime?> _topicLastMessageTime;
 
     /// <summary>
     /// Two-tier lookup, first by topic, then by stream.
@@ -50,13 +44,11 @@ public class FailedMessageRetryReader<T> where T : class, ITopicMessage, new()
 
     public FailedMessageRetryReader(
         StreamState[] streamsForRetry, int bufferSize,
-        IReadOnlyDictionary<string, DateTime?> topicLastMessageTime,
         PulsarClientResolver clientResolver,
         ILogger logger)
     {
         _streamsForRetry = streamsForRetry;
         _bufferSize = bufferSize;
-        _topicLastMessageTime = topicLastMessageTime;
         _clientResolver = clientResolver;
         _logger = logger;
 
@@ -134,12 +126,11 @@ public class FailedMessageRetryReader<T> where T : class, ITopicMessage, new()
 
         foreach (var topic in _topicQueues.Keys)
         {
-            var lastMessageTime = _topicLastMessageTime.GetValueOrDefault(topic);
-            await PrimeTopicQueue(topic, capacity, lastMessageTime, ct);
+            await PrimeTopicQueue(topic, capacity, ct);
         }
     }
 
-    private async Task PrimeTopicQueue(string topic, int capacity, DateTime? lastMessageTime, CancellationToken ct)
+    private async Task PrimeTopicQueue(string topic, int capacity, CancellationToken ct)
     {
         if (_topicContinueReading[topic] && !_topicQueues[topic].Any())
         {
@@ -150,19 +141,9 @@ public class FailedMessageRetryReader<T> where T : class, ITopicMessage, new()
             {
                 var message = await reader.ReadNextAsync(ct);
                 _topicLastReadMessage[topic] = message.MessageId;
-                var messagePublishTime = PulsarMessageMapper.PublishDateFromTimestamp(message.PublishTime);
-                var timeFromLastMessage = messagePublishTime - (lastMessageTime ?? DateTime.UtcNow);
 
-                if (timeFromLastMessage <= MessageCatchupMargin)
-                {
-                    _topicQueues[topic].Enqueue(message);
-                    moreMessages = await reader.HasMessageAvailableAsync();
-                }
-                else
-                {
-                    // Reader has passed where main consumer left off. Stop reading.
-                    moreMessages = false;
-                }
+                _topicQueues[topic].Enqueue(message);
+                moreMessages = await reader.HasMessageAvailableAsync();
             }
 
             if (!moreMessages) _topicContinueReading[topic] = false;

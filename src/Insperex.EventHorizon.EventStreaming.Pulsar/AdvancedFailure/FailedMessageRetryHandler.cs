@@ -38,11 +38,6 @@ public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, IT
 
     public PulsarKeyHashRanges KeyHashRanges { get; set; }
 
-    /// <summary>
-    /// This is originally tracked in the <see cref="PrimaryTopicConsumer{T}"/> and passed in here./>
-    /// </summary>
-    public IReadOnlyDictionary<string, DateTime?> TopicLastMessageTime { get; set; }
-
     public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
     {
         _logger.LogInformation("Next batch start");
@@ -55,8 +50,7 @@ public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, IT
         _logger.LogInformation($"Streams for retry: {streamsForRetry.Length}");
         if (streamsForRetry.Length == 0) return Array.Empty<MessageContext<T>>();
 
-        var reader = new FailedMessageRetryReader<T>(streamsForRetry, _batchSize, TopicLastMessageTime,
-            _clientResolver, _logger);
+        var reader = new FailedMessageRetryReader<T>(streamsForRetry, _batchSize, _clientResolver, _logger);
 
         try
         {

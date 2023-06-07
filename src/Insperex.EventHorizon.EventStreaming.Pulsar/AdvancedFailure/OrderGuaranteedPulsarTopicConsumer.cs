@@ -138,7 +138,6 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
 
         // Normal phase.
         var messages = await _primaryTopicConsumer.NextBatchAsync(ct);
-        _failedMessageRetryHandler.TopicLastMessageTime = _primaryTopicConsumer.TopicLastMessageTime;
         return messages;
     }
 
