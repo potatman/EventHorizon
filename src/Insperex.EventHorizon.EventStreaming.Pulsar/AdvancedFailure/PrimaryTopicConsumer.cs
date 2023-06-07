@@ -114,31 +114,40 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
             .ToHashSet();
 
         var topicStreamState = _streamFailureState
-            .FindTopicStreams(topicStreamsFromMessages);
-
-        await ResolveUpToDateStreamTopics(topicStreamState);
-
-        var topicStreamsInNonNormalState = topicStreamState
-            .Where(ts => !ts.Topic.IsUpToDate)
-            .Select(ts => (ts.Topic.TopicName, ts.StreamId))
-            .ToHashSet();
+            .FindTopicStreams(topicStreamsFromMessages)
+            .ToDictionary(ts => (ts.Topic.TopicName, ts.StreamId), ts => ts.Topic);
 
         var messagesToRelay = messageDetails
-            .Where(m => !topicStreamsInNonNormalState.Contains((m.Topic, m.Data.StreamId)))
+            .Where(m =>
+                // Topic/stream not in failure or recovery state
+                !topicStreamState.ContainsKey((m.Topic, m.Data.StreamId))
+                || (
+                    // It's finished recovery and we've passed the point where recovery reader reached.
+                    topicStreamState[(m.Topic, m.Data.StreamId)].IsUpToDate
+                    && topicStreamState[(m.Topic, m.Data.StreamId)].LastSequenceId < m.OriginalMessage.SequenceId
+                ))
             .ToArray();
+
+        var topicStreamsToResolve = messagesToRelay
+            .GroupBy(m => (m.Data.StreamId, m.Topic))
+            .Where(ts =>
+                topicStreamState.ContainsKey((ts.Key.Topic, ts.Key.StreamId)))
+            .Select(ts => ts.Key)
+            .ToArray();
+
+        await ResolveUpToDateTopicStreams(topicStreamsToResolve);
 
         return messagesToRelay;
     }
 
-    private async Task ResolveUpToDateStreamTopics((string StreamId, TopicState Topic)[] topicStreamState)
+    private async Task ResolveUpToDateTopicStreams((string Topic, string StreamId)[] topicStreamState)
     {
         var streamsWithUpToDateTopics = topicStreamState
-            .Where(ts => ts.Topic.IsUpToDate)
             .GroupBy(ts => ts.StreamId)
             .Select(s => new
             {
                 StreamId = s.Key,
-                Topics = s.Select(st => st.Topic.TopicName).ToArray()
+                Topics = s.Select(st => st.Topic).ToArray()
             })
             .ToArray();
 
