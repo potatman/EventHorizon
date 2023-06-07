@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -34,6 +35,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
     private MessageId[] _messageIds;
     private IConsumer<T> _consumer;
+    private Dictionary<string, DateTime?> _topicLastMessageTime;
 
     public PrimaryTopicConsumer(
         StreamFailureState<T> streamFailureState,
@@ -51,12 +53,18 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         _consumerName = consumerName;
         _intercept = new OtelConsumerInterceptor.OTelConsumerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
+        _topicLastMessageTime = _config.Topics.ToDictionary(t => t, _ => (DateTime?)null);
     }
 
     public async Task InitializeAsync()
     {
         await GetConsumerAsync();
     }
+
+    /// <summary>
+    /// Represents the latest publish time of any message read from this topic by this consumer.
+    /// </summary>
+    public IReadOnlyDictionary<string, DateTime?> TopicLastMessageTime => _topicLastMessageTime;
 
     public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
     {
@@ -108,21 +116,69 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
             ))
             .ToArray();
 
-        var streamIdsFromMessages = messageDetails
-            .Select(c => c.Data.StreamId)
-            .Distinct()
-            .ToArray();
+        UpdateTopicLastMessageTimes(messageDetails);
 
-        var streamIdsInNonNormalState =
-            _streamFailureState.FindStreams(streamIdsFromMessages)
-            .Select(s => s.StreamId)
+        var topicStreamsFromMessages = messageDetails
+            .Select(c => (c.Topic, c.Data.StreamId))
+            .ToHashSet();
+
+        var topicStreamState = _streamFailureState
+            .FindTopicStreams(topicStreamsFromMessages);
+
+        await ResolveUpToDateStreamTopics(topicStreamState);
+
+        var topicStreamsInNonNormalState = topicStreamState
+            .Where(ts => !ts.Topic.IsUpToDate)
+            .Select(ts => (ts.Topic.TopicName, ts.StreamId))
             .ToHashSet();
 
         var messagesToRelay = messageDetails
-            .Where(m => !streamIdsInNonNormalState.Contains(m.Data.StreamId))
+            .Where(m => !topicStreamsInNonNormalState.Contains((m.Topic, m.Data.StreamId)))
             .ToArray();
 
         return messagesToRelay;
+    }
+
+    private async Task ResolveUpToDateStreamTopics((string StreamId, TopicState Topic)[] topicStreamState)
+    {
+        var streamsWithUpToDateTopics = topicStreamState
+            .Where(ts => ts.Topic.IsUpToDate)
+            .GroupBy(ts => ts.StreamId)
+            .Select(s => new
+            {
+                StreamId = s.Key,
+                Topics = s.Select(st => st.Topic.TopicName).ToArray()
+            })
+            .ToArray();
+
+        foreach (var stream in streamsWithUpToDateTopics)
+        {
+            await _streamFailureState.StreamTopicsResolved(stream.StreamId, stream.Topics);
+        }
+    }
+
+    private void UpdateTopicLastMessageTimes((T Data, Message<T> OriginalMessage, string Topic)[] messageDetails)
+    {
+        if (messageDetails.Any())
+        {
+            var topicLatestMessages = messageDetails
+                .GroupBy(m => m.Topic)
+                .Select(t => new
+                {
+                    Topic = t.Key,
+                    MaxPublishDate = PulsarMessageMapper.PublishDateFromTimestamp(
+                        t.Max(m => m.OriginalMessage.PublishTime))
+                })
+                .ToArray();
+
+            foreach (var topicLatestMessage in topicLatestMessages)
+            {
+                if (_topicLastMessageTime.ContainsKey(topicLatestMessage.Topic))
+                {
+                    _topicLastMessageTime[topicLatestMessage.Topic] = topicLatestMessage.MaxPublishDate;
+                }
+            }
+        }
     }
 
     public async Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)

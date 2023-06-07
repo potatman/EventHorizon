@@ -12,6 +12,11 @@ public sealed class TopicState
     /// If this field is null, then the last message has already succeeded and this stream/topic is in recovery.
     /// </summary>
     public DateTime? NextRetry { get; set; }
+    /// <summary>
+    /// If this is true, then the stream/topic is considered to be past the recovery stage and the "normal" phase
+    /// consumer can pick up messages for it.
+    /// </summary>
+    public bool IsUpToDate { get; set; }
 
     public string ToString(bool includeName)
     {

@@ -56,34 +56,61 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
             {
                 StreamId = s.StreamId,
                 Topics = s.Topics
-                    .Where(t => !t.Value.NextRetry.HasValue || DateTime.UtcNow >= t.Value.NextRetry.Value)
+                    .Where(t =>
+                        !t.Value.IsUpToDate
+                        && (!t.Value.NextRetry.HasValue || DateTime.UtcNow >= t.Value.NextRetry.Value))
                     .ToDictionary(t => t.Key, t => t.Value)
             })
             .Where(s => s.Topics.Any());
     }
 
     /// <summary>
-    /// Searches for given streams and returns the ones that are in failure or recovery state.
+    /// Searches for given topic/streams and returns their status.
     /// </summary>
-    public StreamState[] FindStreams(string[] streamIds)
+    public (string StreamId, TopicState Topic)[] FindTopicStreams(
+        HashSet<(string Topic, string StreamId)> topicStreams)
     {
-        return _failureStateTopic.FindStreams(streamIds).ToArray();
+        var streamIds = topicStreams.Select(ts => ts.StreamId).Distinct().ToArray();
+        var streams = _failureStateTopic.FindStreams(streamIds).ToArray();
+
+        return streams
+            .SelectMany(s => s.Topics.Select(t =>
+                new {Key = (t.Key, s.StreamId), Topic = t.Value}))
+            .Where(ts => topicStreams.Contains(ts.Key))
+            .Select(ts => (ts.Key.StreamId, ts.Topic))
+            .ToArray();
     }
 
     #endregion Queries
 
     #region Commands
 
-    public async Task StreamResolved(string streamId, string topic)
+    public async Task StreamTopicsUpToDate(string streamId, string[] topics)
+    {
+        var streamState = _failureStateTopic.FindStream(streamId);
+        var anyUpdates = false;
+
+        foreach (var topic in streamState.Topics.Keys)
+        {
+            if (!streamState.Topics[topic].IsUpToDate && topics.Contains(topic))
+            {
+                streamState.Topics[topic].IsUpToDate = true;
+                anyUpdates = true;
+            }
+        }
+
+        if (anyUpdates) await _failureStateTopic.Publish(streamState);
+    }
+
+    public async Task StreamTopicsResolved(string streamId, string[] topics)
     {
         var streamState = _failureStateTopic.FindStream(streamId);
 
         if (streamState != null)
         {
-            // Remove this topic from stream record.
             streamState.Topics = streamState.Topics
-                .Where(t => t.Value.TopicName != topic)
-                .ToDictionary(t => t.Key, t => t.Value);
+                .Where(kv => !kv.Value.IsUpToDate || !topics.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
 
             await _failureStateTopic.Publish(streamState);
         }
@@ -91,6 +118,8 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
 
     public async Task MessageFailed(MessageContext<T> message)
     {
+        _logger.LogInformation($"Msg FAIL: {message.TopicData.Topic} => {message.Data.StreamId} => {message.TopicData.Id}");
+
         var streamState = EnsureTopicForStream(message);
         var topicState = streamState.Topics[message.TopicData.Topic];
 

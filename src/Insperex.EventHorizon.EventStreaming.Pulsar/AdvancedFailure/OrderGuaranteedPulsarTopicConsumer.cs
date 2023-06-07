@@ -41,7 +41,6 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
     }
 
     private readonly SubscriptionConfig<T> _config;
-    private readonly ILoggerFactory _loggerFactory;
     private readonly ILogger<OrderGuaranteedPulsarTopicConsumer<T>> _logger;
     private readonly IPulsarKeyHashRangeProvider _keyHashRangeProvider;
     private readonly StreamFailureState<T> _streamFailureState;
@@ -66,18 +65,18 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
 
         var admin = (PulsarTopicAdmin<T>)streamFactory.CreateAdmin<T>();
         _config = config;
-        _loggerFactory = loggerFactory;
+        var loggerFactory1 = loggerFactory;
         _keyHashRangeProvider = keyHashRangeProvider;
 
         FailureStateTopic<T> failureStateTopic = new(_config, clientResolver, admin,
-            _loggerFactory.CreateLogger<FailureStateTopic<T>>());
-        _streamFailureState = new(_config, _loggerFactory.CreateLogger<StreamFailureState<T>>(),
+            loggerFactory1.CreateLogger<FailureStateTopic<T>>());
+        _streamFailureState = new(_config, loggerFactory1.CreateLogger<StreamFailureState<T>>(),
             failureStateTopic);
         _primaryTopicConsumer = new(_streamFailureState, clientResolver,
-            _loggerFactory.CreateLogger<PrimaryTopicConsumer<T>>(),
+            loggerFactory1.CreateLogger<PrimaryTopicConsumer<T>>(),
             _config, admin, _consumerName);
-        _failedMessageRetryHandler = new(_config, _streamFailureState, streamFactory,
-            clientResolver, _loggerFactory.CreateLogger<FailedMessageRetryHandler<T>>());
+        _failedMessageRetryHandler = new(_config, _streamFailureState,
+            clientResolver, loggerFactory1.CreateLogger<FailedMessageRetryHandler<T>>());
 
         _phaseHandlers = new()
         {
@@ -111,6 +110,9 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
 
         if (_keyHashRanges == null || ShouldQuerySubscriptionStats())
         {
+            _logger.LogInformation(
+                $"Reloading key hash ranges for subscription {_config.SubscriptionName}, consumer {_consumerName}");
+
             _keyHashRanges = await GetSubscriptionHashRanges(ct);
             _failedMessageRetryHandler.KeyHashRanges = _keyHashRanges;
         }
@@ -119,11 +121,11 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         {
             try
             {
-                var messages = await _failedMessageRetryHandler.NextBatchAsync(ct);
-                if (messages.Any())
+                var failureRetryMessages = await _failedMessageRetryHandler.NextBatchAsync(ct);
+                if (failureRetryMessages.Any())
                 {
-                    _logger.LogInformation($"Failure retry processing: got {messages.Length} events in batch");
-                    return messages;
+                    _logger.LogInformation($"Failure retry processing: got {failureRetryMessages.Length} events in batch");
+                    return failureRetryMessages;
                 }
                 _phase = BatchPhase.Normal;
             }
@@ -135,7 +137,9 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         }
 
         // Normal phase.
-        return await _primaryTopicConsumer.NextBatchAsync(ct);
+        var messages = await _primaryTopicConsumer.NextBatchAsync(ct);
+        _failedMessageRetryHandler.TopicLastMessageTime = _primaryTopicConsumer.TopicLastMessageTime;
+        return messages;
     }
 
     public async Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
