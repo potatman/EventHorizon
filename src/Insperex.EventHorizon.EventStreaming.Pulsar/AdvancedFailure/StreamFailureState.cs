@@ -100,7 +100,7 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
         if (state.NextRetry.HasValue) state.TimesRetried++;
 
         var nextRetryInterval = _retrySchedule.NextInterval(state.TimesRetried);
-        state.NextRetry = message.TopicData.CreatedDate.Add(nextRetryInterval);
+        state.NextRetry = DateTime.UtcNow.Add(nextRetryInterval);
 
         await _failureStateTopic.Publish(state);
     }

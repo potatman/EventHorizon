@@ -122,7 +122,7 @@ public class OrderGuaranteedFailureHandler<T>: IFailureHandler<T> where T: class
         // In failed mode - set up for next retry.
         state.NextIndex = long.Parse(message.TopicData.Id, CultureInfo.InvariantCulture);
         var nextRetryInterval = _retrySchedule.NextInterval(state.TimesRetried);
-        state.NextRetry = message.TopicData.CreatedDate.Add(nextRetryInterval);
+        state.NextRetry = DateTime.UtcNow.Add(nextRetryInterval);
     }
 
     private void MessageSucceeded(MessageContext<T> message)
