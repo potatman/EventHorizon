@@ -19,17 +19,17 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, ITopicMessage, new()
 {
     private readonly StreamFailureState<T> _streamFailureState;
-    private readonly PulsarClientResolver _clientResolver;
+    private readonly RetryTopicReader<T> _reader;
     private readonly ILogger<FailedMessageRetryHandler<T>> _logger;
     private readonly int _batchSize;
 
     public FailedMessageRetryHandler(SubscriptionConfig<T> config, StreamFailureState<T> streamFailureState,
-        PulsarClientResolver clientResolver, ILogger<FailedMessageRetryHandler<T>> logger)
+        PulsarClientResolver clientResolver, ILoggerFactory loggerFactory)
     {
         _batchSize = config.BatchSize ?? 1000;
         _streamFailureState = streamFailureState;
-        _clientResolver = clientResolver;
-        _logger = logger;
+        _reader = new RetryTopicReader<T>(clientResolver, loggerFactory.CreateLogger<RetryTopicReader<T>>());
+        _logger = loggerFactory.CreateLogger<FailedMessageRetryHandler<T>>();
     }
 
     public PulsarKeyHashRanges KeyHashRanges { get; set; }
@@ -44,11 +44,9 @@ public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, IT
         _logger.LogInformation($"Topic/streams for retry: {topicStreamsForRetry.Length}");
         if (topicStreamsForRetry.Length == 0) return Array.Empty<MessageContext<T>>();
 
-        var reader = new FailedMessageRetryReader<T>(topicStreamsForRetry, _batchSize, _clientResolver, _logger);
-
         try
         {
-            var messages = await reader.GetNextAsync(_batchSize, ct);
+            var messages = await _reader.GetNextAsync(topicStreamsForRetry, _batchSize, ct);
 
             if (messages.Length < _batchSize)
             {

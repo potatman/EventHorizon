@@ -65,18 +65,17 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
 
         var admin = (PulsarTopicAdmin<T>)streamFactory.CreateAdmin<T>();
         _config = config;
-        var loggerFactory1 = loggerFactory;
         _keyHashRangeProvider = keyHashRangeProvider;
 
         FailureStateTopic<T> failureStateTopic = new(_config, clientResolver, admin,
-            loggerFactory1.CreateLogger<FailureStateTopic<T>>());
-        _streamFailureState = new(_config, loggerFactory1.CreateLogger<StreamFailureState<T>>(),
+            loggerFactory.CreateLogger<FailureStateTopic<T>>());
+        _streamFailureState = new(_config, loggerFactory.CreateLogger<StreamFailureState<T>>(),
             failureStateTopic);
         _primaryTopicConsumer = new(_streamFailureState, clientResolver,
-            loggerFactory1.CreateLogger<PrimaryTopicConsumer<T>>(),
+            loggerFactory.CreateLogger<PrimaryTopicConsumer<T>>(),
             _config, admin, _consumerName);
         _failedMessageRetryHandler = new(_config, _streamFailureState,
-            clientResolver, loggerFactory1.CreateLogger<FailedMessageRetryHandler<T>>());
+            clientResolver, loggerFactory);
 
         _phaseHandlers = new()
         {
