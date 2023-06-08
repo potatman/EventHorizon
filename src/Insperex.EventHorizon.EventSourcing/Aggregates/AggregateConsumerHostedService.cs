@@ -27,6 +27,7 @@ public class AggregateConsumerHostedService<TParent, TAction, T> : IHostedServic
         _subscription = streamingClient.CreateSubscription<TAction>()
             .SubscriptionName($"Apply-{typeof(TAction).Name}-{typeof(T).Name}")
             .AddStream<T>()
+            .GuaranteeMessageOrderOnFailure(true)
             .OnBatch(async x =>
             {
                 var messages = x.Messages.Select(m => m.Data).ToArray();

@@ -21,6 +21,7 @@ namespace Insperex.EventHorizon.EventSourcing.Aggregates
             _subscription = streamingClient.CreateSubscription<Event>()
                 .AddStream<TSource>()
                 .SubscriptionName($"Migrate-{typeof(TSource).Name}-{typeof(TTarget).Name}")
+                .GuaranteeMessageOrderOnFailure(true)
                 .OnBatch(async batch =>
                 {
                     var events = batch.Messages
