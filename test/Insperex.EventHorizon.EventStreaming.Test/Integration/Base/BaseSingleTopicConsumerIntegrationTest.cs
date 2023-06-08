@@ -34,7 +34,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         _streamingClient = provider.GetRequiredService<StreamingClient>();
         _handler = new ListStreamConsumer<Event>();
         _partialNackHandler = new(_outputHelper, 0.03, 3, 2,
-            100, true);
+            100, false);
     }
 
     protected IServiceProvider Provider { get; init; }

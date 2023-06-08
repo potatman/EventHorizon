@@ -120,7 +120,6 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         {
             try
             {
-                _logger.LogInformation("Start retry/recovery batch");
                 var failureRetryMessages = await _failedMessageRetryHandler.NextBatchAsync(ct);
                 if (failureRetryMessages.Any())
                 {
@@ -137,7 +136,6 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         }
 
         // Normal phase.
-        _logger.LogInformation("Start normal batch");
         var messages = await _primaryTopicConsumer.NextBatchAsync(ct);
         return messages;
     }

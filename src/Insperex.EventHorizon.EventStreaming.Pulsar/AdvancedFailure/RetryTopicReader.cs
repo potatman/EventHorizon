@@ -63,7 +63,7 @@ public class RetryTopicReader<T>: IAsyncDisposable where T : class, ITopicMessag
 
                 if (isMessageEligible)
                 {
-                    _logger.LogInformation($"Reader: got msg: {MsgToStr(message, topic)}");
+                    //_logger.LogInformation($"Reader: got msg: {MsgToStr(message, topic)}");
                     var sequenceId = message.SequenceId.ToString(CultureInfo.InvariantCulture);
 
                     messages.Add(new MessageContext<T>

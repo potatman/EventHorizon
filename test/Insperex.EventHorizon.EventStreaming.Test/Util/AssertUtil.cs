@@ -4,7 +4,6 @@ using System.Text.Json;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Insperex.EventHorizon.EventStreaming.Test.Util;
 

@@ -35,7 +35,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
         _timeout = TimeSpan.FromSeconds(20);
         _handler = new ListStreamConsumer<Event>();
         _partialNackHandler = new(_outputHelper, 0.03, 3, 2,
-            100, true);
+            100, false);
     }
 
     protected IServiceProvider Provider { get; init; }
