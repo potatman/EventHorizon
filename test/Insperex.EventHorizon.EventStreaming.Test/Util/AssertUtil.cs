@@ -31,14 +31,17 @@ public static class AssertUtil
         // Assert Count
         if (expected.Length != results.Sum(x => x.Length))
         {
-            // Drill down into which stream has the wrong number of events.
+            // Drill down into which topic/stream has the wrong number of events.
             var lookupAct = actual.ToLookup(x => x.Data.StreamId);
             var lookupExp = expected.ToLookup(x => x.StreamId);
             foreach (var expectedByStream in lookupExp)
             {
                 Assert.True(lookupAct.Contains(expectedByStream.Key), $"Actual results did not contain expected stream {expectedByStream.Key}");
                 var expectedIds = expectedByStream.Select(x => x.SequenceId).ToArray();
-                var actualIds = lookupAct[expectedByStream.Key].Select(x => x.Data.SequenceId).ToArray();
+                var actualIds = lookupAct[expectedByStream.Key]
+                    .Select(x => x.Data.SequenceId)
+                    .OrderBy(x => x)
+                    .ToArray();
                 Assert.True(actualIds.SequenceEqual(expectedIds), $"{expectedByStream.Key}{Environment.NewLine} Expected => [{string.Join(",", expectedIds)}]{Environment.NewLine}Actual => [{string.Join(",", actualIds)}]");
             }
             Assert.Equal(expected.Length, results.Sum(x => x.Length));
