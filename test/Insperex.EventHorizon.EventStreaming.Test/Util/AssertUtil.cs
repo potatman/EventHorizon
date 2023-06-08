@@ -42,7 +42,7 @@ public static class AssertUtil
                     .Select(x => x.Data.SequenceId)
                     .OrderBy(x => x)
                     .ToArray();
-                Assert.True(actualIds.SequenceEqual(expectedIds), $"{expectedByStream.Key}{Environment.NewLine} Expected => [{string.Join(",", expectedIds)}]{Environment.NewLine}Actual => [{string.Join(",", actualIds)}]");
+                Assert.True(actualIds.SequenceEqual(expectedIds), $"Stream count doesn't match: {expectedByStream.Key}{Environment.NewLine} Expected => [{string.Join(",", expectedIds)}]{Environment.NewLine}Actual => [{string.Join(",", actualIds)}]");
             }
             Assert.Equal(expected.Length, results.Sum(x => x.Length));
         }

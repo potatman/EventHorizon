@@ -47,11 +47,12 @@ public class PartialNackListStreamConsumer : IStreamConsumer<Event>
 
     public Task OnBatch(SubscriptionContext<Event> context)
     {
-        var nackedStreamsInThisBatch = new HashSet<string>();
+        var nackedTopicStreamsInThisBatch = new HashSet<(string Topic, string StreamId)>();
 
         foreach (var message in context.Messages)
         {
-            var alreadyNackedThisStream = nackedStreamsInThisBatch.Contains(message.Data.StreamId);
+            var alreadyNackedThisStream = nackedTopicStreamsInThisBatch.Contains(
+                (message.TopicData.Topic, message.Data.StreamId));
             var alreadyAcceptedThisMessage = _acceptedMessages.Contains(MessageKey(message));
 
             if (alreadyAcceptedThisMessage) _redeliveredMessages++;
@@ -73,7 +74,7 @@ public class PartialNackListStreamConsumer : IStreamConsumer<Event>
                 {
                     if (_verbose) _outputHelper.WriteLine($"Handler: {MessageKey(message)}: NACK");
                     context.Nack(message);
-                    nackedStreamsInThisBatch.Add(message.Data.StreamId);
+                    nackedTopicStreamsInThisBatch.Add((message.TopicData.Topic, message.Data.StreamId));
                     MarkMessageAsNacked(message);
                 }
                 else
