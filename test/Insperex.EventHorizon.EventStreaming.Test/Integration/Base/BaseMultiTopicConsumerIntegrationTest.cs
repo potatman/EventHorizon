@@ -29,6 +29,9 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
 
     protected BaseMultiTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
+        var random = new Random((int)DateTime.UtcNow.Ticks);
+        UniqueTestId = $"{random.Next()}";
+
         Provider = provider;
         _outputHelper = outputHelper;
         _streamingClient = provider.GetRequiredService<StreamingClient>();
@@ -37,6 +40,8 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
         _partialNackHandler = new(_outputHelper, 0.03, 3, 2,
             100, false);
     }
+
+    protected string UniqueTestId { get; init; }
 
     protected IServiceProvider Provider { get; init; }
 
@@ -99,7 +104,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     {
         // Consume
         await using var subscription = await _streamingClient.CreateSubscription<Event>()
-            .SubscriptionName("Fails")
+            .SubscriptionName($"Fails_{UniqueTestId}")
             .AddStream<Feed1PriceChanged>()
             .AddStream<Feed2PriceChanged>()
             .BatchSize(_events.Length / 10)

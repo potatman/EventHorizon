@@ -24,7 +24,7 @@ public class PulsarSingleTopicConsumerIntegrationTest : BaseSingleTopicConsumerI
         var streamFactory = Provider.GetRequiredService<IStreamFactory>();
         var topicAdmin = (PulsarTopicAdmin<Event>)streamFactory.CreateAdmin<Event>();
         await topicAdmin.DeleteTopicAsync(
-            "persistent://test_pricing/Event/subscription__ReSharperTestRunner-Fails__streamFailureState",
+            $"persistent://test_pricing/Event/subscription__ReSharperTestRunner-Fails_{UniqueTestId}__streamFailureState",
             CancellationToken.None);
     }
 }
