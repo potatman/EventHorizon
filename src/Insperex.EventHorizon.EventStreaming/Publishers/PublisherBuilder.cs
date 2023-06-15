@@ -13,6 +13,7 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
     private readonly IStreamFactory _factory;
     private readonly ILoggerFactory _loggerFactory;
     private string _topic;
+    private TimeSpan _sendTimeout = TimeSpan.FromMinutes(2);
 
     public PublisherBuilder(IStreamFactory factory, ILoggerFactory loggerFactory)
     {
@@ -34,11 +35,18 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
         return this;
     }
 
+    public PublisherBuilder<T> SendTimeout(TimeSpan sendTimeout)
+    {
+        _sendTimeout = sendTimeout;
+        return this;
+    }
+
     public Publisher<T> Build()
     {
         var config = new PublisherConfig
         {
-            Topic = _topic
+            Topic = _topic,
+            SendTimeout = _sendTimeout
         };
         var logger = _loggerFactory.CreateLogger<Publisher<T>>();
 
