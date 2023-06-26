@@ -93,7 +93,7 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration
             var obj = JsonConvert.DeserializeObject<JObject>(payload);
             var propertyNames = obj.Properties().Select(x => x.Name).ToArray();
             foreach (var propertyName in propertyNames)
-                if(propertyName != "RawMessage")
+                if(propertyName != "RawMessage" && propertyName != "MessageSource")
                     obj.Property(propertyName)?.Remove();
             var json = JsonConvert.SerializeObject(obj);
 
