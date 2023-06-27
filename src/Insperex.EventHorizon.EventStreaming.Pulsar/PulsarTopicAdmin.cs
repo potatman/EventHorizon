@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
+using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Models;
@@ -29,7 +30,7 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
     public async Task RequireTopicAsync(string str, CancellationToken ct)
     {
         var topic = PulsarTopicParser.Parse(str);
-        await RequireNamespace(topic.Tenant, topic.Namespace, ct);
+        await RequireNamespace(topic, ct);
 
         // try
         // {
@@ -62,11 +63,11 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         }
     }
 
-    private async Task RequireNamespace(string tenant, string nameSpace, CancellationToken ct)
+    private async Task RequireNamespace(PulsarTopic topic, CancellationToken ct)
     {
         // Ensure Tenant Exists
         var tenants = await _admin.GetTenantsAsync(ct);
-        if (!tenants.Contains(tenant))
+        if (!tenants.Contains(topic.Tenant))
         {
             var clusters = await _admin.GetClustersAsync(ct);
             var tenantInfo = new TenantInfo
@@ -75,7 +76,7 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
             };
             try
             {
-                await _admin.CreateTenantAsync(tenant, tenantInfo, ct);
+                await _admin.CreateTenantAsync(topic.Tenant, tenantInfo, ct);
             }
             catch (Exception)
             {
@@ -84,21 +85,24 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         }
 
         // Ensure Namespace Exists
-        var namespaces = await _admin.GetTenantNamespacesAsync(tenant, ct);
-        if (!namespaces.Contains($"{tenant}/{nameSpace}"))
+        var namespaces = await _admin.GetTenantNamespacesAsync(topic.Tenant, ct);
+        if (!namespaces.Contains($"{topic.Tenant}/{topic.Namespace}"))
         {
-            var policies = new Policies
+            var policies = new Policies();
+
+            if (topic.IsPersisted)
             {
-                // Note: pulsar will delete data with no subscriptions, if retention is not set to -1
-                Retention_policies = new RetentionPolicies
+                policies.Retention_policies = new RetentionPolicies
                 {
+                    // Note: pulsar will delete data with no subscriptions, if retention is not set to -1
                     RetentionTimeInMinutes = _pulsarAttribute?.RetentionTimeInMinutes ?? -1,
                     RetentionSizeInMB = _pulsarAttribute?.RetentionSizeInMb ?? -1
-                }
-            };
+                };
+            }
+
             try
             {
-                await _admin.CreateNamespaceAsync(tenant, nameSpace, policies, ct);
+                await _admin.CreateNamespaceAsync(topic.Tenant, topic.Namespace, policies, ct);
             }
             catch (Exception)
             {
