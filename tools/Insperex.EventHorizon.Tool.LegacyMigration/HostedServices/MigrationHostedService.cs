@@ -47,10 +47,8 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
             {
                 try
                 {
-                    var results = _bucketToTopic.AsParallel()
-                        .Select(item => RunAsync(item.Key, item.Value, stoppingToken))
-                        .ToArray();
-                    await Task.WhenAll(results);
+                    foreach (var kvp in _bucketToTopic)
+                        await RunAsync(kvp.Key, kvp.Value, stoppingToken);
                 }
                 catch (Exception e)
                 {
@@ -74,6 +72,7 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
         {
             try
             {
+                _logger.LogInformation("{bucketId} Starting to Migrate to {topic}", bucketId, topic);
                 var dataSource = new MongoDbSource(_mongoClient, bucketId, _loggerFactory.CreateLogger<MongoDbSource>());
                 await using var publisher = _streamingClient.CreatePublisher<Event>().AddTopic(topic).Build();
 
