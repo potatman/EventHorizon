@@ -8,16 +8,13 @@
 
     <ItemGroup>
         <PackageReference Include="AspNetCore.HealthChecks.System" Version="6.0.5" />
+        <PackageReference Include="Pulsar.Client" Version="2.12.2" />
+        <PackageReference Include="Pulsar.Client.Otel" Version="0.1.2" />
+        <PackageReference Include="SharpPulsar.Admin" Version="2.12.0" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\Insperex.EventHorizon.EventStreaming\Insperex.EventHorizon.EventStreaming.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <PackageReference Include="Pulsar.Client" Version="2.12.2" />
-        <PackageReference Include="Pulsar.Client.Otel" Version="0.1.2" />
-        <PackageReference Include="SharpPulsar.Admin" Version="2.12.0" />
     </ItemGroup>
 
 </Project>
