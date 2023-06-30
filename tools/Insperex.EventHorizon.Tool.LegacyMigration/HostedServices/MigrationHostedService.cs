@@ -48,8 +48,11 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
             {
                 try
                 {
-                    foreach (var kvp in _bucketToTopic)
-                        await RunAsync(kvp.Key, kvp.Value, stoppingToken);
+                    var tasks = _bucketToTopic
+                        .Select(kvp => RunAsync(kvp.Key, kvp.Value, stoppingToken))
+                        .ToArray();
+
+                    await Task.WhenAll(tasks);
                 }
                 catch (Exception e)
                 {
