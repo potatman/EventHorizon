@@ -35,9 +35,9 @@ after_test:
   - bash ~/tools/dist/dotnet/sonar.sh stop $sonar_token
   - bash ~/tools/dist/dotnet/publish_nuget.sh $nuget_apikey
   
-#deploy_script: 
-#  - bash ~/tools/dist/shared/publish_docker.sh $docker_password out
-#  - bash ~/tools/dist/shared/publish_helm.sh $octopus_apikey $chart_pass
+deploy_script: 
+ - bash ~/tools/dist/shared/publish_docker.sh $docker_password out
+ - bash ~/tools/dist/shared/publish_helm.sh $octopus_apikey $chart_pass
 
 artifacts:
   - path: 'artifacts\**\*.nupkg'
