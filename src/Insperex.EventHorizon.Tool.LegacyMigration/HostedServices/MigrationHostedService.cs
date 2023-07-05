@@ -48,11 +48,9 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
             {
                 try
                 {
-                    var tasks = _bucketToTopic
-                        .Select(kvp => RunAsync(kvp.Key, kvp.Value, stoppingToken))
-                        .ToArray();
-
-                    await Task.WhenAll(tasks);
+                    foreach (var kvp in _bucketToTopic)
+                        await RunAsync(kvp.Key, kvp.Value, stoppingToken);
+                    await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken);
                 }
                 catch (Exception e)
                 {
@@ -76,15 +74,12 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
         {
             try
             {
-                _logger.LogInformation("{bucketId} Starting to Migrate to {topic}", bucketId, topic);
+                _logger.LogInformation("{bucketId} Starting {topic}", bucketId, topic);
                 var dataSource = new MongoDbSource(_mongoClient, bucketId, _loggerFactory.CreateLogger<MongoDbSource>());
                 await using var publisher = _streamingClient.CreatePublisher<Event>().AddTopic(topic).Build();
 
                 if (!await dataSource.AnyAsync(ct))
-                {
-                    await Task.Delay(TimeSpan.FromMinutes(30), ct);
                     return;
-                }
 
                 await foreach (var item in dataSource.GetAsyncEnumerator(ct))
                 {
@@ -93,6 +88,7 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
                     _count += item.Length;
                     _logger.LogInformation("{bucketId} Total Sent: {Count}", bucketId, _count);
                 }
+                _logger.LogInformation("{bucketId} Stopping {topic}", bucketId, topic);
             }
             catch (Exception e)
             {
