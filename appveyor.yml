@@ -6,7 +6,7 @@ environment:
   github_apikey:
     secure: otfsPx1BAgExY/kZkP2q79UlcBeM7N6dmOgb6ejiFgv0rYfrj4ceTVCE7hVqkf9q
   nuget_apikey:
-    secure: i/4GCUy+iqG/ytoKAFwTXJqOjSNqnzo8gJmLiiB0dWjVG6j//71LC01FWWig5B9d
+    secure: SOuDY2KpiBzP9VTGv0EXsgj66HPoQF3IM5UUBK8nN6Sv4+uznwHGeGcEJrVAD0nP
   docker_password:
     secure: 3BLFSWasBkoBDnePlBhgN0zzV0lRnmJ+BJ2WFEKHIKMt1f0j/CimHAZKFSzu9jvA
   octopus_apikey:

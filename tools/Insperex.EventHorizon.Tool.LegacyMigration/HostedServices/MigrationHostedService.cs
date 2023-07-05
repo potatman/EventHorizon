@@ -25,6 +25,7 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
         private readonly ILoggerFactory _loggerFactory;
         private readonly Dictionary<string, string> _bucketToTopic;
         private readonly ILogger<MigrationHostedService> _logger;
+        private static int _count;
 
         public MigrationHostedService(IOptions<MongoConfig> mongoOptions, StreamingClient streamingClient, IStreamFactory streamFactory, ILoggerFactory loggerFactory, IConfiguration configuration)
         {
@@ -47,10 +48,11 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
             {
                 try
                 {
-                    var results = _bucketToTopic.AsParallel()
-                        .Select(item => RunAsync(item.Key, item.Value, stoppingToken))
+                    var tasks = _bucketToTopic
+                        .Select(kvp => RunAsync(kvp.Key, kvp.Value, stoppingToken))
                         .ToArray();
-                    await Task.WhenAll(results);
+
+                    await Task.WhenAll(tasks);
                 }
                 catch (Exception e)
                 {
@@ -74,6 +76,7 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
         {
             try
             {
+                _logger.LogInformation("{bucketId} Starting to Migrate to {topic}", bucketId, topic);
                 var dataSource = new MongoDbSource(_mongoClient, bucketId, _loggerFactory.CreateLogger<MongoDbSource>());
                 await using var publisher = _streamingClient.CreatePublisher<Event>().AddTopic(topic).Build();
 
@@ -83,13 +86,12 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
                     return;
                 }
 
-                var count = 0;
                 await foreach (var item in dataSource.GetAsyncEnumerator(ct))
                 {
                     await publisher.PublishAsync(item);
                     await dataSource.SaveState(ct);
-                    count += item.Length;
-                    _logger.LogInformation("{bucketId} Total Sent: {Count}", bucketId, count);
+                    _count += item.Length;
+                    _logger.LogInformation("{bucketId} Total Sent: {Count}", bucketId, _count);
                 }
             }
             catch (Exception e)
@@ -114,7 +116,7 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
             }
         }
 
-        private async Task WriteChannel(ChannelReader<Event> reader, Publisher<Event> publisher)
+        private async Task WriteChannel(string bucketId, ChannelReader<Event> reader, Publisher<Event> publisher)
         {
             var size = 10000;
             while (true)
@@ -127,6 +129,8 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
                 }
 
                 await publisher.PublishAsync(list.ToArray());
+                _count += list.Count;
+                _logger.LogInformation("{bucketId} Total Sent: {Count}", bucketId, _count);
             }
         }
     }

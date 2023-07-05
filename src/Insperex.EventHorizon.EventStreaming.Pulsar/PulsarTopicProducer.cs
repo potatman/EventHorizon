@@ -69,6 +69,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
             .BlockIfQueueFull(true)
             .BatchBuilder(BatchBuilder.KeyBased)
             .CompressionType(CompressionType.LZ4)
+            .SendTimeout(_config.SendTimeout)
             .MaxPendingMessages(10000)
             .MaxPendingMessagesAcrossPartitions(50000)
             .Intercept(_intercept)
