@@ -11,8 +11,8 @@ using Insperex.EventHorizon.EventStreaming.Pulsar.Attributes;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
-[Stream("user")]
-[PulsarNamespace("test_user", "$type")]
+[Stream("$type")]
+[PulsarNamespace("test_bank", "user")]
 [SnapshotStore("test_snapshot_bank_user")]
 public class User : IState,
     IHandleCommand<ChangeUserName>,
