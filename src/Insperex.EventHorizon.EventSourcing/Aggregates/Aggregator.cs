@@ -263,8 +263,7 @@ public class Aggregator<TParent, T>
             var responsesLookup = responses.ToLookup(x => x.SenderId);
             foreach (var group in responsesLookup)
             {
-                var topic = $"{typeof(Response)}-{group.Key}";
-                var publisher = _streamingClient.CreatePublisher<Response>().AddStream<T>(topic).Build();
+                var publisher = _streamingClient.CreatePublisher<Response>().AddStream<T>(group.Key).Build();
                 await publisher.PublishAsync(group.ToArray());
             }
         }
