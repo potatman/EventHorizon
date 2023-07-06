@@ -22,11 +22,16 @@ public class Program
                 {
                     x.AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                     x.AddMongoDbSnapshotStore(hostContext.Configuration.GetSection("MongoDb").Bind);
+                    // x.AddSubscription<NullStreamConsumer, Event>(s =>
+                    //     s.AddStream<FileEntryEvent>()
+                    //         .BatchSize(10000)
+                    //         .SubscriptionName("test-2"));
                 });
 
                 // Runs Migration
                 services.AddHostedService<MigrationHostedService>();
             })
+            .UseConsul()
             .UseSerilog((_, config) => { config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture); })
             .Build()
             .RunAsync();

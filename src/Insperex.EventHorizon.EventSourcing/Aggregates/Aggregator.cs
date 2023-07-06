@@ -133,6 +133,8 @@ public class Aggregator<TParent, T>
         foreach (var message in messages)
         {
             var agg = aggregateDict.GetValueOrDefault(message.StreamId);
+            if (agg.Error != null)
+                continue;
             try
             {
                 switch (message)

@@ -6,7 +6,7 @@ environment:
   github_apikey:
     secure: otfsPx1BAgExY/kZkP2q79UlcBeM7N6dmOgb6ejiFgv0rYfrj4ceTVCE7hVqkf9q
   nuget_apikey:
-    secure: i/4GCUy+iqG/ytoKAFwTXJqOjSNqnzo8gJmLiiB0dWjVG6j//71LC01FWWig5B9d
+    secure: SOuDY2KpiBzP9VTGv0EXsgj66HPoQF3IM5UUBK8nN6Sv4+uznwHGeGcEJrVAD0nP
   docker_password:
     secure: 3BLFSWasBkoBDnePlBhgN0zzV0lRnmJ+BJ2WFEKHIKMt1f0j/CimHAZKFSzu9jvA
   octopus_apikey:
@@ -20,7 +20,7 @@ services:
   - docker
 
 install:
-  - nohup sh -c "ls test/Compose | xargs -P 5 -I {} docker-compose -f test/Compose/{}/docker-compose.yml up -d >/dev/null"
+  - nohup sh -c "ls compose | xargs -P 5 -I {} docker-compose -f compose/{}/docker-compose.yml up -d >/dev/null"
   - git clone -b develop --single-branch https://$github_apikey@github.com/insperex/TwoEightyCap.DevOps.Tools.git ~/tools
   - bash ~/tools/dist/shared/version.sh
   - bash ~/tools/dist/dotnet/install.sh
@@ -35,9 +35,9 @@ after_test:
   - bash ~/tools/dist/dotnet/sonar.sh stop $sonar_token
   - bash ~/tools/dist/dotnet/publish_nuget.sh $nuget_apikey
   
-#deploy_script: 
-#  - bash ~/tools/dist/shared/publish_docker.sh $docker_password out
-#  - bash ~/tools/dist/shared/publish_helm.sh $octopus_apikey $chart_pass
+deploy_script: 
+ - bash ~/tools/dist/shared/publish_docker.sh $docker_password out
+ - bash ~/tools/dist/shared/publish_helm.sh $octopus_apikey $chart_pass
 
 artifacts:
   - path: 'artifacts\**\*.nupkg'

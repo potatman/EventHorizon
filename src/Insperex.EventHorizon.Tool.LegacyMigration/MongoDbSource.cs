@@ -64,17 +64,44 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration
                         var dotnetValue = BsonTypeMapper.MapToDotNetValue(item["Payload"]);
                         var payload = JsonConvert.SerializeObject(dotnetValue);
 
-                        // Remove _t
-                        var obj = JsonConvert.DeserializeObject<JObject>(payload);
-                        obj.Property("_t")?.Remove();
-                        var json = JsonConvert.SerializeObject(obj);
+                        // Handle TradeHistory
+                        var tradeHistoryBucketIds = new[] { "tec_raw_esp_trade", "tec_raw_msrb_trade", "tec_raw_finra_trade" };
+                        if (tradeHistoryBucketIds.Contains(_bucketId))
+                            return GetTradeHistoryEvent(streamId, type, payload);
 
-                        return new Event { StreamId = streamId, Type = type, Payload = json };
+                        return GetEvent(streamId, type, payload);
                     })
                     .Where(x => x != null)
                     .ToArray();
             }
             _currentBatch = Array.Empty<BsonDocument>();
+        }
+
+        private static Event GetEvent(string streamId, string type, string payload)
+        {
+            // Remove _t
+            var obj = JsonConvert.DeserializeObject<JObject>(payload);
+            obj.Property("_t")?.Remove();
+            var json = JsonConvert.SerializeObject(obj);
+
+            return new Event { StreamId = streamId, Type = type, Payload = json };
+        }
+
+        private static Event GetTradeHistoryEvent(string streamId, string type, string payload)
+        {
+            // Remove _t
+            var obj = JsonConvert.DeserializeObject<JObject>(payload);
+            var propertyNames = obj.Properties().Select(x => x.Name).ToArray();
+            foreach (var propertyName in propertyNames)
+                if(propertyName != "RawMessage" && propertyName != "MessageSource")
+                    obj.Property(propertyName)?.Remove();
+            var json = JsonConvert.SerializeObject(obj);
+
+            if (type == "EspSaveRawMessageEvent") type = "EspRawEvent";
+            if (type == "FinraTraceSaveRawMessageEvent") type = "FinraRawEvent";
+            if (type == "MsrbSaveRawMessageEvent") type = "MsrbRawEvent";
+
+            return new Event { StreamId = streamId, Type = type, Payload = json };
         }
 
         private async Task<IAsyncCursor<BsonDocument>> GetCursor(CancellationToken ct)
