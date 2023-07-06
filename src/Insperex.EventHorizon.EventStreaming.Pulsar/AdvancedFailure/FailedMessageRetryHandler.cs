@@ -18,6 +18,8 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 /// <typeparam name="T">Type of message from the primary topic.</typeparam>
 public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, ITopicMessage, new()
 {
+    private const int MaxStreams = 300;
+
     private readonly StreamFailureState<T> _streamFailureState;
     private readonly RetryTopicReader<T> _reader;
     private readonly ILogger<FailedMessageRetryHandler<T>> _logger;
@@ -83,8 +85,6 @@ public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, IT
             await _streamFailureState.TopicStreamUpToDate(topicStream.Topic, topicStream.StreamId);
         }
     }
-
-    private int MaxStreams => _batchSize / 3;
 
     public async Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
     {
