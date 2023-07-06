@@ -33,10 +33,10 @@ public class PulsarTopicResolver : ITopicResolver
         var topics = attributes
             .Select(x =>
             {
-                var tenant = (pulsarAttr?.Tenant ?? DefaultTenant).Replace(TypeKey, typeof(TM).Name);
-                var @namespace = (pulsarAttr?.Namespace ?? DefaultNamespace).Replace(TypeKey, typeof(TM).Name);
+                var tenant = pulsarAttr?.Tenant ?? DefaultTenant;
+                var @namespace = pulsarAttr?.Namespace ?? DefaultNamespace;
                 var topic = topicName == null ? x.Topic : $"{x.Topic}-{topicName}";
-                return $"{persistent}://{tenant}/{@namespace}/{topic}";
+                return $"{persistent}://{tenant}/{@namespace}/{topic}".Replace(TypeKey, typeof(TM).Name);
             })
             .ToArray();
 
