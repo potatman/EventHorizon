@@ -1,5 +1,4 @@
-﻿using System.Net;
-using System.Text.Json;
+﻿using System.Text.Json;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 
 namespace Insperex.EventHorizon.Abstractions.Models.TopicMessages;
@@ -7,7 +6,6 @@ namespace Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 public class Response : ITopicMessage
 {
     public string Id { get; set; }
-    public string RequestId { get; set; }
     public string SenderId { get; set; }
     public string StreamId { get; set; }
     public string Type { get; set; }
@@ -19,12 +17,14 @@ public class Response : ITopicMessage
     {
     }
 
-    public Response(string streamId, string requestId, string senderId, object payload)
+    public Response(string id, string senderId, string streamId, object payload, string error, int statusCode)
     {
+        Id = id;
         StreamId = streamId;
-        RequestId = requestId;
         SenderId = senderId;
         Payload = JsonSerializer.Serialize(payload);
         Type = payload?.GetType().Name;
+        Error = error;
+        StatusCode = statusCode;
     }
 }

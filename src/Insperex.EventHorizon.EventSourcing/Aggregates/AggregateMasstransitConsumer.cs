@@ -32,7 +32,7 @@ namespace Insperex.EventHorizon.EventSourcing.Aggregates
                 .Select(x => new Request(x.Message.StreamId, x.Message) { Id = x.RequestId.ToString(), })
                 .ToArray();
             var reps = await _aggregator.HandleAsync(reqs, context.CancellationToken);
-            var dict = reps.ToDictionary(x => x.RequestId);
+            var dict = reps.ToDictionary(x => x.Id);
 
             foreach (var context2 in context.Message)
             {

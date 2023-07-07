@@ -14,6 +14,7 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
     private readonly ILoggerFactory _loggerFactory;
     private string _topic;
     private TimeSpan _sendTimeout = TimeSpan.FromMinutes(5);
+    private bool _isGuaranteed;
 
     public PublisherBuilder(IStreamFactory factory, ILoggerFactory loggerFactory)
     {
@@ -35,6 +36,12 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
         return this;
     }
 
+    public PublisherBuilder<T> IsGuaranteed(bool isGuaranteed)
+    {
+        _isGuaranteed = isGuaranteed;
+        return this;
+    }
+
     public PublisherBuilder<T> SendTimeout(TimeSpan sendTimeout)
     {
         _sendTimeout = sendTimeout;
@@ -46,6 +53,7 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
         var config = new PublisherConfig
         {
             Topic = _topic,
+            IsGuaranteed = _isGuaranteed,
             SendTimeout = _sendTimeout
         };
         var logger = _loggerFactory.CreateLogger<Publisher<T>>();

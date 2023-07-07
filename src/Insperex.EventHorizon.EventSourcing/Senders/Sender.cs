@@ -78,7 +78,7 @@ public class Sender
         {
             var responses = _subscriptionTracker.GetResponses(requestIds, _config.GetErrorResult);
             foreach (var response in responses)
-                responseDict[response.RequestId] = response;
+                responseDict[response.Id] = response;
             await Task.Delay(200);
         }
 
@@ -87,13 +87,8 @@ public class Sender
             if (!responseDict.ContainsKey(request.Id))
             {
                 var error = "Request Timed Out";
-                responseDict[request.Id] = new Response(request.StreamId, request.Id, _subscriptionTracker.GetSenderId(),
-                    _config.GetErrorResult?.Invoke(HttpStatusCode.RequestTimeout, error))
-                {
-                    Id = request.Id,
-                    Error = error,
-                    StatusCode = (int)HttpStatusCode.RequestTimeout
-                };
+                responseDict[request.Id] = new Response(request.Id, _subscriptionTracker.GetSenderId(), request.StreamId,
+                    _config.GetErrorResult?.Invoke(HttpStatusCode.RequestTimeout, error), error, (int)HttpStatusCode.RequestTimeout);
             }
 
         return responseDict.Values.ToArray();
