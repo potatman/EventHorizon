@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Threading;
 using Insperex.EventHorizon.Abstractions.Interfaces;
-using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
-using Insperex.EventHorizon.Abstractions.Models;
-using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventSourcing.Interfaces;
 using Insperex.EventHorizon.EventSourcing.Util;
 using Insperex.EventHorizon.EventStore.Interfaces;
@@ -31,6 +28,7 @@ public class AggregateBuilder<TParent, T>
     private int _retryLimit = 5;
     private IAggregateMiddleware<T> _middleware;
     private readonly LockFactory<T> _lockFactory;
+    private int _batchSize;
 
     public AggregateBuilder(
         IServiceProvider serviceProvider,
@@ -65,6 +63,12 @@ public class AggregateBuilder<TParent, T>
         return this;
     }
 
+    public AggregateBuilder<TParent, T> BatchSize(int batchSize)
+    {
+        _batchSize = batchSize;
+        return this;
+    }
+
     public AggregateBuilder<TParent, T> UseMiddleware<TMiddle>() where TMiddle : IAggregateMiddleware<T>
     {
         using var scope = _serviceProvider.CreateScope();
@@ -80,11 +84,12 @@ public class AggregateBuilder<TParent, T>
             IsRebuildEnabled = _isRebuildEnabled,
             RetryLimit = _retryLimit,
             Middleware = _middleware,
+            BatchSize = _batchSize
         };
 
         // Create Store
         var @lock = _lockFactory.CreateLock($"Migrate-{typeof(T).Name}").WaitForLockAsync().GetAwaiter().GetResult();
-        _crudStore.Setup(CancellationToken.None).GetAwaiter().GetResult();
+        _crudStore.SetupAsync(CancellationToken.None).GetAwaiter().GetResult();
         @lock.DisposeAsync().GetAwaiter().GetResult();
 
         // Validate Handlers if Enabled

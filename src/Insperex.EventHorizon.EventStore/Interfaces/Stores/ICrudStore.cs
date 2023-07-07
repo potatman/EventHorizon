@@ -8,7 +8,7 @@ namespace Insperex.EventHorizon.EventStore.Interfaces.Stores;
 public interface ICrudStore<T>
     where T : ICrudEntity
 {
-    Task Setup(CancellationToken ct);
+    Task SetupAsync(CancellationToken ct);
     public Task<T[]> GetAllAsync(string[] ids, CancellationToken ct);
     Task<DateTime> GetLastUpdatedDateAsync(CancellationToken ct);
     public Task<DbResult> InsertAsync(T[] objs, CancellationToken ct);
