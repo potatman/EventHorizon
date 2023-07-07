@@ -117,10 +117,11 @@ public class SenderIntegrationTest : IAsyncLifetime
 
         // Assert Status
         Assert.Equal(HttpStatusCode.OK, result1.Result.StatusCode);
+        await Task.Delay(1000);
 
         // Assert Account
-        var events = await _eventSourcingClient.Aggregator().Build().GetEventsAsync(new[] { streamId });
         var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
+        var events = await _eventSourcingClient.Aggregator().Build().GetEventsAsync(new[] { streamId });
         Assert.Equal(streamId, aggregate.State.Id);
         Assert.Equal(streamId, aggregate.Id);
         Assert.NotEqual(DateTime.MinValue, aggregate.CreatedDate);

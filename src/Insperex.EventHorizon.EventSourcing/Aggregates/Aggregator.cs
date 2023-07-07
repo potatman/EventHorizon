@@ -11,6 +11,7 @@ using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStreaming;
+using Insperex.EventHorizon.EventStreaming.Publishers;
 using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventSourcing.Aggregates;
@@ -23,6 +24,7 @@ public class Aggregator<TParent, T>
     private readonly ICrudStore<TParent> _crudStore;
     private readonly ILogger<Aggregator<TParent, T>> _logger;
     private readonly StreamingClient _streamingClient;
+    private readonly Dictionary<string, object> _publisherDict = new();
 
     public Aggregator(
         ICrudStore<TParent> crudStore,
@@ -244,7 +246,7 @@ public class Aggregator<TParent, T>
 
         try
         {
-            var publisher = _streamingClient.CreatePublisher<Event>().AddStream<T>().Build();
+            var publisher = GetPublisher<Event>(null);
             await publisher.PublishAsync(events);
         }
         catch (Exception ex)
@@ -263,7 +265,7 @@ public class Aggregator<TParent, T>
             var responsesLookup = responses.ToLookup(x => x.SenderId);
             foreach (var group in responsesLookup)
             {
-                var publisher = _streamingClient.CreatePublisher<Response>().AddStream<T>(group.Key).Build();
+                var publisher = GetPublisher<Response>(group.Key);
                 await publisher.PublishAsync(group.ToArray());
             }
         }
@@ -271,6 +273,15 @@ public class Aggregator<TParent, T>
         {
             _logger.LogError(ex, "Failed to publish results");
         }
+    }
+
+    private Publisher<TM> GetPublisher<TM>(string path) where TM : class, ITopicMessage, new()
+    {
+        var key = $"{typeof(TM).Name}-{path}";
+        if (!_publisherDict.ContainsKey(key))
+            _publisherDict[key] = _streamingClient.CreatePublisher<TM>().AddStream<T>(path).Build();
+
+        return _publisherDict[key] as Publisher<TM>;
     }
 
     private static void ResetAll(Dictionary<string, Aggregate<T>> aggregateDict)
