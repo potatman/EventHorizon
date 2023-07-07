@@ -108,15 +108,15 @@ public class SenderIntegrationTest : IAsyncLifetime
     {
         // Send Command
         var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(10);
-        var result1 = _sender2.SendAndReceiveAsync(streamId, new OpenAccount(1000));
+        var result1 = await _sender2.SendAndReceiveAsync(streamId, new OpenAccount(1000));
         var result2 = _sender2.SendAndReceiveAsync(streamId, new Withdrawal(100));
         var result3 = _sender2.SendAndReceiveAsync(streamId, new Deposit(100));
         var result4 = _sender.SendAndReceiveAsync("ABC", new OpenAccount(100));
         var result5 = _sender.SendAndReceiveAsync("DFG", new OpenAccount(100));
-        await Task.WhenAll(result1, result2, result3, result4, result5);
+        await Task.WhenAll(result2, result3, result4, result5);
 
         // Assert Status
-        Assert.True(HttpStatusCode.OK == result1.Result.StatusCode, result1.Result.Error);
+        Assert.True(HttpStatusCode.OK == result1.StatusCode, result1.Error);
         Assert.True(HttpStatusCode.OK == result2.Result.StatusCode, result2.Result.Error);
         Assert.True(HttpStatusCode.OK == result3.Result.StatusCode, result3.Result.Error);
         Assert.True(HttpStatusCode.OK == result4.Result.StatusCode, result4.Result.Error);
