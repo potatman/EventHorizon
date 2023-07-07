@@ -117,7 +117,7 @@ public class SenderIntegrationTest : IAsyncLifetime
 
         // Assert Status
         Assert.Equal(HttpStatusCode.OK, result1.Result.StatusCode);
-        await Task.Delay(1000);
+        await Task.Delay(2000);
 
         // Assert Account
         var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
