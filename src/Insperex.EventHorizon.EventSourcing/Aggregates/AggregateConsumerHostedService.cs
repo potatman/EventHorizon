@@ -25,17 +25,21 @@ public class AggregateConsumerHostedService<TParent, TAction, T> : IHostedServic
         _aggregator = aggregator;
 
         var config = _aggregator.GetConfig();
-        _subscription = streamingClient.CreateSubscription<TAction>()
+
+        var builder = streamingClient.CreateSubscription<TAction>()
             .SubscriptionName($"Apply-{typeof(TAction).Name}-{typeof(T).Name}")
             .AddStream<T>()
-            .BatchSize(config.BatchSize)
             .OnBatch(async x =>
             {
                 var messages = x.Messages.Select(m => m.Data).ToArray();
                 var responses = await aggregator.HandleAsync(messages, x.CancellationToken);
                 await aggregator.PublishResponseAsync(responses);
-            })
-            .Build();
+            });
+
+        if(config.BatchSize != null)
+            builder = builder.BatchSize(config.BatchSize.Value);
+
+        _subscription = builder.Build();
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)

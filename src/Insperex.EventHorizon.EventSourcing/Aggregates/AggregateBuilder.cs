@@ -28,7 +28,7 @@ public class AggregateBuilder<TParent, T>
     private int _retryLimit = 5;
     private IAggregateMiddleware<T> _middleware;
     private readonly LockFactory<T> _lockFactory;
-    private int _batchSize;
+    private int? _batchSize;
 
     public AggregateBuilder(
         IServiceProvider serviceProvider,
