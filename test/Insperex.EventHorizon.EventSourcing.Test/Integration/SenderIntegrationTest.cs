@@ -116,11 +116,11 @@ public class SenderIntegrationTest : IAsyncLifetime
         await Task.WhenAll(result1, result2, result3, result4, result5);
 
         // Assert Status
-        Assert.Equal(HttpStatusCode.OK, result1.Result.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, result2.Result.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, result3.Result.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, result4.Result.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, result5.Result.StatusCode);
+        Assert.True(HttpStatusCode.OK == result1.Result.StatusCode, result1.Result.Error);
+        Assert.True(HttpStatusCode.OK == result2.Result.StatusCode, result2.Result.Error);
+        Assert.True(HttpStatusCode.OK == result3.Result.StatusCode, result3.Result.Error);
+        Assert.True(HttpStatusCode.OK == result4.Result.StatusCode, result4.Result.Error);
+        Assert.True(HttpStatusCode.OK == result5.Result.StatusCode, result5.Result.Error);
 
         // Assert Account
         var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
