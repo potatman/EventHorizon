@@ -42,7 +42,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
             {
                 // Check Results
                 foreach (var response in x.Messages)
-                    _responseDict[response.Data.RequestId] = response;
+                    _responseDict[response.Data.Id] = response;
                 return Task.CompletedTask;
             })
             .AddStream<T>(_senderId)
@@ -62,8 +62,8 @@ public class SenderSubscriptionTracker : IAsyncDisposable
             {
                 // Add Response, Make Custom if needed
                 responses.Add(value.Data.Error != null
-                    ? new Response(value.Data.StreamId, value.Data.RequestId, _senderId,
-                        configGetErrorResult((HttpStatusCode)value.Data.StatusCode, value.Data.Error))
+                    ? new Response(value.Data.Id, value.Data.SenderId, value.Data.StreamId,
+                        configGetErrorResult((HttpStatusCode)value.Data.StatusCode, value.Data.Error), value.Data.Error, value.Data.StatusCode)
                     : value.Data);
             }
 

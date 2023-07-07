@@ -109,7 +109,7 @@ public class Aggregator<TParent, T>
             var successfulResponses = aggregateDict.Values.Where(x => x.Error == null)
                 .SelectMany(x => x.Responses).ToArray();
             foreach (var response in successfulResponses)
-                responses[response.RequestId] = response;
+                responses[response.Id] = response;
 
             // Setup for Next Iteration, If Any Failures
             messages = messages
@@ -123,7 +123,7 @@ public class Aggregator<TParent, T>
         var failedResponses = aggregateDict.Values.Where(x => x.Error != null)
             .SelectMany(x => x.Responses).ToArray();
         foreach (var response in failedResponses)
-            responses[response.RequestId] = response;
+            responses[response.Id] = response;
 
         return responses.Values.ToArray();
     }
