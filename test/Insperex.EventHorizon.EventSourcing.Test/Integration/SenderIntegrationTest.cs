@@ -23,6 +23,7 @@ using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -59,10 +60,8 @@ public class SenderIntegrationTest : IAsyncLifetime
                         // Stores
                         .AddInMemorySnapshotStore()
                         .AddInMemoryViewStore()
-                        .AddInMemoryEventStream();
-                        // .AddInMemorySnapshotStore()
-                        // .AddInMemoryViewStore()
-                        // .AddPulsarEventStream(hostContext.Configuration);
+                        // .AddInMemoryEventStream();
+                        .AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                 });
             })
             .UseSerilog((_, config) =>
@@ -99,6 +98,7 @@ public class SenderIntegrationTest : IAsyncLifetime
         _output.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _eventSourcingClient.GetSnapshotStore().DropDatabaseAsync(CancellationToken.None);
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Account));
+        await _streamingClient.GetAdmin<Request>().DeleteTopicAsync(typeof(Account));
         await _host.StopAsync();
         _host.Dispose();
     }
