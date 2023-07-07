@@ -109,7 +109,7 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                 {
                     var response = await sender.SendAndReceiveAsync<T>(new Request(id, req));
                     var first = response.First();
-                    var statusCode = first.StatusCode;
+                    var statusCode = (HttpStatusCode)first.StatusCode;
                     if ((int)statusCode > 300)
                         return Results.Problem(first.Error, title: first.Error);
 

@@ -42,6 +42,11 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
         Thread.Sleep(500);
     }
 
+    public Task InitAsync()
+    {
+        return Task.CompletedTask;
+    }
+
     public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
     {
         var list = new List<MessageContext<T>>();

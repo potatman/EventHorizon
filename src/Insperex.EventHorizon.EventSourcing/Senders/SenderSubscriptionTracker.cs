@@ -36,7 +36,8 @@ public class SenderSubscriptionTracker : IAsyncDisposable
         if(_subscriptionDict.ContainsKey(type))
             return;
 
-        var subscription = await _streamingClient.CreateSubscription<Response>()
+        var subscription = _streamingClient.CreateSubscription<Response>()
+            .SubscriptionType(SubscriptionType.Exclusive)
             .OnBatch(x =>
             {
                 // Check Results
@@ -46,10 +47,11 @@ public class SenderSubscriptionTracker : IAsyncDisposable
             })
             .AddStream<T>(_senderId)
             .IsBeginning(true)
-            .Build()
-            .StartAsync();
+            .Build();
 
         _subscriptionDict[type] = subscription;
+
+        await subscription.StartAsync();
     }
 
     public Response[] GetResponses(string[] responseIds, Func<HttpStatusCode, string, IResponse> configGetErrorResult)
@@ -61,7 +63,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
                 // Add Response, Make Custom if needed
                 responses.Add(value.Data.Error != null
                     ? new Response(value.Data.StreamId, value.Data.RequestId, _senderId,
-                        configGetErrorResult(value.Data.StatusCode, value.Data.Error))
+                        configGetErrorResult((HttpStatusCode)value.Data.StatusCode, value.Data.Error))
                     : value.Data);
             }
 

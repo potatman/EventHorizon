@@ -10,8 +10,6 @@ using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming;
-using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
-using Insperex.EventHorizon.EventStreaming.Util;
 
 namespace Insperex.EventHorizon.EventSourcing.Senders;
 
@@ -87,8 +85,16 @@ public class Sender
         // Add Timed Out Results
         foreach (var request in requestDict.Values)
             if (!responseDict.ContainsKey(request.Id))
+            {
+                var error = "Request Timed Out";
                 responseDict[request.Id] = new Response(request.StreamId, request.Id, _subscriptionTracker.GetSenderId(),
-                    _config.GetErrorResult?.Invoke(HttpStatusCode.RequestTimeout, string.Empty)) { Id = request.Id };
+                    _config.GetErrorResult?.Invoke(HttpStatusCode.RequestTimeout, error))
+                {
+                    Id = request.Id,
+                    Error = error,
+                    StatusCode = (int)HttpStatusCode.RequestTimeout
+                };
+            }
 
         return responseDict.Values.ToArray();
     }

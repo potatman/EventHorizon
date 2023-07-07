@@ -14,6 +14,7 @@ using Insperex.EventHorizon.EventStreaming.Util;
 using Pulsar.Client.Api;
 using Pulsar.Client.Common;
 using Pulsar.Client.Otel;
+using SubscriptionType = Pulsar.Client.Common.SubscriptionType;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
@@ -36,6 +37,11 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         _admin = admin;
         _intercept = new OtelConsumerInterceptor.OTelConsumerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
+    }
+
+    public async Task InitAsync()
+    {
+        _consumer = await GetConsumerAsync();
     }
 
     public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
@@ -106,7 +112,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         var client = await _clientResolver.GetPulsarClientAsync();
         var builder = client.NewConsumer(Schema.JSON<T>())
             .ConsumerName(NameUtil.AssemblyNameWithGuid)
-            .SubscriptionType(SubscriptionType.KeyShared)
+            .SubscriptionType(GetSubscriptionType(_config.SubscriptionType))
             .SubscriptionName(_config.SubscriptionName)
             .Intercept(_intercept);
 
@@ -124,13 +130,33 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         if (_config.BatchSize != null)
             builder = builder.ReceiverQueueSize(_config.BatchSize.Value);
 
-        var consumer = await builder.SubscribeAsync();
+        try
+        {
+            var consumer = await builder.SubscribeAsync();
 
-        if (_config.StartDateTime != null)
-            await consumer.SeekAsync(_config.StartDateTime.Value.Ticks);
+            if (_config.StartDateTime != null)
+                await consumer.SeekAsync(_config.StartDateTime.Value.Ticks);
 
-        // Return
-        return _consumer = consumer;
+            // Return
+            return _consumer = consumer;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+
+    private SubscriptionType GetSubscriptionType(Abstractions.Models.SubscriptionType subscriptionType)
+    {
+        return subscriptionType switch
+        {
+            Abstractions.Models.SubscriptionType.Exclusive => SubscriptionType.Exclusive,
+            Abstractions.Models.SubscriptionType.Shared => SubscriptionType.Shared,
+            Abstractions.Models.SubscriptionType.Failover => SubscriptionType.Failover,
+            Abstractions.Models.SubscriptionType.KeyShared => SubscriptionType.KeyShared,
+            _ => throw new ArgumentOutOfRangeException()
+        };
     }
 
     public async ValueTask DisposeAsync()
