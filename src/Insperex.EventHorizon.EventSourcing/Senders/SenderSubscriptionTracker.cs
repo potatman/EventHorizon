@@ -6,7 +6,6 @@ using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
-using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Insperex.EventHorizon.EventStreaming.Util;
@@ -16,7 +15,7 @@ namespace Insperex.EventHorizon.EventSourcing.Senders;
 public class SenderSubscriptionTracker : IAsyncDisposable
 {
     private readonly StreamingClient _streamingClient;
-    private Subscription<Response> _subscription;
+    private readonly Dictionary<Type, Subscription<Response>> _subscriptionDict = new ();
     private readonly Dictionary<string, MessageContext<Response>> _responseDict = new ();
     private readonly string _senderId;
     private bool _cleaning;
@@ -33,10 +32,11 @@ public class SenderSubscriptionTracker : IAsyncDisposable
 
     public async Task TrackSubscription<T>() where T : IState
     {
-        if(_subscription != null)
+        var type = typeof(T);
+        if(_subscriptionDict.ContainsKey(type))
             return;
 
-        _subscription = _streamingClient.CreateSubscription<Response>()
+        var subscription = _streamingClient.CreateSubscription<Response>()
             .SubscriptionType(SubscriptionType.Exclusive)
             .OnBatch(x =>
             {
@@ -46,9 +46,12 @@ public class SenderSubscriptionTracker : IAsyncDisposable
                 return Task.CompletedTask;
             })
             .AddStream<T>(_senderId)
+            .IsBeginning(true)
             .Build();
 
-        await _subscription.StartAsync();
+        _subscriptionDict[type] = subscription;
+
+        await subscription.StartAsync();
     }
 
     public Response[] GetResponses(string[] responseIds, Func<HttpStatusCode, string, IResponse> configGetErrorResult)
@@ -70,9 +73,15 @@ public class SenderSubscriptionTracker : IAsyncDisposable
     private async Task CleanupAsync()
     {
         _cleaning = true;
-        await _subscription.DeleteTopicsAsync();
-        await _subscription.StopAsync();
-        _subscription = null;
+        foreach (var group in _subscriptionDict)
+        {
+            // Stop Subscription
+            await group.Value.StopAsync();
+
+            // Delete Topic
+            await _streamingClient.GetAdmin<Response>().DeleteTopicAsync(group.Key, _senderId);
+        }
+        _subscriptionDict.Clear();
     }
 
     private void OnExit(object sender, EventArgs e)
