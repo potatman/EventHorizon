@@ -108,7 +108,7 @@ public class SenderIntegrationTest : IAsyncLifetime
     {
         // Send Command
         var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(10);
-        var result1 = _sender2.SendAndReceiveAsync(streamId, new OpenAccount(100));
+        var result1 = _sender2.SendAndReceiveAsync(streamId, new OpenAccount(1000));
         var result2 = _sender2.SendAndReceiveAsync(streamId, new Withdrawal(100));
         var result3 = _sender2.SendAndReceiveAsync(streamId, new Deposit(100));
         var result4 = _sender.SendAndReceiveAsync("ABC", new OpenAccount(100));
@@ -117,18 +117,22 @@ public class SenderIntegrationTest : IAsyncLifetime
 
         // Assert Status
         Assert.Equal(HttpStatusCode.OK, result1.Result.StatusCode);
-        await Task.Delay(2000);
+        Assert.Equal(HttpStatusCode.OK, result2.Result.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, result3.Result.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, result4.Result.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, result5.Result.StatusCode);
 
         // Assert Account
         var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
         var events = await _eventSourcingClient.Aggregator().Build().GetEventsAsync(new[] { streamId });
+        foreach (var @event in events)
+            _output.WriteLine(@event.Data.Type);
         Assert.Equal(streamId, aggregate.State.Id);
         Assert.Equal(streamId, aggregate.Id);
         Assert.NotEqual(DateTime.MinValue, aggregate.CreatedDate);
         Assert.NotEqual(DateTime.MinValue, aggregate.UpdatedDate);
         Assert.Equal(3, events.Length);
-        Assert.Equal(100, aggregate.State.Amount);
-
+        Assert.Equal(1000, aggregate.State.Amount);
 
         // // Assert User Account
         // var store2 = _host.Services.GetRequiredService<Aggregator<Snapshot<UserAccount>, UserAccount>>();
