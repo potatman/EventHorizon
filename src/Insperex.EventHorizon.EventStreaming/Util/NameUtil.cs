@@ -5,5 +5,5 @@ namespace Insperex.EventHorizon.EventStreaming.Util;
 
 public static class NameUtil
 {
-    public static string AssemblyNameWithGuid => $"{AssemblyUtil.AssemblyName}-{Guid.NewGuid().ToString()[4..]}";
+    public static string AssemblyNameWithGuid => $"{AssemblyUtil.AssemblyName}_{Guid.NewGuid().ToString()[..8]}";
 }
