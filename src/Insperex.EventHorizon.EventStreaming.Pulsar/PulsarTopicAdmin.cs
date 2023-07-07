@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
@@ -32,16 +33,19 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         var topic = PulsarTopicParser.Parse(str);
         await RequireNamespace(topic, ct);
 
-        // try
-        // {
-        //     await _admin.CreateNonPartitionedTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, new Dictionary<string, string>(), ct);
-        // }
-        // catch (ApiException ex)
-        // {
-        //     // 409 - Partitioned topic already exist
-        //     if (ex.StatusCode != 409)
-        //         throw;
-        // }
+        try
+        {
+            if (!topic.IsPersisted)
+                await _admin.CreateNonPartitionedTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, new Dictionary<string, string>(), ct);
+            else
+                await _admin.CreateNonPartitionedTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, new Dictionary<string, string>(), ct);
+        }
+        catch (ApiException ex)
+        {
+            // 409 - Topic already exist
+            if (ex.StatusCode != 409)
+                throw;
+        }
     }
 
     public async Task DeleteTopicAsync(string str, CancellationToken ct)
@@ -49,10 +53,10 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         var topic = PulsarTopicParser.Parse(str);
         try
         {
-            if (topic.IsPersisted)
-                await _admin.DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
+            if (!topic.IsPersisted)
+                await _admin.DeleteTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
             else
-                await _admin.UnloadTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, ct);
+                await _admin.DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
             _logger.LogInformation("Deleted Topic {Topic}", topic);
         }
         catch (ApiException ex)

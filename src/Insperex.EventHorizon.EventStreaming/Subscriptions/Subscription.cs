@@ -17,6 +17,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
     private readonly SubscriptionConfig<T> _config;
     private readonly ILogger<Subscription<T>> _logger;
     private readonly ITopicConsumer<T> _consumer;
+    private readonly ITopicAdmin<T> _admin;
     private bool _disposed;
     private bool _running;
     private bool _stopped;
@@ -25,19 +26,24 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
     {
         _config = config;
         _logger = logger;
+        _admin = factory.CreateAdmin<T>();
         _consumer = factory.CreateConsumer(_config);
     }
 
-    public Task<Subscription<T>> StartAsync()
+    public async Task<Subscription<T>> StartAsync()
     {
-        if (_running) return Task.FromResult(this);
+        if (_running) return this;
         _running = true;
         _stopped = false;
-        Task.Run(Loop);
+
+        // Initialize
+        await _consumer.InitAsync();
 
         _logger.LogInformation("Started Subscription with config {@Config}", _config);
 
-        return Task.FromResult(this);
+        // Start Loop
+        Task.Run(Loop);
+        return this;
     }
 
     public async Task<Subscription<T>> StopAsync()
@@ -46,13 +52,19 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
 
         // Cancel
         _running = false;
-        while (!_stopped)
-            await Task.Delay(TimeSpan.FromMilliseconds(250));
+        // while (!_stopped)
+        //     await Task.Delay(TimeSpan.FromMilliseconds(250));
 
         // Cleanup
         _logger.LogInformation("Stopped Subscription with config {@Config}", _config);
 
         return this;
+    }
+
+    public async Task DeleteTopicsAsync()
+    {
+        foreach (var topic in _config.Topics)
+            await _admin.DeleteTopicAsync(topic, CancellationToken.None);
     }
 
     private async void Loop()
@@ -92,7 +104,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         using var activity = TraceConstants.ActivitySource.StartActivity();
         try
         {
-            var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             var batch = await _consumer.NextBatchAsync(cts.Token);
             activity?.SetTag(TraceConstants.Tags.Count, batch?.Length ?? 0);
             activity?.SetStatus(ActivityStatusCode.Ok);
