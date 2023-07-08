@@ -94,7 +94,7 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         {
             var policies = new Policies();
 
-            if (topic.IsPersisted)
+            // if (topic.IsPersisted)
             {
                 policies.Retention_policies = new RetentionPolicies
                 {
