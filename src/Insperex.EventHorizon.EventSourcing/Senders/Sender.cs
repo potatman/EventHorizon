@@ -8,8 +8,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
+using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming;
+using Insperex.EventHorizon.EventStreaming.Publishers;
 
 namespace Insperex.EventHorizon.EventSourcing.Senders;
 
@@ -18,6 +20,7 @@ public class Sender
     private readonly SenderConfig _config;
     private readonly SenderSubscriptionTracker _subscriptionTracker;
     private readonly StreamingClient _streamingClient;
+    private readonly Dictionary<string, object> _publisherDict = new();
 
     public Sender(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient, SenderConfig config)
     {
@@ -34,9 +37,7 @@ public class Sender
 
     public Task SendAsync<T>(params Command[] commands) where T : IState
     {
-        return _streamingClient.CreatePublisher<Command>()
-            .AddStream<T>().Build()
-            .PublishAsync(commands);
+        return GetPublisher<Command, T>(null).PublishAsync(commands);
     }
 
     public async Task<TR> SendAndReceiveAsync<T, TR>(string streamId, IRequest<T, TR> obj)
@@ -67,7 +68,7 @@ public class Sender
 
         // Send requests
         var requestDict = requests.ToDictionary(x => x.Id);
-        await _streamingClient.CreatePublisher<Request>().AddStream<T>().Build().PublishAsync(requests);
+        await GetPublisher<Request, T>(null).PublishAsync(requests);
 
         // Wait for messages
         var sw = Stopwatch.StartNew();
@@ -94,4 +95,12 @@ public class Sender
         return responseDict.Values.ToArray();
     }
 
+    private Publisher<TM> GetPublisher<TM, T>(string path) where TM : class, ITopicMessage, new()
+    {
+        var key = $"{typeof(TM).Name}-{path}";
+        if (!_publisherDict.ContainsKey(key))
+            _publisherDict[key] = _streamingClient.CreatePublisher<TM>().AddStream<T>(path).Build();
+
+        return _publisherDict[key] as Publisher<TM>;
+    }
 }
