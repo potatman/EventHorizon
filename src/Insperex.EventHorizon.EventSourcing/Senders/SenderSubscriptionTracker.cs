@@ -38,12 +38,14 @@ public class SenderSubscriptionTracker : IAsyncDisposable
 
         var subscription = _streamingClient.CreateSubscription<Response>()
             .SubscriptionType(SubscriptionType.Exclusive)
-            .OnBatch(x =>
+            .OnBatch(async x =>
             {
                 // Check Results
                 foreach (var response in x.Messages)
                     _responseDict[response.Data.Id] = response;
-                return Task.CompletedTask;
+
+                // Slow Down to Increase Batch Sizes
+                await Task.Delay(TimeSpan.FromSeconds(1));
             })
             .BatchSize(10000)
             .AddStream<T>(_senderId)
