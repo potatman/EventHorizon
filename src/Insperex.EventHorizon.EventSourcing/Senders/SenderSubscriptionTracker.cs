@@ -45,6 +45,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
                     _responseDict[response.Data.Id] = response;
                 return Task.CompletedTask;
             })
+            .BatchSize(10000)
             .AddStream<T>(_senderId)
             .IsBeginning(true)
             .Build();
