@@ -25,7 +25,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     private readonly ITopicAdmin<T> _admin;
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
     private IConsumer<T> _consumer;
-    private readonly Dictionary<(string id, string topic), Message<T>> _unackedMessages = new();
+    private readonly Dictionary<string, Message<T>> _unackedMessages = new();
 
     public PulsarTopicConsumer(
         PulsarClientResolver clientResolver,
@@ -70,7 +70,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                         TopicData = PulsarMessageMapper.MapTopicData(id, x, topic)
                     };
 
-                    _unackedMessages[(topic, id)] = x;
+                    _unackedMessages[id] = x;
 
                     return context;
                 })
@@ -115,9 +115,9 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         if (messages?.Any() != true) return;
         foreach (var message in messages)
         {
-            var unackedMessage = _unackedMessages[(message.TopicData.Topic, message.TopicData.Id)];
+            var unackedMessage = _unackedMessages[message.TopicData.Id];
             await consumer.AcknowledgeAsync(unackedMessage.MessageId);
-            _unackedMessages.Remove((message.TopicData.Topic, message.TopicData.Id));
+            _unackedMessages.Remove(message.TopicData.Id);
         }
     }
 
@@ -127,9 +127,9 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         if (messages?.Any() != true) return;
         foreach (var message in messages)
         {
-            var unackedMessage = _unackedMessages[(message.TopicData.Topic, message.TopicData.Id)];
+            var unackedMessage = _unackedMessages[message.TopicData.Id];
             await consumer.NegativeAcknowledge(unackedMessage.MessageId);
-            _unackedMessages.Remove((message.TopicData.Topic, message.TopicData.Id));
+            _unackedMessages.Remove(message.TopicData.Id);
         }
     }
 
