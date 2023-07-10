@@ -31,7 +31,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         _logger = logger;
         _admin = factory.CreateAdmin<T>();
         _consumer = factory.CreateConsumer(_config);
-        _queueLimit = 10;
+        _queueLimit = 5;
     }
 
     public async Task<Subscription<T>> StartAsync()
