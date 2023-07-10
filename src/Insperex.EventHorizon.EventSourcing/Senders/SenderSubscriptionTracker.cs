@@ -47,7 +47,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
                 // Slow Down to Increase Batch Sizes
                 await Task.Delay(TimeSpan.FromMilliseconds(200));
             })
-            .BatchSize(10000)
+            .BatchSize(100000)
             .AddStream<T>(_senderId)
             .IsBeginning(true)
             .Build();
