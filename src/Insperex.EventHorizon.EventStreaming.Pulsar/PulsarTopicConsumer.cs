@@ -126,7 +126,11 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         var consumer = await GetConsumerAsync();
         if (messages?.Any() != true) return;
         foreach (var message in messages)
-            await consumer.NegativeAcknowledge(_messageIdDict[message.TopicData.Id]);
+        {
+            var messageId = _unackedMessageIds[message.TopicData.Id];
+            await consumer.NegativeAcknowledge(messageId);
+            _unackedMessageIds.Remove(message.TopicData.Id);
+        }
     }
 
     private async Task<IConsumer<T>> GetConsumerAsync()
