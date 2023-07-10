@@ -25,7 +25,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     private readonly ITopicAdmin<T> _admin;
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
     private IConsumer<T> _consumer;
-    private readonly Dictionary<string, MessageId> _unackedMessageIds = new();
+    private readonly Dictionary<(string id, string topic), MessageId> _unackedMessageIds = new();
 
     public PulsarTopicConsumer(
         PulsarClientResolver clientResolver,
@@ -70,7 +70,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                         TopicData = PulsarMessageMapper.MapTopicData(id, x, topic)
                     };
 
-                    _unackedMessageIds[id] = x.MessageId;
+                    _unackedMessageIds[(topic, id)] = x.MessageId;
 
                     return context;
                 })
@@ -115,9 +115,9 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         if (messages?.Any() != true) return;
         foreach (var message in messages)
         {
-            var messageId = _unackedMessageIds[message.TopicData.Id];
+            var messageId = _unackedMessageIds[(message.TopicData.Topic, message.TopicData.Id)];
             await consumer.AcknowledgeAsync(messageId);
-            _unackedMessageIds.Remove(message.TopicData.Id);
+            _unackedMessageIds.Remove((message.TopicData.Topic, message.TopicData.Id));
         }
     }
 
@@ -127,9 +127,9 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         if (messages?.Any() != true) return;
         foreach (var message in messages)
         {
-            var messageId = _unackedMessageIds[message.TopicData.Id];
+            var messageId = _unackedMessageIds[(message.TopicData.Topic, message.TopicData.Id)];
             await consumer.NegativeAcknowledge(messageId);
-            _unackedMessageIds.Remove(message.TopicData.Id);
+            _unackedMessageIds.Remove((message.TopicData.Topic, message.TopicData.Id));
         }
     }
 
