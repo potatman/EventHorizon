@@ -89,7 +89,7 @@ public class Sender
             {
                 var error = "Request Timed Out";
                 responseDict[request.Id] = new Response(request.Id, _subscriptionTracker.GetSenderId(), request.StreamId,
-                    _config.GetErrorResult?.Invoke((dynamic)request.GetPayload(), HttpStatusCode.RequestTimeout, error), error, (int)HttpStatusCode.RequestTimeout);
+                    _config.GetErrorResult?.Invoke(request, HttpStatusCode.RequestTimeout, error), error, (int)HttpStatusCode.RequestTimeout);
             }
 
         return responseDict.Values.ToArray();
