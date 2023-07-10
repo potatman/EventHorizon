@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Threading.Tasks;
+using Destructurama;
 using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventSourcing.Extensions;
@@ -25,7 +26,10 @@ public class Program
     static async Task Main(string[] args)
     {
         await Host.CreateDefaultBuilder(args)
-            .UseSerilog((_, config) => { config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture); })
+            .UseSerilog((_, config) => { config
+                .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                .Destructure.UsingAttributes();
+            })
             .UseEnvironment("local")
             .ConfigureWebHostDefaults(builder =>
             {
@@ -68,44 +72,6 @@ public class Program
             .Build()
             .RunAsync()
             ;
-
-
-        // var opts = new WebApplicationOptions { EnvironmentName = "local", Args = args };
-        // var builder = WebApplication.CreateBuilder(opts);
-        //
-        // builder.Host.UseSerilog((_, config) => { config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture); });
-        //
-        // var services = builder.Services;
-        // services.AddMvc();
-        // services.AddEndpointsApiExplorer();
-        // services.AddControllers();
-        // services.AddSwaggerGen();
-        //
-        // services.AddScoped<SearchAccountViewMiddleware>();
-        // services.AddEventHorizon(x =>
-        // {
-        //     x.AddEventSourcing()
-        //
-        //         // Stores
-        //         .AddMongoDbSnapshotStore(builder.Configuration)
-        //         .AddElasticViewStore(builder.Configuration)
-        //         .AddPulsarEventStream(builder.Configuration)
-        //
-        //         // Hosted
-        //         .ApplyRequestsToSnapshot<Account>()
-        //         .ApplyEventsToView<SearchAccountView>(h =>
-        //             h.UseMiddleware<SearchAccountViewMiddleware>())
-        //
-        //         .AddSubscription<AccountConsumer, Event>(s => s.AddStream<Account>());
-        // });
-        //
-        // var app = builder.Build();
-        // app.UseSwagger();
-        // app.UseSwaggerUI();
-        // app.MapEventSourcingEndpoints<Account>();
-        // app.MapEventSourcingEndpoints<User>();
-        //
-        // await app.RunAsync();
     }
 }
 
