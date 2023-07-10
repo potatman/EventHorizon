@@ -36,20 +36,25 @@ public class SenderSubscriptionTracker : IAsyncDisposable
         if(_subscriptionDict.ContainsKey(type))
             return;
 
-        var subscription = await _streamingClient.CreateSubscription<Response>()
-            .OnBatch(x =>
+        var subscription = _streamingClient.CreateSubscription<Response>()
+            .SubscriptionType(SubscriptionType.Exclusive)
+            .OnBatch(async x =>
             {
                 // Check Results
                 foreach (var response in x.Messages)
-                    _responseDict[response.Data.RequestId] = response;
-                return Task.CompletedTask;
+                    _responseDict[response.Data.Id] = response;
+
+                // Slow Down to Increase Batch Sizes
+                await Task.Delay(TimeSpan.FromMilliseconds(200));
             })
+            .BatchSize(10000)
             .AddStream<T>(_senderId)
             .IsBeginning(true)
-            .Build()
-            .StartAsync();
+            .Build();
 
         _subscriptionDict[type] = subscription;
+
+        await subscription.StartAsync();
     }
 
     public Response[] GetResponses(string[] responseIds, Func<HttpStatusCode, string, IResponse> configGetErrorResult)
@@ -60,8 +65,8 @@ public class SenderSubscriptionTracker : IAsyncDisposable
             {
                 // Add Response, Make Custom if needed
                 responses.Add(value.Data.Error != null
-                    ? new Response(value.Data.StreamId, value.Data.RequestId, _senderId,
-                        configGetErrorResult(value.Data.StatusCode, value.Data.Error))
+                    ? new Response(value.Data.Id, value.Data.SenderId, value.Data.StreamId,
+                        configGetErrorResult((HttpStatusCode)value.Data.StatusCode, value.Data.Error), value.Data.Error, value.Data.StatusCode)
                     : value.Data);
             }
 

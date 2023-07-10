@@ -7,6 +7,7 @@ using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Pulsar.Client.Api;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar.Extensions

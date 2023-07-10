@@ -1,10 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
-using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
+using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Microsoft.Extensions.Logging;
@@ -25,6 +24,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
     private bool _guaranteeMessageOrderOnFailure;
     private BackoffPolicyBuilder _retryBackoffPolicyBuilder;
     private Func<SubscriptionContext<T>, Task> _onBatch;
+    private SubscriptionType _subscriptionType = Abstractions.Models.SubscriptionType.KeyShared;
 
     public SubscriptionBuilder(IStreamFactory factory, ILoggerFactory loggerFactory)
     {
@@ -53,6 +53,12 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
     public SubscriptionBuilder<T> SubscriptionName(string name)
     {
         _subscriptionName = $"{AssemblyUtil.AssemblyName}-{name}";
+        return this;
+    }
+
+    public SubscriptionBuilder<T> SubscriptionType(SubscriptionType subscriptionType)
+    {
+        _subscriptionType = subscriptionType;
         return this;
     }
 
@@ -105,6 +111,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         {
             Topics = _topics.Distinct().ToArray(),
             SubscriptionName = _subscriptionName,
+            SubscriptionType = _subscriptionType,
             NoBatchDelay = _noBatchDelay,
             BatchSize = _batchSize,
             StartDateTime = _startDateTime,

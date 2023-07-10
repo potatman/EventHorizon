@@ -30,7 +30,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         _dbName = bucketId;
     }
 
-    public async Task Setup(CancellationToken ct)
+    public async Task SetupAsync(CancellationToken ct)
     {
         var getReq = await _client.Indices.GetAsync(new GetIndexRequest(_dbName), ct);
         if (getReq.IsValid) return;

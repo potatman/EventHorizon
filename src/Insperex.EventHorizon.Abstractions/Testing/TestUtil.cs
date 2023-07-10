@@ -10,8 +10,7 @@ public static class TestUtil
 {
     public static void SetTestBucketIds(AttributeUtil attributeUtil, params Type[] types)
     {
-        var random = new Random((int)DateTime.UtcNow.Ticks);
-        var iteration = $"_{random.Next()}";
+        var iteration = $"_{Guid.NewGuid().ToString()[..8]}";
         foreach (var type in types)
         {
             var snapAttr = attributeUtil.GetOne<SnapshotStoreAttribute>(type);

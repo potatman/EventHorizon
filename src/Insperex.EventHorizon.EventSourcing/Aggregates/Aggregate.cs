@@ -89,7 +89,7 @@ public class Aggregate<T>
             var context = new AggregateContext(Exists());
             var method = AggregateAssemblyUtil.StateToRequestHandlersDict.GetValueOrDefault(state.Key)?.GetValueOrDefault(request.Type);
             var result = method?.Invoke(state.Value, parameters: new [] { payload, context } );
-            Responses.Add(new Response(Id, request.Id, request.SenderId, result) { Error = Error, StatusCode = StatusCode });
+            Responses.Add(new Response(request.Id, request.SenderId, Id, result, Error, (int)StatusCode));
             foreach(var item in context.Events)
                 Apply((dynamic)new Event(Id, SequenceId, item));
         }
@@ -131,7 +131,7 @@ public class Aggregate<T>
         StatusCode = statusCode;
         foreach (var response in Responses)
         {
-            response.StatusCode = statusCode;
+            response.StatusCode = (int)statusCode;
             response.Error = error;
         }
     }

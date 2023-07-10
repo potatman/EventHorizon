@@ -24,7 +24,9 @@ public class AggregateConsumerHostedService<TParent, TAction, T> : IHostedServic
     {
         _aggregator = aggregator;
 
-        _subscription = streamingClient.CreateSubscription<TAction>()
+        var config = _aggregator.GetConfig();
+
+        var builder = streamingClient.CreateSubscription<TAction>()
             .SubscriptionName($"Apply-{typeof(TAction).Name}-{typeof(T).Name}")
             .AddStream<T>()
             .GuaranteeMessageOrderOnFailure(true)
@@ -33,8 +35,12 @@ public class AggregateConsumerHostedService<TParent, TAction, T> : IHostedServic
                 var messages = x.Messages.Select(m => m.Data).ToArray();
                 var responses = await aggregator.HandleAsync(messages, x.CancellationToken);
                 await aggregator.PublishResponseAsync(responses);
-            })
-            .Build();
+            });
+
+        if(config.BatchSize != null)
+            builder = builder.BatchSize(config.BatchSize.Value);
+
+        _subscription = builder.Build();
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)

@@ -8,10 +8,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
+using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming;
-using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
-using Insperex.EventHorizon.EventStreaming.Util;
+using Insperex.EventHorizon.EventStreaming.Publishers;
 
 namespace Insperex.EventHorizon.EventSourcing.Senders;
 
@@ -20,6 +20,7 @@ public class Sender
     private readonly SenderConfig _config;
     private readonly SenderSubscriptionTracker _subscriptionTracker;
     private readonly StreamingClient _streamingClient;
+    private readonly Dictionary<string, object> _publisherDict = new();
 
     public Sender(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient, SenderConfig config)
     {
@@ -36,9 +37,7 @@ public class Sender
 
     public Task SendAsync<T>(params Command[] commands) where T : IState
     {
-        return _streamingClient.CreatePublisher<Command>()
-            .AddStream<T>().Build()
-            .PublishAsync(commands);
+        return GetPublisher<Command, T>(null).PublishAsync(commands);
     }
 
     public async Task<TR> SendAndReceiveAsync<T, TR>(string streamId, IRequest<T, TR> obj)
@@ -69,7 +68,7 @@ public class Sender
 
         // Send requests
         var requestDict = requests.ToDictionary(x => x.Id);
-        await _streamingClient.CreatePublisher<Request>().AddStream<T>().Build().PublishAsync(requests);
+        await GetPublisher<Request, T>(null).PublishAsync(requests);
 
         // Wait for messages
         var sw = Stopwatch.StartNew();
@@ -80,17 +79,28 @@ public class Sender
         {
             var responses = _subscriptionTracker.GetResponses(requestIds, _config.GetErrorResult);
             foreach (var response in responses)
-                responseDict[response.RequestId] = response;
+                responseDict[response.Id] = response;
             await Task.Delay(200);
         }
 
         // Add Timed Out Results
         foreach (var request in requestDict.Values)
             if (!responseDict.ContainsKey(request.Id))
-                responseDict[request.Id] = new Response(request.StreamId, request.Id, _subscriptionTracker.GetSenderId(),
-                    _config.GetErrorResult?.Invoke(HttpStatusCode.RequestTimeout, string.Empty)) { Id = request.Id };
+            {
+                var error = "Request Timed Out";
+                responseDict[request.Id] = new Response(request.Id, _subscriptionTracker.GetSenderId(), request.StreamId,
+                    _config.GetErrorResult?.Invoke(HttpStatusCode.RequestTimeout, error), error, (int)HttpStatusCode.RequestTimeout);
+            }
 
         return responseDict.Values.ToArray();
     }
 
+    private Publisher<TM> GetPublisher<TM, T>(string path) where TM : class, ITopicMessage, new()
+    {
+        var key = $"{typeof(TM).Name}-{path}";
+        if (!_publisherDict.ContainsKey(key))
+            _publisherDict[key] = _streamingClient.CreatePublisher<TM>().AddStream<T>(path).Build();
+
+        return _publisherDict[key] as Publisher<TM>;
+    }
 }

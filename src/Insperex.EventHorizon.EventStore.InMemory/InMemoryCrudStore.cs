@@ -25,7 +25,7 @@ public class InMemoryCrudStore<T> : ICrudStore<T>
         _table = crudDb.CrudEntities[typeName];
     }
 
-    public Task Setup(CancellationToken ct)
+    public Task SetupAsync(CancellationToken ct)
     {
         return Task.CompletedTask;
     }

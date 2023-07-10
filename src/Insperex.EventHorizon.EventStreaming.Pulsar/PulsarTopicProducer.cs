@@ -27,6 +27,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     private readonly OTelProducerInterceptor.OTelProducerInterceptor<T> _intercept;
     private readonly string _publisherName;
     private IProducer<T> _producer;
+    private readonly SemaphoreSlim _semaphoreSlim;
 
     public PulsarTopicProducer(
         PulsarClientResolver clientResolver,
@@ -39,6 +40,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         _publisherName = NameUtil.AssemblyNameWithGuid;
         _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
+        _semaphoreSlim = new SemaphoreSlim(1, 1);
     }
 
     public async Task SendAsync(params T[] messages)
@@ -51,12 +53,18 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
 
             var key = func?.GetValue(message)?.ToString() ?? message.StreamId;
             var msg = producer.NewMessage(message, key);
-            await producer.SendAndForgetAsync(msg);
+
+            // Send Message
+            if (_config.IsGuaranteed)
+                await producer.SendAsync(msg);
+            else
+                await producer.SendAndForgetAsync(msg);
         }
     }
 
     private async Task<IProducer<T>> GetProducerAsync()
     {
+        await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(10));
         if (_producer != null) return _producer;
 
         // Ensure Topic Exists
@@ -77,6 +85,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
 
         _producer = await builder.CreateAsync();
 
+        _semaphoreSlim.Release();
         return _producer;
     }
 
