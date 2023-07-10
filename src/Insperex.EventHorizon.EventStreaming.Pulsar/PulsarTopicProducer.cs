@@ -68,7 +68,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         if (_producer != null) return _producer;
 
         // Lock is for Parallel Requests for some Producer
-        await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(10));
+        await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(3));
 
         // Second Release is if they got past first
         if (_producer != null) return _producer;
