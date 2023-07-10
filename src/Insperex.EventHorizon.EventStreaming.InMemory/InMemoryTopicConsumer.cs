@@ -53,7 +53,7 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
         var batchSize = _config.BatchSize ?? 1000;
 
         // Ensure Registration is done
-        await Task.Delay(500, ct);
+        await Task.Delay(1000, ct);
 
         // Pull from Main
         foreach (var topic in _config.Topics)
