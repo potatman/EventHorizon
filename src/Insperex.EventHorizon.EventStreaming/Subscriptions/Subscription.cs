@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -18,6 +19,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
     private readonly ILogger<Subscription<T>> _logger;
     private readonly ITopicConsumer<T> _consumer;
     private readonly ITopicAdmin<T> _admin;
+    private readonly ConcurrentQueue<MessageContext<T>[]> _queue = new();
     private bool _disposed;
     private bool _running;
     private bool _stopped;
@@ -42,7 +44,8 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         _logger.LogInformation("Started Subscription with config {@Config}", _config);
 
         // Start Loop
-        Task.Run(Loop);
+        Task.Run(EnqueueLoop);
+        Task.Run(DequeueLoop);
         return this;
     }
 
@@ -67,13 +70,17 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
             await _admin.DeleteTopicAsync(topic, CancellationToken.None);
     }
 
-    private async void Loop()
+    private async void EnqueueLoop()
     {
         while (_running)
         {
             try
             {
-                await RunIteration();
+                var batch = await LoadEvents();
+                if (batch?.Any() == true)
+                    _queue.Enqueue(batch);
+                else
+                    await Task.Delay(_config.NoBatchDelay);
             }
             catch (TaskCanceledException)
             {
@@ -87,16 +94,28 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         _stopped = true;
     }
 
-    private async Task RunIteration()
+    private async void DequeueLoop()
     {
-        var batch = await LoadEvents();
-        if (batch?.Any() != true)
+        while (_running)
         {
-            await Task.Delay(_config.NoBatchDelay);
-            return;
+            try
+            {
+                var any = _queue.TryDequeue(out var batch);
+                if(any)
+                    await OnEvents(batch);
+                else
+                    await Task.Delay(_config.NoBatchDelay);
+            }
+            catch (TaskCanceledException)
+            {
+                // Ignore Cancels
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unhandled Exception {Message}", ex.Message);
+            }
         }
-
-        await OnEvents(batch);
+        _stopped = true;
     }
 
     private async Task<MessageContext<T>[]> LoadEvents()
