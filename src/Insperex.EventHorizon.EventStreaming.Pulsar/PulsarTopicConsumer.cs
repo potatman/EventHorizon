@@ -151,8 +151,8 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                     ? SubscriptionInitialPosition.Earliest
                     : SubscriptionInitialPosition.Latest);
 
-        // if (_config.BatchSize != null)
-        //     builder = builder.ReceiverQueueSize(_config.BatchSize.Value);
+        if (_config.BatchSize != null)
+            builder = builder.ReceiverQueueSize(_config.BatchSize.Value);
 
         try
         {
