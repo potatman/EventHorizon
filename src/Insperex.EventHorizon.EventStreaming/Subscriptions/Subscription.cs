@@ -78,9 +78,14 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         {
             try
             {
-                var batch = await LoadEvents();
-                if (batch?.Any() == true)
-                    _queue.Enqueue(batch);
+                if ( _queue.Count <= _queueLimit)
+                {
+                    var batch = await LoadEvents();
+                    if (batch?.Any() == true)
+                        _queue.Enqueue(batch);
+                    else
+                        await Task.Delay(_config.NoBatchDelay);
+                }
                 else
                     await Task.Delay(_config.NoBatchDelay);
             }
@@ -102,14 +107,9 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         {
             try
             {
-                if (_queueLimit <= _queue.Count)
-                {
-                    var any = _queue.TryDequeue(out var batch);
-                    if (any)
-                        await OnEvents(batch);
-                    else
-                        await Task.Delay(_config.NoBatchDelay);
-                }
+                var any = _queue.TryDequeue(out var batch);
+                if (any)
+                    await OnEvents(batch);
                 else
                     await Task.Delay(_config.NoBatchDelay);
             }
