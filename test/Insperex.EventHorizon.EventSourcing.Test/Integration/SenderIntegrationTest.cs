@@ -78,12 +78,12 @@ public class SenderIntegrationTest : IAsyncLifetime
 
         _sender = _host.Services.GetRequiredService<SenderBuilder>()
             .Timeout(TimeSpan.FromSeconds(30))
-            .GetErrorResult((status, error) => new AccountResponse(status, error))
+            .GetErrorResult((req, status, error) => new AccountResponse(status, error))
             .Build();
 
         _sender2 = _host.Services.GetRequiredService<SenderBuilder>()
             .Timeout(TimeSpan.FromSeconds(60))
-            .GetErrorResult((status, error) => new AccountResponse(status, error))
+            .GetErrorResult((req, status, error) => new AccountResponse(status, error))
             .Build();
 
         _eventSourcingClient = _host.Services.GetRequiredService<EventSourcingClient<Account>>();
@@ -128,8 +128,6 @@ public class SenderIntegrationTest : IAsyncLifetime
         // Assert Account
         var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
         var events = await _eventSourcingClient.Aggregator().Build().GetEventsAsync(new[] { streamId });
-        foreach (var @event in events)
-            _output.WriteLine(@event.Data.Type);
         Assert.Equal(streamId, aggregate.State.Id);
         Assert.Equal(streamId, aggregate.Id);
         Assert.NotEqual(DateTime.MinValue, aggregate.CreatedDate);
@@ -204,7 +202,7 @@ public class SenderIntegrationTest : IAsyncLifetime
     {
         var sender = _host.Services.GetRequiredService<SenderBuilder>()
             .Timeout(TimeSpan.Zero)
-            .GetErrorResult((status, error) => new AccountResponse(status, error))
+            .GetErrorResult((req, status, error) => new AccountResponse(status, error))
             .Build();
 
         // Send Command

@@ -9,5 +9,5 @@ namespace Insperex.EventHorizon.EventSourcing.Senders;
 public class SenderConfig
 {
     public TimeSpan Timeout { get; set; }
-    public Func<HttpStatusCode, string, IResponse> GetErrorResult { get; set; }
+    public Func<IRequest, HttpStatusCode, string, IResponse> GetErrorResult { get; set; }
 }
