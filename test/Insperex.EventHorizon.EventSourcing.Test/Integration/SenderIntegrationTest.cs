@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -55,7 +56,7 @@ public class SenderIntegrationTest : IAsyncLifetime
                     x.AddEventSourcing()
 
                         // Hosts
-                        .ApplyRequestsToSnapshot<Account>()
+                        .ApplyRequestsToSnapshot<Account>(a => a.BatchSize(10000))
 
                         // Stores
                         .AddInMemorySnapshotStore()
@@ -79,7 +80,7 @@ public class SenderIntegrationTest : IAsyncLifetime
             .Build();
 
         _sender2 = _host.Services.GetRequiredService<SenderBuilder>()
-            .Timeout(TimeSpan.FromSeconds(30))
+            .Timeout(TimeSpan.FromSeconds(60))
             .GetErrorResult((status, error) => new AccountResponse(status, error))
             .Build();
 
@@ -133,6 +134,40 @@ public class SenderIntegrationTest : IAsyncLifetime
         Assert.NotEqual(DateTime.MinValue, aggregate.UpdatedDate);
         Assert.Equal(3, events.Length);
         Assert.Equal(1000, aggregate.State.Amount);
+
+        // // Assert User Account
+        // var store2 = _host.Services.GetRequiredService<Aggregator<Snapshot<UserAccount>, UserAccount>>();
+        // var aggregate2  = await store2.GetAsync(streamId);
+        // Assert.Equal(streamId, aggregate2.State.Id);
+        // Assert.Equal(streamId, aggregate2.Id);
+        // Assert.NotEqual(DateTime.MinValue, aggregate2.CreatedDate);
+        // Assert.NotEqual(DateTime.MinValue, aggregate2.UpdatedDate);
+        // Assert.Equal(command.Amount, aggregate2.State.Account.Amount);
+    }
+
+    [Fact]
+    public async Task TestLargeSendAndReceiveAsync()
+    {
+        // Send Command
+        var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(10);
+        var result1 = await _sender2.SendAndReceiveAsync(streamId, new OpenAccount(1000));
+        var largeEvents  = Enumerable.Range(0, 10000).Select(x => new Deposit(100)).ToArray();
+        var result2 = await _sender2.SendAndReceiveAsync(streamId, largeEvents);
+
+        // Assert Status
+        Assert.True(HttpStatusCode.OK == result1.StatusCode, result1.Error);
+        foreach (var response in result2)
+            Assert.True(HttpStatusCode.OK == response.StatusCode, response.Error);
+
+        // Assert Account
+        var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
+        var events = await _eventSourcingClient.Aggregator().Build().GetEventsAsync(new[] { streamId });
+        Assert.Equal(streamId, aggregate.State.Id);
+        Assert.Equal(streamId, aggregate.Id);
+        Assert.NotEqual(DateTime.MinValue, aggregate.CreatedDate);
+        Assert.NotEqual(DateTime.MinValue, aggregate.UpdatedDate);
+        Assert.Equal(1001000, aggregate.State.Amount);
+        Assert.Equal(10001, events.Length);
 
         // // Assert User Account
         // var store2 = _host.Services.GetRequiredService<Aggregator<Snapshot<UserAccount>, UserAccount>>();
