@@ -154,21 +154,13 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         if (_config.BatchSize != null)
             builder = builder.ReceiverQueueSize(_config.BatchSize.Value);
 
-        try
-        {
-            var consumer = await builder.SubscribeAsync();
+        var consumer = await builder.SubscribeAsync();
 
-            if (_config.StartDateTime != null)
-                await consumer.SeekAsync(_config.StartDateTime.Value.Ticks);
+        if (_config.StartDateTime != null)
+            await consumer.SeekAsync(_config.StartDateTime.Value.Ticks);
 
-            // Return
-            return _consumer = consumer;
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-            throw;
-        }
+        // Return
+        return _consumer = consumer;
     }
 
     private SubscriptionType GetSubscriptionType(Abstractions.Models.SubscriptionType subscriptionType)
