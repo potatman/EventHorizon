@@ -26,6 +26,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
     private IConsumer<T> _consumer;
     private readonly Dictionary<string, Message<T>> _unackedMessages = new();
+    private readonly SemaphoreSlim _semaphoreSlim;
 
     public PulsarTopicConsumer(
         PulsarClientResolver clientResolver,
@@ -37,6 +38,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         _admin = admin;
         _intercept = new OtelConsumerInterceptor.OTelConsumerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
+        _semaphoreSlim = new SemaphoreSlim(1, 1);
     }
 
     public async Task InitAsync()
@@ -135,8 +137,14 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
     private async Task<IConsumer<T>> GetConsumerAsync()
     {
-        if (_consumer != null)
-            return _consumer;
+        // Defensive
+        if (_consumer != null) return _consumer;
+
+        // Lock is for Parallel Requests for some Producer
+        await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(3));
+
+        // Second Release is if they got past first
+        if (_consumer != null) return _consumer;
 
         // Ensure Topic Exists
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
