@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
+using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Insperex.EventHorizon.EventStreaming.Tracing;
@@ -51,7 +52,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
     }
 
-    public async Task InitializeAsync()
+    public async Task InitAsync()
     {
         await GetConsumerAsync();
     }
@@ -197,7 +198,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         var client = await _clientResolver.GetPulsarClientAsync();
         var builder = client.NewConsumer(Schema.JSON<T>())
             .ConsumerName(_consumerName)
-            .SubscriptionType(SubscriptionType.KeyShared)
+            .SubscriptionType(_config.SubscriptionType.ToPulsarSubscriptionType())
             .SubscriptionName(_config.SubscriptionName)
             .Intercept(_intercept);
 

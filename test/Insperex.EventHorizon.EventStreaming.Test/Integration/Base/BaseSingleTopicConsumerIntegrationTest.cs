@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Samples.Models;
@@ -105,6 +106,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         // Consume
         await using var subscription = await _streamingClient.CreateSubscription<Event>()
             .SubscriptionName($"Fails_{UniqueTestId}")
+            .SubscriptionType(SubscriptionType.KeyShared)
             .AddStream<Feed1PriceChanged>()
             .BatchSize(_events.Length / 10)
             .GuaranteeMessageOrderOnFailure(true)

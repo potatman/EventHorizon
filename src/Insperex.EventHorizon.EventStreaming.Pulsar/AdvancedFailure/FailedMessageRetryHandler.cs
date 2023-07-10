@@ -36,6 +36,11 @@ public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, IT
 
     public PulsarKeyHashRanges KeyHashRanges { get; set; }
 
+    public Task InitAsync()
+    {
+        return Task.CompletedTask;
+    }
+
     public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
     {
         var topicStreamsForRetry = _streamFailureState.TopicStreamsForRetry()

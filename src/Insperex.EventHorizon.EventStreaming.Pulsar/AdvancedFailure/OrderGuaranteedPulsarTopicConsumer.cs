@@ -89,6 +89,12 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         await _primaryTopicConsumer.DisposeAsync();
     }
 
+    public async Task InitAsync()
+    {
+        await _primaryTopicConsumer.InitAsync();
+        await _streamFailureState.InitializeAsync(CancellationToken.None);
+    }
+
     public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
     {
         _phase = _phase switch
@@ -97,9 +103,6 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
             BatchPhase.Normal => BatchPhase.FailureRetry,
             _ => BatchPhase.Normal,
         };
-
-        await _primaryTopicConsumer.InitializeAsync();
-        await _streamFailureState.InitializeAsync(ct);
 
         if (_keyHashRanges == null)
         {
