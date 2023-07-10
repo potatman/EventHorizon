@@ -23,6 +23,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
     private bool _disposed;
     private bool _running;
     private bool _stopped;
+    private readonly int _queueLimit;
 
     public Subscription(IStreamFactory factory, SubscriptionConfig<T> config, ILogger<Subscription<T>> logger)
     {
@@ -30,6 +31,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         _logger = logger;
         _admin = factory.CreateAdmin<T>();
         _consumer = factory.CreateConsumer(_config);
+        _queueLimit = 10;
     }
 
     public async Task<Subscription<T>> StartAsync()
@@ -100,9 +102,14 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         {
             try
             {
-                var any = _queue.TryDequeue(out var batch);
-                if(any)
-                    await OnEvents(batch);
+                if (_queueLimit <= _queue.Count)
+                {
+                    var any = _queue.TryDequeue(out var batch);
+                    if (any)
+                        await OnEvents(batch);
+                    else
+                        await Task.Delay(_config.NoBatchDelay);
+                }
                 else
                     await Task.Delay(_config.NoBatchDelay);
             }
