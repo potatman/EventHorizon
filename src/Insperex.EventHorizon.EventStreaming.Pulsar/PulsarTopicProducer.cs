@@ -64,7 +64,13 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
 
     private async Task<IProducer<T>> GetProducerAsync()
     {
+        // Defensive
+        if (_producer != null) return _producer;
+
+        // Lock is for Parallel Requests for some Producer
         await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(10));
+
+        // Second Release is if they got past first
         if (_producer != null) return _producer;
 
         // Ensure Topic Exists
@@ -78,8 +84,8 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
             .BatchBuilder(BatchBuilder.KeyBased)
             .CompressionType(CompressionType.LZ4)
             .SendTimeout(_config.SendTimeout)
-            .MaxPendingMessages(10000)
-            .MaxPendingMessagesAcrossPartitions(50000)
+            .MaxPendingMessages(100000)
+            .MaxPendingMessagesAcrossPartitions(500000)
             .Intercept(_intercept)
             .Topic(_config.Topic);
 
