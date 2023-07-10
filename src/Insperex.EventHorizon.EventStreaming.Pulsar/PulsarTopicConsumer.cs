@@ -63,7 +63,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                     // Note: x.MessageId.TopicName is null, when single tropic
                     var topic = _config.Topics.Length == 1 ? _config.Topics.First() : x.MessageId.TopicName;
 
-                    var id = Convert.ToBase64String(x.MessageId.ToByteArray());
+                    var id = Guid.NewGuid().ToString();
                     var context = new MessageContext<T>
                     {
                         Data = x.GetValue(),
