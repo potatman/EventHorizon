@@ -99,7 +99,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                 list.Add(message);
             }
         }
-        catch (Exception e)
+        catch (TaskCanceledException e)
         {
             // ignore
         }
