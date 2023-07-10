@@ -135,6 +135,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
 
     private async Task OnEvents(MessageContext<T>[] batch)
     {
+        var sw = Stopwatch.StartNew();
         using var activity = TraceConstants.ActivitySource.StartActivity();
         var context = new SubscriptionContext<T> { Messages = batch };
         try
@@ -155,8 +156,8 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
             // Logging
             var min = batch.Min(x => x.TopicData.CreatedDate);
             var max = batch.Max(x => x.TopicData.CreatedDate);
-            _logger.LogInformation("Processed {Type}(s) {Count}, from {Start}-{End}",
-                typeof(T).Name, batch.Length, min, max);
+            _logger.LogInformation("Processed {Type}(s) {Count} in {Duration}, from {Start}-{End}",
+                typeof(T).Name, batch.Length, sw, min, max);
             activity?.SetTag(TraceConstants.Tags.Count, batch.Length);
             activity?.SetTag(TraceConstants.Tags.Start, min);
             activity?.SetTag(TraceConstants.Tags.End, max);
