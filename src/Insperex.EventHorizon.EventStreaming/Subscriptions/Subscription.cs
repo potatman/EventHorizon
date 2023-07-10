@@ -43,7 +43,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         // Initialize
         await _consumer.InitAsync();
 
-        _logger.LogInformation("Started Subscription with config {@Config}", _config);
+        _logger.LogInformation("Subscription - Started {@Config}", _config);
 
         // Start Loop
         Task.Run(EnqueueLoop);
@@ -61,7 +61,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         //     await Task.Delay(TimeSpan.FromMilliseconds(250));
 
         // Cleanup
-        _logger.LogInformation("Stopped Subscription with config {@Config}", _config);
+        _logger.LogInformation("Subscription - Stopped {@Config}", _config);
 
         return this;
     }
@@ -95,7 +95,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unhandled Exception {Message}", ex.Message);
+                _logger.LogError(ex, "Subscription - Unhandled Exception {Message} {@Config}", ex.Message, _config);
             }
         }
         _stopped = true;
@@ -119,7 +119,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unhandled Exception {Message}", ex.Message);
+                _logger.LogError(ex, "Subscription - Unhandled Exception {Message} {@Config}", ex.Message, _config);
             }
         }
         _stopped = true;
@@ -142,8 +142,8 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
                 foreach (var item in batch)
                     item.Data = item.Data.Upgrade();
 
-                _logger.LogInformation("Enqueued {Type}(s) {Count} in {Duration}",
-                    typeof(T).Name, batch.Length, sw.ElapsedMilliseconds);
+                _logger.LogInformation("Subscription - Enqueued {Type}(s) {Count} in {Duration} {@Config}",
+                    typeof(T).Name, batch.Length, sw.ElapsedMilliseconds, _config);
             }
 
             return batch;
@@ -159,7 +159,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
             if (!_disposed) return Array.Empty<MessageContext<T>>();
 
             // log error
-            _logger.LogError(ex, "Failed to load events => {Error}", ex.Message);
+            _logger.LogError(ex, "Subscription - Failed to load events => {Error} {@Config}", ex.Message, _config);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             throw;
         }
@@ -188,8 +188,8 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
             // Logging
             var min = batch.Min(x => x.TopicData.CreatedDate);
             var max = batch.Max(x => x.TopicData.CreatedDate);
-            _logger.LogInformation("Dequeued {Type}(s) {Count} in {Duration}, from {Start}-{End}",
-                typeof(T).Name, batch.Length, sw.ElapsedMilliseconds, min, max);
+            _logger.LogInformation("Subscription - Dequeued {Type}(s) {Count} in {Duration}, from {Start}-{End} {@Config}",
+                typeof(T).Name, batch.Length, sw.ElapsedMilliseconds, min, max, _config);
             activity?.SetTag(TraceConstants.Tags.Count, batch.Length);
             activity?.SetTag(TraceConstants.Tags.Start, min);
             activity?.SetTag(TraceConstants.Tags.End, max);
@@ -198,7 +198,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         catch (Exception ex)
         {
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            _logger.LogError(ex, "Failed to process {Message}", ex.Message);
+            _logger.LogError(ex, "Subscription - Failed to process {Message} {@Config}", ex.Message, _config);
             await _consumer.NackAsync(batch);
         }
     }
