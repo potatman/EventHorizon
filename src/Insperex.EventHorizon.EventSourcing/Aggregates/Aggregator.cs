@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -89,12 +90,11 @@ public class Aggregator<TParent, T>
 
     public async Task<Response[]> HandleAsync<TM>(TM[] messages, CancellationToken ct) where TM : ITopicMessage
     {
-        Dictionary<string, Aggregate<T>> aggregateDict;
         _logger.LogInformation("{State} Handling {Count} {Type}", typeof(T).Name, messages.Length, typeof(TM).Name);
 
         // Load Aggregate
         var streamIds = messages.Select(x => x.StreamId).Distinct().ToArray();
-        aggregateDict = await GetAggregatesFromStatesAsync(streamIds, ct);
+        var aggregateDict = await GetAggregatesFromStatesAsync(streamIds, ct);
 
         // Map/Apply Changes
         TriggerHandle(messages, aggregateDict);
