@@ -58,7 +58,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
         await subscription.StartAsync();
     }
 
-    public Response[] GetResponses(Request[] requests, Func<IRequest, HttpStatusCode, string, IResponse> configGetErrorResult)
+    public Response[] GetResponses(Request[] requests, Func<Request, HttpStatusCode, string, IResponse> configGetErrorResult)
     {
         var responses = new List<Response>();
         foreach (var request in requests)
@@ -68,7 +68,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
                 // Add Response, Make Custom if needed
                 responses.Add(value.Data.Error != null
                     ? new Response(value.Data.Id, value.Data.SenderId, value.Data.StreamId,
-                        configGetErrorResult((dynamic)request.Payload, (HttpStatusCode)value.Data.StatusCode, value.Data.Error), value.Data.Error, value.Data.StatusCode)
+                        configGetErrorResult(request, (HttpStatusCode)value.Data.StatusCode, value.Data.Error), value.Data.Error, value.Data.StatusCode)
                     : value.Data);
             }
         }
