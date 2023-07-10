@@ -42,7 +42,7 @@ public class Publisher<T> : IAsyncDisposable
         try
         {
             await _producer.SendAsync(messages);
-            _logger.LogInformation("Sent {Count} {Type} {Topic}", messages.Length, _typeName, _config.Topic);
+            _logger.LogInformation("Sent {Type}(s) {Count} {Topic}", _typeName, messages.Length, _config.Topic);
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)
