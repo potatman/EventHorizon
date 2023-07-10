@@ -25,7 +25,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     private readonly ITopicAdmin<T> _admin;
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
     private IConsumer<T> _consumer;
-    private Dictionary<string, MessageId> _messageIdDict;
+    private readonly Dictionary<string, MessageId> _unackedMessageIds = new();
 
     public PulsarTopicConsumer(
         PulsarClientResolver clientResolver,
@@ -57,20 +57,22 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                 return null;
             }
 
-            _messageIdDict = messages
-                .Select((x, i) => new { Key = i.ToString(CultureInfo.InvariantCulture), Value = x.MessageId })
-                .ToDictionary(x => x.Key, x => x.Value);
-
             var contexts =  messages
                 .Select((x,i) =>
                 {
                     // Note: x.MessageId.TopicName is null, when single tropic
                     var topic = _config.Topics.Length == 1 ? _config.Topics.First() : x.MessageId.TopicName;
-                    return new MessageContext<T>
-                            {
-                                Data = x.GetValue(),
-                                TopicData = PulsarMessageMapper.MapTopicData(i.ToString(CultureInfo.InvariantCulture), x, topic)
-                            };
+
+                    var id = Convert.ToBase64String(x.MessageId.ToByteArray());
+                    var context = new MessageContext<T>
+                    {
+                        Data = x.GetValue(),
+                        TopicData = PulsarMessageMapper.MapTopicData(id, x, topic)
+                    };
+
+                    _unackedMessageIds[id] = x.MessageId;
+
+                    return context;
                 })
                 .ToArray();
 
@@ -112,7 +114,11 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         var consumer = await GetConsumerAsync();
         if (messages?.Any() != true) return;
         foreach (var message in messages)
-            await consumer.AcknowledgeAsync(_messageIdDict[message.TopicData.Id]);
+        {
+            var messageId = _unackedMessageIds[message.TopicData.Id];
+            await consumer.AcknowledgeAsync(messageId);
+            _unackedMessageIds.Remove(message.TopicData.Id);
+        }
     }
 
     public async Task NackAsync(params MessageContext<T>[] messages)
