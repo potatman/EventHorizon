@@ -133,15 +133,18 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
             var sw = Stopwatch.StartNew();
             var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
             var batch = await _consumer.NextBatchAsync(cts.Token);
-            _logger.LogInformation("Loaded {Type}(s) {Count} in {Duration}",
-                typeof(T).Name, batch.Length, sw.ElapsedMilliseconds);
             activity?.SetTag(TraceConstants.Tags.Count, batch?.Length ?? 0);
             activity?.SetStatus(ActivityStatusCode.Ok);
 
             // Upgrade Actions
-            if(batch?.Any() == true)
+            if (batch?.Any() == true)
+            {
                 foreach (var item in batch)
                     item.Data = item.Data.Upgrade();
+
+                _logger.LogInformation("Loaded {Type}(s) {Count} in {Duration}",
+                    typeof(T).Name, batch.Length, sw.ElapsedMilliseconds);
+            }
 
             return batch;
         }
