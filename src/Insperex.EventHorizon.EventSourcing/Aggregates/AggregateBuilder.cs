@@ -25,7 +25,6 @@ public class AggregateBuilder<TParent, T>
     private readonly StreamingClient _streamingClient;
     private bool _isValidationEnabled = true;
     private bool _isRebuildEnabled;
-    private int _retryLimit = 5;
     private IAggregateMiddleware<T> _middleware;
     private readonly LockFactory<T> _lockFactory;
     private int? _batchSize;
@@ -57,12 +56,6 @@ public class AggregateBuilder<TParent, T>
         return this;
     }
 
-    public AggregateBuilder<TParent, T> RetryLimit(int retryLimit)
-    {
-        _retryLimit = retryLimit;
-        return this;
-    }
-
     public AggregateBuilder<TParent, T> BatchSize(int batchSize)
     {
         _batchSize = batchSize;
@@ -82,7 +75,6 @@ public class AggregateBuilder<TParent, T>
         {
             IsValidationEnabled = _isValidationEnabled,
             IsRebuildEnabled = _isRebuildEnabled,
-            RetryLimit = _retryLimit,
             Middleware = _middleware,
             BatchSize = _batchSize
         };
