@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -24,6 +25,8 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
     private readonly ConsumerDatabase _consumerDatabase;
     private readonly ILoggerFactory _loggerFactory;
     private readonly IFailureHandler<T> _failureHandler;
+    private readonly object _batchInProgressLock = new object();
+    private bool _batchInProgress;
 
     // Volatile state.
     private Dictionary<string, long> _maxIndexByTopic = new();
@@ -60,6 +63,13 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
 
     public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
     {
+        lock (_batchInProgressLock)
+        {
+            if (_batchInProgress)
+                return Array.Empty<MessageContext<T>>();
+            _batchInProgress = true;
+        }
+
         var list = new List<MessageContext<T>>();
         _maxIndexByTopic.Clear();
         var batchSize = _config.BatchSize ?? 1000;
@@ -117,6 +127,11 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
         {
             _indexDatabase.SetCurrentSequence(topicName, _config.SubscriptionName, _consumers[topicName],
                 _maxIndexByTopic[topicName] + 1);
+        }
+
+        lock (_batchInProgressLock)
+        {
+            _batchInProgress = false;
         }
 
         return Task.CompletedTask;
