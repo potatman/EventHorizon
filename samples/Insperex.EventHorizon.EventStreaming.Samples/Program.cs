@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Threading.Tasks;
+using Destructurama;
 using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
@@ -41,7 +42,10 @@ public class Program
                 });
 
             })
-            .UseSerilog((_, config) => { config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture); })
+            .UseSerilog((_, config) => { config
+                .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                .Destructure.UsingAttributes();
+            })
             .UseEnvironment("local")
             .Build()
             .RunAsync();

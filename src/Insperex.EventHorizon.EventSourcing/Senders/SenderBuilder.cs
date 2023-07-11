@@ -13,13 +13,15 @@ public class SenderBuilder
 {
     private readonly SenderSubscriptionTracker _subscriptionTracker;
     private readonly StreamingClient _streamingClient;
-    private Func<HttpStatusCode, string, IResponse> _getErrorResult;
+    private readonly ILoggerFactory _loggerFactory;
+    private Func<Request, HttpStatusCode, string, IResponse> _getErrorResult;
     private TimeSpan _timeout = TimeSpan.FromSeconds(120);
 
-    public SenderBuilder(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient)
+    public SenderBuilder(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient, ILoggerFactory loggerFactory)
     {
         _subscriptionTracker = subscriptionTracker;
         _streamingClient = streamingClient;
+        _loggerFactory = loggerFactory;
     }
 
     public SenderBuilder Timeout(TimeSpan timeout)
@@ -28,7 +30,7 @@ public class SenderBuilder
         return this;
     }
 
-    public SenderBuilder GetErrorResult(Func<HttpStatusCode, string, IResponse> getErrorResult)
+    public SenderBuilder GetErrorResult(Func<Request, HttpStatusCode, string, IResponse> getErrorResult)
     {
         _getErrorResult = getErrorResult;
         return this;
@@ -42,6 +44,6 @@ public class SenderBuilder
             GetErrorResult = _getErrorResult
         };
 
-        return new Sender(_subscriptionTracker, _streamingClient, config);
+        return new Sender(_subscriptionTracker, _streamingClient, config, _loggerFactory.CreateLogger<Sender>());
     }
 }

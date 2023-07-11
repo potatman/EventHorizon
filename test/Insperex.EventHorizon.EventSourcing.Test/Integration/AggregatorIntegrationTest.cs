@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using Destructurama;
 using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Testing;
@@ -64,7 +65,8 @@ public class AggregatorIntegrationTest : IAsyncLifetime
             .UseSerilog((_, config) =>
             {
                 config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-                    .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture);
+                    .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
+                    .Destructure.UsingAttributes();
             })
             .UseEnvironment("test")
             .Build()

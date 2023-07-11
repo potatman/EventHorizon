@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces;
@@ -47,7 +48,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
                 // Slow Down to Increase Batch Sizes
                 await Task.Delay(TimeSpan.FromMilliseconds(200));
             })
-            .BatchSize(10000)
+            .BatchSize(100000)
             .AddStream<T>(_senderId)
             .IsBeginning(true)
             .Build();
@@ -57,18 +58,20 @@ public class SenderSubscriptionTracker : IAsyncDisposable
         await subscription.StartAsync();
     }
 
-    public Response[] GetResponses(string[] responseIds, Func<HttpStatusCode, string, IResponse> configGetErrorResult)
+    public Response[] GetResponses(Request[] requests, Func<Request, HttpStatusCode, string, IResponse> configGetErrorResult)
     {
         var responses = new List<Response>();
-        foreach (var responseId in responseIds)
-            if (_responseDict.TryGetValue(responseId, out var value))
+        foreach (var request in requests)
+        {
+            if (_responseDict.TryGetValue(request.Id, out var value))
             {
                 // Add Response, Make Custom if needed
                 responses.Add(value.Data.Error != null
                     ? new Response(value.Data.Id, value.Data.SenderId, value.Data.StreamId,
-                        configGetErrorResult((HttpStatusCode)value.Data.StatusCode, value.Data.Error), value.Data.Error, value.Data.StatusCode)
+                        configGetErrorResult(request, (HttpStatusCode)value.Data.StatusCode, value.Data.Error), value.Data.Error, value.Data.StatusCode)
                     : value.Data);
             }
+        }
 
         return responses.ToArray();
     }
