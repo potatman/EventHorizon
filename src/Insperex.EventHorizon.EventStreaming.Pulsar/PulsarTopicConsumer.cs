@@ -98,7 +98,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         {
             while (list.Count < _config.BatchSize && !ct.IsCancellationRequested)
             {
-                var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+                var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
                 var message = await consumer.ReceiveAsync(cts.Token);
                 list.Add(message);
             }
