@@ -92,8 +92,9 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     {
         var list = new List<Message<T>>();
 
-        // var messages = await consumer.BatchReceiveAsync(ct);
         var consumer = await GetConsumerAsync();
+        var messages = await consumer.BatchReceiveAsync(ct);
+        return messages.ToArray();
         try
         {
             while (list.Count < _config.BatchSize && !ct.IsCancellationRequested)
