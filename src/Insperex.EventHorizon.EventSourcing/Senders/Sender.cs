@@ -13,21 +13,24 @@ using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.Extensions;
 using Insperex.EventHorizon.EventStreaming.Publishers;
+using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventSourcing.Senders;
 
 public class Sender
 {
     private readonly SenderConfig _config;
+    private readonly ILogger<Sender> _logger;
     private readonly SenderSubscriptionTracker _subscriptionTracker;
     private readonly StreamingClient _streamingClient;
     private readonly Dictionary<string, object> _publisherDict = new();
 
-    public Sender(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient, SenderConfig config)
+    public Sender(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient, SenderConfig config, ILogger<Sender> logger)
     {
         _subscriptionTracker = subscriptionTracker;
         _streamingClient = streamingClient;
         _config = config;
+        _logger = logger;
     }
 
     public Task SendAsync<T>(string streamId, params ICommand<T>[] objs) where T : IState
@@ -91,6 +94,10 @@ public class Sender
                 responseDict[request.Id] = new Response(request.Id, _subscriptionTracker.GetSenderId(), request.StreamId,
                     _config.GetErrorResult?.Invoke(request, HttpStatusCode.RequestTimeout, error), error, (int)HttpStatusCode.RequestTimeout);
             }
+
+        var errors = responseDict.Where(x => x.Value.Error != null).GroupBy(x => x.Value.Error);
+        foreach (var group in errors)
+            _logger.LogError("Sender - Response Error(s) {Count} => {Error}", group.Count(), group.Key);
 
         return responseDict.Values.ToArray();
     }
