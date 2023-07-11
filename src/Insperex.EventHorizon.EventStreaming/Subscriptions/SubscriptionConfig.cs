@@ -22,6 +22,6 @@ public class SubscriptionConfig<T> where T : ITopicMessage
     [NotLogged] public bool IsMessageOrderGuaranteedOnFailure { get; set; }
 
     [NotLogged] public BackoffPolicy RetryBackoffPolicy { get; set; }
-    
+
     [NotLogged] public Func<SubscriptionContext<T>, Task> OnBatch { get; set; }
 }

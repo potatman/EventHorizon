@@ -48,6 +48,8 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
     private readonly PrimaryTopicConsumer<T> _primaryTopicConsumer;
     private readonly Dictionary<BatchPhase, ITopicConsumer<T>> _phaseHandlers;
     private readonly OnCheckTimer _statsQueryTimer = new(TimeSpan.FromMinutes(1));
+    private readonly object _batchInProgressLock = new object();
+    private bool _batchInProgress;
 
     private readonly string _consumerName = NameUtil.AssemblyNameWithGuid;
     private PulsarKeyHashRanges _keyHashRanges;
@@ -97,6 +99,13 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
 
     public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
     {
+        lock (_batchInProgressLock)
+        {
+            if (_batchInProgress)
+                return Array.Empty<MessageContext<T>>();
+            _batchInProgress = true;
+        }
+
         _phase = _phase switch
         {
             BatchPhase.FailureRetry => BatchPhase.Normal,
@@ -153,6 +162,13 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         {
             _logger.LogError(e, "Error in FinalizeBatchAsync");
             throw;
+        }
+        finally
+        {
+            lock (_batchInProgressLock)
+            {
+                _batchInProgress = false;
+            }
         }
     }
 
