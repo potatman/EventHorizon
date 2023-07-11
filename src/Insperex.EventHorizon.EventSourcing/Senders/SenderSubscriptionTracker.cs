@@ -44,9 +44,6 @@ public class SenderSubscriptionTracker : IAsyncDisposable
                 // Check Results
                 foreach (var response in x.Messages)
                     _responseDict[response.Data.Id] = response;
-
-                // Slow Down to Increase Batch Sizes
-                await Task.Delay(TimeSpan.FromMilliseconds(200));
             })
             .BatchSize(100000)
             .AddStream<T>(_senderId)
