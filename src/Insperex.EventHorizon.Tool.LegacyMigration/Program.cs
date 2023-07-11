@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Threading.Tasks;
+using Destructurama;
 using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.EventStore.MongoDb.Extensions;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
@@ -32,7 +33,10 @@ public class Program
                 services.AddHostedService<MigrationHostedService>();
             })
             .UseConsul()
-            .UseSerilog((_, config) => { config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture); })
+            .UseSerilog((_, config) => { config
+                .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                .Destructure.UsingAttributes();
+            })
             .Build()
             .RunAsync();
     }

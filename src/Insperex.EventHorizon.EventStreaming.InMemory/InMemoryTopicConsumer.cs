@@ -65,7 +65,7 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
         var batchSize = _config.BatchSize ?? 1000;
 
         // Ensure Registration is done
-        await Task.Delay(200, ct);
+        await Task.Delay(1000, ct);
 
         // Pull from backlog
         var backlogItems = _failureHandler.GetMessagesForRetry(batchSize);

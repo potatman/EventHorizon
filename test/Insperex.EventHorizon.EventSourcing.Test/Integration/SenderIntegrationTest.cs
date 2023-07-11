@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Destructurama;
 using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Testing;
@@ -55,7 +57,7 @@ public class SenderIntegrationTest : IAsyncLifetime
                     x.AddEventSourcing()
 
                         // Hosts
-                        .ApplyRequestsToSnapshot<Account>()
+                        .ApplyRequestsToSnapshot<Account>(a => a.BatchSize(10000))
 
                         // Stores
                         .AddInMemorySnapshotStore()
@@ -67,7 +69,8 @@ public class SenderIntegrationTest : IAsyncLifetime
             .UseSerilog((_, config) =>
             {
                 config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-                    .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture);
+                    .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
+                    .Destructure.UsingAttributes();
             })
             .UseEnvironment("test")
             .Build()
@@ -75,12 +78,12 @@ public class SenderIntegrationTest : IAsyncLifetime
 
         _sender = _host.Services.GetRequiredService<SenderBuilder>()
             .Timeout(TimeSpan.FromSeconds(30))
-            .GetErrorResult((status, error) => new AccountResponse(status, error))
+            .GetErrorResult((req, status, error) => new AccountResponse(status, error))
             .Build();
 
         _sender2 = _host.Services.GetRequiredService<SenderBuilder>()
-            .Timeout(TimeSpan.FromSeconds(30))
-            .GetErrorResult((status, error) => new AccountResponse(status, error))
+            .Timeout(TimeSpan.FromSeconds(60))
+            .GetErrorResult((req, status, error) => new AccountResponse(status, error))
             .Build();
 
         _eventSourcingClient = _host.Services.GetRequiredService<EventSourcingClient<Account>>();
@@ -125,14 +128,51 @@ public class SenderIntegrationTest : IAsyncLifetime
         // Assert Account
         var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
         var events = await _eventSourcingClient.Aggregator().Build().GetEventsAsync(new[] { streamId });
-        foreach (var @event in events)
-            _output.WriteLine(@event.Data.Type);
         Assert.Equal(streamId, aggregate.State.Id);
         Assert.Equal(streamId, aggregate.Id);
         Assert.NotEqual(DateTime.MinValue, aggregate.CreatedDate);
         Assert.NotEqual(DateTime.MinValue, aggregate.UpdatedDate);
         Assert.Equal(3, events.Length);
         Assert.Equal(1000, aggregate.State.Amount);
+
+        // // Assert User Account
+        // var store2 = _host.Services.GetRequiredService<Aggregator<Snapshot<UserAccount>, UserAccount>>();
+        // var aggregate2  = await store2.GetAsync(streamId);
+        // Assert.Equal(streamId, aggregate2.State.Id);
+        // Assert.Equal(streamId, aggregate2.Id);
+        // Assert.NotEqual(DateTime.MinValue, aggregate2.CreatedDate);
+        // Assert.NotEqual(DateTime.MinValue, aggregate2.UpdatedDate);
+        // Assert.Equal(command.Amount, aggregate2.State.Account.Amount);
+    }
+
+    [Fact]
+    public async Task TestLargeSendAndReceiveAsync()
+    {
+        // Send Command
+        var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(10);
+        var result1 = await _sender2.SendAndReceiveAsync(streamId, new OpenAccount(1000));
+        var largeEvents  = Enumerable.Range(0, 10000).Select(x => new Deposit(100)).ToArray();
+        var result2 = await _sender2.SendAndReceiveAsync(streamId, largeEvents);
+
+        // Assert Status
+        Assert.True(HttpStatusCode.OK == result1.StatusCode, result1.Error);
+        foreach (var response in result2)
+            Assert.True(HttpStatusCode.OK == response.StatusCode, response.Error);
+
+        // Assert Account
+        var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
+        var events = await _eventSourcingClient.Aggregator().Build().GetEventsAsync(new[] { streamId });
+        Assert.Equal(streamId, aggregate.State.Id);
+        Assert.Equal(streamId, aggregate.Id);
+        Assert.NotEqual(DateTime.MinValue, aggregate.CreatedDate);
+        Assert.NotEqual(DateTime.MinValue, aggregate.UpdatedDate);
+        Assert.Equal(1001000, aggregate.State.Amount);
+        // Assert.Equal(10001, events.Length);
+        var grouped = events.ToLookup(x => x.Data.Type);
+        foreach (var group in grouped)
+        {
+            _output.WriteLine($"{group.Count()} {group.Key}");
+        }
 
         // // Assert User Account
         // var store2 = _host.Services.GetRequiredService<Aggregator<Snapshot<UserAccount>, UserAccount>>();
@@ -162,7 +202,7 @@ public class SenderIntegrationTest : IAsyncLifetime
     {
         var sender = _host.Services.GetRequiredService<SenderBuilder>()
             .Timeout(TimeSpan.Zero)
-            .GetErrorResult((status, error) => new AccountResponse(status, error))
+            .GetErrorResult((req, status, error) => new AccountResponse(status, error))
             .Build();
 
         // Send Command

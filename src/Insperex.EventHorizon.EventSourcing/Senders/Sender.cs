@@ -11,22 +11,26 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming;
+using Insperex.EventHorizon.EventStreaming.Extensions;
 using Insperex.EventHorizon.EventStreaming.Publishers;
+using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventSourcing.Senders;
 
 public class Sender
 {
     private readonly SenderConfig _config;
+    private readonly ILogger<Sender> _logger;
     private readonly SenderSubscriptionTracker _subscriptionTracker;
     private readonly StreamingClient _streamingClient;
     private readonly Dictionary<string, object> _publisherDict = new();
 
-    public Sender(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient, SenderConfig config)
+    public Sender(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient, SenderConfig config, ILogger<Sender> logger)
     {
         _subscriptionTracker = subscriptionTracker;
         _streamingClient = streamingClient;
         _config = config;
+        _logger = logger;
     }
 
     public Task SendAsync<T>(string streamId, params ICommand<T>[] objs) where T : IState
@@ -73,11 +77,10 @@ public class Sender
         // Wait for messages
         var sw = Stopwatch.StartNew();
         var responseDict = new Dictionary<string, Response>();
-        var requestIds = requestDict.Values.Select(x => x.Id).ToArray();
         while (responseDict.Count != requestDict.Count
                && sw.ElapsedMilliseconds < _config.Timeout.TotalMilliseconds)
         {
-            var responses = _subscriptionTracker.GetResponses(requestIds, _config.GetErrorResult);
+            var responses = _subscriptionTracker.GetResponses(requestDict.Values.ToArray(), _config.GetErrorResult);
             foreach (var response in responses)
                 responseDict[response.Id] = response;
             await Task.Delay(200);
@@ -89,8 +92,12 @@ public class Sender
             {
                 var error = "Request Timed Out";
                 responseDict[request.Id] = new Response(request.Id, _subscriptionTracker.GetSenderId(), request.StreamId,
-                    _config.GetErrorResult?.Invoke(HttpStatusCode.RequestTimeout, error), error, (int)HttpStatusCode.RequestTimeout);
+                    _config.GetErrorResult?.Invoke(request, HttpStatusCode.RequestTimeout, error), error, (int)HttpStatusCode.RequestTimeout);
             }
+
+        var errors = responseDict.Where(x => x.Value.Error != null).GroupBy(x => x.Value.Error);
+        foreach (var group in errors)
+            _logger.LogError("Sender - Response Error(s) {Count} => {Error}", group.Count(), group.Key);
 
         return responseDict.Values.ToArray();
     }

@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using Destructurama;
 using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Testing;
 using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
@@ -46,7 +47,8 @@ public static class HostTestUtil
         return Host.CreateDefaultBuilder(System.Array.Empty<string>())
             .UseSerilog((_, config) =>
             {
-                config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture);
+                config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                    .Destructure.UsingAttributes();
 
                 if(output != null)
                     config.WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture);

@@ -13,7 +13,7 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
     private readonly IStreamFactory _factory;
     private readonly ILoggerFactory _loggerFactory;
     private string _topic;
-    private TimeSpan _sendTimeout = TimeSpan.FromMinutes(5);
+    private TimeSpan _sendTimeout = TimeSpan.FromMinutes(2);
     private bool _isGuaranteed;
 
     public PublisherBuilder(IStreamFactory factory, ILoggerFactory loggerFactory)

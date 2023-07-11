@@ -37,4 +37,10 @@
         </None>
     </ItemGroup>
 
+    <ItemGroup>
+      <Reference Include="Destructurama.Attributed">
+        <HintPath>..\..\..\..\..\.nuget\packages\destructurama.attributed\3.1.0\lib\netstandard2.0\Destructurama.Attributed.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+
 </Project>

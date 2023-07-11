@@ -37,18 +37,20 @@ public class Publisher<T> : IAsyncDisposable
         if (!messages.Any()) return this;
 
         // Get topic
+        var sw = Stopwatch.StartNew();
         using var activity = TraceConstants.ActivitySource.StartActivity();
         activity?.SetTag(TraceConstants.Tags.Count, messages.Length);
         try
         {
             await _producer.SendAsync(messages);
-            _logger.LogInformation("Sent {Count} {Type} {Topic}", messages.Length, _typeName, _config.Topic);
+            _logger.LogInformation("Publisher - Sent {Type}(s) {Count} {Topic} in {Duration}",
+                _typeName, messages.Length, _config.Topic, sw.ElapsedMilliseconds);
             activity?.SetStatus(ActivityStatusCode.Ok);
         }
         catch (Exception ex)
         {
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            _logger.LogError(ex, "Failed to Send {Count} {Type} {Error}",
+            _logger.LogError(ex, "Publisher - Failed to Send {Count} {Type} {Error}",
                 messages.Length, _typeName, ex.Message);
             throw;
         }

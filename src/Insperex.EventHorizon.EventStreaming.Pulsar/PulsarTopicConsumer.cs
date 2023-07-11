@@ -26,7 +26,8 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     private readonly ITopicAdmin<T> _admin;
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
     private IConsumer<T> _consumer;
-    private Dictionary<string, MessageId> _messageIdDict;
+    private readonly Dictionary<string, Message<T>> _unackedMessages = new();
+    private readonly SemaphoreSlim _semaphoreSlim;
 
     public PulsarTopicConsumer(
         PulsarClientResolver clientResolver,
@@ -38,6 +39,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         _admin = admin;
         _intercept = new OtelConsumerInterceptor.OTelConsumerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
+        _semaphoreSlim = new SemaphoreSlim(1, 1);
     }
 
     public async Task InitAsync()
@@ -49,28 +51,31 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     {
         try
         {
-            var consumer = await GetConsumerAsync();
-            var messages = await consumer.BatchReceiveAsync(ct);
+            // var consumer = await GetConsumerAsync();
+            // var messages = await consumer.BatchReceiveAsync(ct);
+            var messages = await GetNext(ct);
             if (!messages.Any())
             {
                 await Task.Delay(_config.NoBatchDelay, ct);
                 return null;
             }
 
-            _messageIdDict = messages
-                .Select((x, i) => new { Key = i.ToString(CultureInfo.InvariantCulture), Value = x.MessageId })
-                .ToDictionary(x => x.Key, x => x.Value);
-
             var contexts =  messages
                 .Select((x,i) =>
                 {
                     // Note: x.MessageId.TopicName is null, when single tropic
                     var topic = _config.Topics.Length == 1 ? _config.Topics.First() : x.MessageId.TopicName;
-                    return new MessageContext<T>
-                            {
-                                Data = x.GetValue(),
-                                TopicData = PulsarMessageMapper.MapTopicData(i.ToString(CultureInfo.InvariantCulture), x, topic)
-                            };
+
+                    var id = Guid.NewGuid().ToString();
+                    var context = new MessageContext<T>
+                    {
+                        Data = x.GetValue(),
+                        TopicData = PulsarMessageMapper.MapTopicData(id, x, topic)
+                    };
+
+                    _unackedMessages[id] = x;
+
+                    return context;
                 })
                 .ToArray();
 
@@ -84,6 +89,30 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
     }
 
+    public async Task<Message<T>[]> GetNext(CancellationToken ct)
+    {
+        var list = new List<Message<T>>();
+
+        var consumer = await GetConsumerAsync();
+        // var messages = await consumer.BatchReceiveAsync(ct);
+        // return messages.ToArray();
+        try
+        {
+            while (list.Count < _config.BatchSize && !ct.IsCancellationRequested)
+            {
+                var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+                var message = await consumer.ReceiveAsync(cts.Token);
+                list.Add(message);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // ignore
+        }
+
+        return list.ToArray();
+    }
+
     public async Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
     {
         await AckAsync(acks);
@@ -95,7 +124,11 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         var consumer = await GetConsumerAsync();
         if (messages?.Any() != true) return;
         foreach (var message in messages)
-            await consumer.AcknowledgeAsync(_messageIdDict[message.TopicData.Id]);
+        {
+            var unackedMessage = _unackedMessages[message.TopicData.Id];
+            await consumer.AcknowledgeAsync(unackedMessage.MessageId);
+            _unackedMessages.Remove(message.TopicData.Id);
+        }
     }
 
     private async Task NackAsync(params MessageContext<T>[] messages)
@@ -103,13 +136,23 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         var consumer = await GetConsumerAsync();
         if (messages?.Any() != true) return;
         foreach (var message in messages)
-            await consumer.NegativeAcknowledge(_messageIdDict[message.TopicData.Id]);
+        {
+            var unackedMessage = _unackedMessages[message.TopicData.Id];
+            await consumer.NegativeAcknowledge(unackedMessage.MessageId);
+            _unackedMessages.Remove(message.TopicData.Id);
+        }
     }
 
     private async Task<IConsumer<T>> GetConsumerAsync()
     {
-        if (_consumer != null)
-            return _consumer;
+        // Defensive
+        if (_consumer != null) return _consumer;
+
+        // Lock is for Parallel Requests for some Producer
+        await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(3));
+
+        // Second Release is if they got past first
+        if (_consumer != null) return _consumer;
 
         // Ensure Topic Exists
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
@@ -144,21 +187,13 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             // not be using this consumer anyway but instead be using OrderGuaranteedPulsarTopicConsumer.
             builder = builder.NegativeAckRedeliveryDelay(_config.RetryBackoffPolicy.MinDelay);
 
-        try
-        {
-            var consumer = await builder.SubscribeAsync();
+        var consumer = await builder.SubscribeAsync();
 
-            if (_config.StartDateTime != null)
-                await consumer.SeekAsync(_config.StartDateTime.Value.Ticks);
+        if (_config.StartDateTime != null)
+            await consumer.SeekAsync(_config.StartDateTime.Value.Ticks);
 
-            // Return
-            return _consumer = consumer;
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-            throw;
-        }
+        // Return
+        return _consumer = consumer;
     }
 
     public async ValueTask DisposeAsync()

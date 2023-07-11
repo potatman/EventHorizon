@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -18,9 +19,11 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
     private readonly ILogger<Subscription<T>> _logger;
     private readonly ITopicConsumer<T> _consumer;
     private readonly ITopicAdmin<T> _admin;
+    private readonly ConcurrentQueue<MessageContext<T>[]> _queue = new();
     private bool _disposed;
     private bool _running;
     private bool _stopped;
+    private readonly int _queueLimit;
 
     public Subscription(IStreamFactory factory, SubscriptionConfig<T> config, ILogger<Subscription<T>> logger)
     {
@@ -28,6 +31,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         _logger = logger;
         _admin = factory.CreateAdmin<T>();
         _consumer = factory.CreateConsumer(_config);
+        _queueLimit = 5;
     }
 
     public async Task<Subscription<T>> StartAsync()
@@ -39,10 +43,11 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         // Initialize
         await _consumer.InitAsync();
 
-        _logger.LogInformation("Started Subscription with config {@Config}", _config);
+        _logger.LogInformation("Subscription - Started {@Config}", _config);
 
         // Start Loop
-        Task.Run(Loop);
+        Task.Run(EnqueueLoop);
+        Task.Run(DequeueLoop);
         return this;
     }
 
@@ -56,7 +61,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         //     await Task.Delay(TimeSpan.FromMilliseconds(250));
 
         // Cleanup
-        _logger.LogInformation("Stopped Subscription with config {@Config}", _config);
+        _logger.LogInformation("Subscription - Stopped {@Config}", _config);
 
         return this;
     }
@@ -67,13 +72,22 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
             await _admin.DeleteTopicAsync(topic, CancellationToken.None);
     }
 
-    private async void Loop()
+    private async void EnqueueLoop()
     {
         while (_running)
         {
             try
             {
-                await RunIteration();
+                if ( _queue.Count <= _queueLimit)
+                {
+                    var batch = await LoadEvents();
+                    if (batch?.Any() == true)
+                        _queue.Enqueue(batch);
+                    else
+                        await Task.Delay(_config.NoBatchDelay);
+                }
+                else
+                    await Task.Delay(_config.NoBatchDelay);
             }
             catch (TaskCanceledException)
             {
@@ -81,22 +95,34 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unhandled Exception {Message}", ex.Message);
+                _logger.LogError(ex, "Subscription - Unhandled Exception {Message} {Subscription}", ex.Message, _config.SubscriptionName);
             }
         }
         _stopped = true;
     }
 
-    private async Task RunIteration()
+    private async void DequeueLoop()
     {
-        var batch = await LoadEvents();
-        if (batch?.Any() != true)
+        while (_running)
         {
-            await Task.Delay(_config.NoBatchDelay);
-            return;
+            try
+            {
+                var any = _queue.TryDequeue(out var batch);
+                if (any)
+                    await OnEvents(batch);
+                else
+                    await Task.Delay(_config.NoBatchDelay);
+            }
+            catch (TaskCanceledException)
+            {
+                // Ignore Cancels
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Subscription - Unhandled Exception {Message} {Subscription}", ex.Message, _config.SubscriptionName);
+            }
         }
-
-        await OnEvents(batch);
+        _stopped = true;
     }
 
     private async Task<MessageContext<T>[]> LoadEvents()
@@ -104,15 +130,21 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         using var activity = TraceConstants.ActivitySource.StartActivity();
         try
         {
+            var sw = Stopwatch.StartNew();
             var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
             var batch = await _consumer.NextBatchAsync(cts.Token);
             activity?.SetTag(TraceConstants.Tags.Count, batch?.Length ?? 0);
             activity?.SetStatus(ActivityStatusCode.Ok);
 
             // Upgrade Actions
-            if(batch?.Any() == true)
+            if (batch?.Any() == true)
+            {
                 foreach (var item in batch)
                     item.Data = item.Data.Upgrade();
+
+                _logger.LogInformation("Subscription - Loaded {Type}(s) {Count} in {Duration} {Subscription}",
+                    typeof(T).Name, batch.Length, sw.ElapsedMilliseconds, _config.SubscriptionName);
+            }
 
             return batch;
         }
@@ -127,7 +159,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
             if (!_disposed) return Array.Empty<MessageContext<T>>();
 
             // log error
-            _logger.LogError(ex, "Failed to load events => {Error}", ex.Message);
+            _logger.LogError(ex, "Subscription - Failed to load events => {Error} {Subscription}", ex.Message, _config.SubscriptionName);
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             throw;
         }
@@ -135,6 +167,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
 
     private async Task OnEvents(MessageContext<T>[] batch)
     {
+        var sw = Stopwatch.StartNew();
         using var activity = TraceConstants.ActivitySource.StartActivity();
         var context = new SubscriptionContext<T> { Messages = batch };
         try
@@ -153,8 +186,8 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
             // Logging
             var min = batch.Min(x => x.TopicData.CreatedDate);
             var max = batch.Max(x => x.TopicData.CreatedDate);
-            _logger.LogInformation("Processed {Type}(s) {Count}, from {Start}-{End}",
-                typeof(T).Name, batch.Length, min, max);
+            _logger.LogInformation("Subscription - Processed {Type}(s) {Count} in {Duration}, from {Start}-{End} {Subscription}",
+                typeof(T).Name, batch.Length, sw.ElapsedMilliseconds, min, max, _config.SubscriptionName);
             activity?.SetTag(TraceConstants.Tags.Count, batch.Length);
             activity?.SetTag(TraceConstants.Tags.Start, min);
             activity?.SetTag(TraceConstants.Tags.End, max);
@@ -163,7 +196,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         catch (Exception ex)
         {
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-            _logger.LogError(ex, "Failed to process {Message}", ex.Message);
+            _logger.LogError(ex, "Subscription - Failed to process {Message} {Subscription}", ex.Message, _config.SubscriptionName);
             await _consumer.FinalizeBatchAsync(Array.Empty<MessageContext<T>>(), batch);
         }
     }
