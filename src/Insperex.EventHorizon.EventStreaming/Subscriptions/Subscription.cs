@@ -46,8 +46,16 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         _logger.LogInformation("Subscription - Started {@Config}", _config);
 
         // Start Loop
-        Task.Run(EnqueueLoop);
-        Task.Run(DequeueLoop);
+        if (_config.IsPreload)
+        {
+            Task.Run(EnqueueLoop);
+            Task.Run(DequeueLoop);
+        }
+        else
+        {
+            Task.Run(BasicLoop);
+        }
+
         return this;
     }
 
@@ -70,6 +78,30 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
     {
         foreach (var topic in _config.Topics)
             await _admin.DeleteTopicAsync(topic, CancellationToken.None);
+    }
+
+    private async void BasicLoop()
+    {
+        while (_running)
+        {
+            try
+            {
+                var batch = await LoadEvents();
+                if (batch?.Any() == true)
+                    await OnEvents(batch);
+                else
+                    await Task.Delay(_config.NoBatchDelay);
+            }
+            catch (TaskCanceledException)
+            {
+                // Ignore Cancels
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Subscription - Unhandled Exception {Message} {Subscription}", ex.Message, _config.SubscriptionName);
+            }
+        }
+        _stopped = true;
     }
 
     private async void EnqueueLoop()

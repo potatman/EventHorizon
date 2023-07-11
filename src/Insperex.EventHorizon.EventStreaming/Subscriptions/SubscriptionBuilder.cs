@@ -23,6 +23,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
     private string _subscriptionName = AssemblyUtil.AssemblyName;
     private Func<SubscriptionContext<T>, Task> _onBatch;
     private SubscriptionType _subscriptionType = Abstractions.Models.SubscriptionType.KeyShared;
+    private bool _isPreload;
 
     public SubscriptionBuilder(IStreamFactory factory, ILoggerFactory loggerFactory)
     {
@@ -84,6 +85,12 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         return this;
     }
 
+    public SubscriptionBuilder<T> IsPreLoad(bool isPreload)
+    {
+        _isPreload = isPreload;
+        return this;
+    }
+
     public SubscriptionBuilder<T> OnBatch(Func<SubscriptionContext<T>, Task> onBatch)
     {
         _onBatch = onBatch;
@@ -101,6 +108,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
             BatchSize = _batchSize,
             StartDateTime = _startDateTime,
             IsBeginning = _isBeginning,
+            IsPreload = _isPreload,
             OnBatch = _onBatch
         };
         var logger = _loggerFactory.CreateLogger<Subscription<T>>();
