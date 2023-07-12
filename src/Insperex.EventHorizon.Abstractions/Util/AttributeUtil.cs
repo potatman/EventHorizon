@@ -56,9 +56,13 @@ public class AttributeUtil
         {
             if(typeof(IAction).IsAssignableFrom(i))
             {
-                _propertyInfoCache[type] = i.GetGenericArguments()[0]
+                var name = i.GetGenericArguments()[0]
                     .GetProperties()
-                    .FirstOrDefault(x => x.GetCustomAttribute<T>(true) != null);
+                    .FirstOrDefault(x => x.GetCustomAttribute<T>(true) != null)?
+                    .Name;
+
+                var propertyInfo = type.GetProperties().FirstOrDefault(x => x.Name == name);
+                _propertyInfoCache[type] = propertyInfo;
                 break;
             }
         }
