@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
-using Insperex.EventHorizon.Abstractions.Attributes;
-using Insperex.EventHorizon.Abstractions.Models;
+using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
+using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 
 namespace Insperex.EventHorizon.Abstractions.Util;
 
@@ -13,6 +15,7 @@ namespace Insperex.EventHorizon.Abstractions.Util;
 public class AttributeUtil
 {
     private readonly ConcurrentDictionary<string, object[]> _stateCache = new();
+    private readonly ConcurrentDictionary<Type, PropertyInfo> _propertyInfoCache = new();
 
     public T GetOne<T>(Type type) where T : Attribute => GetAll<T>(type).FirstOrDefault();
 
@@ -32,6 +35,35 @@ public class AttributeUtil
         Set(type, attribute);
 
         return attribute;
+    }
+
+    public PropertyInfo GetOnePropertyInfo<T>(Type type) where T : Attribute
+    {
+        // Defensive
+        if (_propertyInfoCache.TryGetValue(type, out var info)) return info;
+
+        // Check Action
+        var actionPropertyInfo = type.GetProperties()
+            .FirstOrDefault(x => x.GetCustomAttribute<T>(true) != null);
+        if (actionPropertyInfo != null)
+        {
+            _propertyInfoCache[type] = actionPropertyInfo;
+            return actionPropertyInfo;
+        }
+
+        // Check States
+        foreach (var i in type.GetInterfaces())
+        {
+            if(typeof(IAction).IsAssignableFrom(i))
+            {
+                _propertyInfoCache[type] = i.GetGenericArguments()[0]
+                    .GetProperties()
+                    .FirstOrDefault(x => x.GetCustomAttribute<T>(true) != null);
+                break;
+            }
+        }
+
+        return _propertyInfoCache[type];
     }
 
     public void Set<T>(Type type, params T[] attribute) where T : Attribute

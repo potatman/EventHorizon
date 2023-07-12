@@ -22,6 +22,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
 {
     private readonly PulsarClientResolver _clientResolver;
     private readonly PublisherConfig _config;
+    private readonly AttributeUtil _attributeUtil;
     private readonly ITopicAdmin<T> _admin;
     private readonly OTelProducerInterceptor.OTelProducerInterceptor<T> _intercept;
     private readonly string _publisherName;
@@ -31,10 +32,12 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     public PulsarTopicProducer(
         PulsarClientResolver clientResolver,
         PublisherConfig config,
+        AttributeUtil attributeUtil,
         ITopicAdmin<T> admin)
     {
         _clientResolver = clientResolver;
         _config = config;
+        _attributeUtil = attributeUtil;
         _admin = admin;
         _publisherName = NameUtil.AssemblyNameWithGuid;
         _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<T>(
@@ -47,9 +50,8 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         var producer = await GetProducerAsync();
         foreach (var message in messages)
         {
-            var func = AssemblyUtil.PropertyDict.GetValueOrDefault(message.Type)?
-                .FirstOrDefault(x => x.GetCustomAttribute<StreamPartitionKeyAttribute>(true) != null);
-
+            var type = AssemblyUtil.ActionDict[message.Type];
+            var func = _attributeUtil.GetOnePropertyInfo<StreamPartitionKeyAttribute>(type);
             var key = func?.GetValue(message)?.ToString() ?? message.StreamId;
             var msg = producer.NewMessage(message, key);
 

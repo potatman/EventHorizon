@@ -2,6 +2,7 @@
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Testing;
 using Insperex.EventHorizon.Abstractions.Util;
+using Insperex.EventHorizon.EventSourcing.Samples.Models.Actions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 using Xunit;
 
@@ -56,5 +57,19 @@ public class AttributeUtilUnitTest
         _attributeUtil.Set(_type, new SnapshotStoreAttribute(origBucketId));
         var newAttr2 = _attributeUtil.GetOne<SnapshotStoreAttribute>(_type);
         Assert.Equal(origBucketId, newAttr2.BucketId);
+    }
+
+    [Fact]
+    public void TestGetPropertyStateAttribute()
+    {
+        var propertyInfo = _attributeUtil.GetOnePropertyInfo<StreamPartitionKeyAttribute>(typeof(OpenAccount));
+        Assert.Equal("BankAccount", propertyInfo.Name);
+    }
+
+    [Fact]
+    public void TestGetPropertyActionAttribute()
+    {
+        var propertyInfo = _attributeUtil.GetOnePropertyInfo<StreamPartitionKeyAttribute>(typeof(ChangeUserName));
+        Assert.Equal("Name", propertyInfo.Name);
     }
 }
