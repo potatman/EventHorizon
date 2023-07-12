@@ -6,6 +6,7 @@ using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Samples.Models;
+using Insperex.EventHorizon.EventStreaming.Subscriptions.Backoff;
 using Insperex.EventHorizon.EventStreaming.Test.Fakers;
 using Insperex.EventHorizon.EventStreaming.Test.Shared;
 using Insperex.EventHorizon.EventStreaming.Test.Util;
@@ -110,10 +111,9 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
             .AddStream<Feed1PriceChanged>()
             .BatchSize(_events.Length / 10)
             .GuaranteeMessageOrderOnFailure(true)
-            .RetryBackoffPolicy(p =>
-                p.MinDelay(TimeSpan.FromMilliseconds(10))
-                .MaxDelay(TimeSpan.FromSeconds(15))
-                .Multiplier(2))
+            .ExponentialBackoff(b => b
+                .StartAt(TimeSpan.FromMilliseconds(10))
+                .Max(TimeSpan.FromSeconds(15)))
             .OnBatch(_partialNackHandler.OnBatch) // Will nack at least some messages.
             .Build()
             .StartAsync();

@@ -6,6 +6,7 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.EventStreaming.InMemory.Databases;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
+using Insperex.EventHorizon.EventStreaming.Subscriptions.Backoff;
 using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory.Failure;
@@ -15,7 +16,7 @@ public class OrderGuaranteedFailureHandler<T>: IFailureHandler<T> where T: class
     private readonly SubscriptionConfig<T> _config;
     private readonly MessageDatabase _messageDatabase;
     private readonly ILogger<OrderGuaranteedFailureHandler<T>> _logger;
-    private readonly RetrySchedule _retrySchedule;
+    private readonly IBackoffStrategy _backoffStrategy;
 
     private sealed class TopicStreamState
     {
@@ -38,9 +39,8 @@ public class OrderGuaranteedFailureHandler<T>: IFailureHandler<T> where T: class
         _messageDatabase = messageDatabase;
         _logger = logger;
 
-        _retrySchedule = config.RetryBackoffPolicy == null
-            ? new RetrySchedule()
-            : new RetrySchedule(config.RetryBackoffPolicy);
+        _backoffStrategy = _config.BackoffStrategy
+            ?? new ExponentialBackoffStrategy() {BaseMs = 10, MaxMs = 10_000,};
 
         _maxIndexByTopic = _config.Topics.ToDictionary(t => t, _ => default(long));
     }
@@ -121,7 +121,7 @@ public class OrderGuaranteedFailureHandler<T>: IFailureHandler<T> where T: class
 
         // In failed mode - set up for next retry.
         state.NextIndex = long.Parse(message.TopicData.Id, CultureInfo.InvariantCulture);
-        var nextRetryInterval = _retrySchedule.NextInterval(state.TimesRetried);
+        var nextRetryInterval = _backoffStrategy.NextInterval(state.TimesRetried);
         state.NextRetry = DateTime.UtcNow.Add(nextRetryInterval);
     }
 

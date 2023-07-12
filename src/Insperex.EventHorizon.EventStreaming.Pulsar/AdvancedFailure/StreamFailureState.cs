@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
+using Insperex.EventHorizon.EventStreaming.Subscriptions.Backoff;
 using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
@@ -26,14 +27,13 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
 {
     private readonly ILogger<StreamFailureState<T>> _logger;
     private readonly FailureStateTopic<T> _failureStateTopic;
-    private readonly RetrySchedule _retrySchedule;
+    private readonly IBackoffStrategy _backoffStrategy;
 
     public StreamFailureState(SubscriptionConfig<T> config, ILogger<StreamFailureState<T>> logger,
         FailureStateTopic<T> failureStateTopic)
     {
-        _retrySchedule = config.RetryBackoffPolicy == null
-            ? new RetrySchedule()
-            : new RetrySchedule(config.RetryBackoffPolicy);
+        _backoffStrategy = config.BackoffStrategy
+                           ?? new ExponentialBackoffStrategy() {BaseMs = 10, MaxMs = 10_000,};
         _logger = logger;
         _failureStateTopic = failureStateTopic;
     }
@@ -99,7 +99,7 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
 
         if (state.NextRetry.HasValue) state.TimesRetried++;
 
-        var nextRetryInterval = _retrySchedule.NextInterval(state.TimesRetried);
+        var nextRetryInterval = _backoffStrategy.NextInterval(state.TimesRetried);
         state.NextRetry = DateTime.UtcNow.Add(nextRetryInterval);
 
         await _failureStateTopic.Publish(state);

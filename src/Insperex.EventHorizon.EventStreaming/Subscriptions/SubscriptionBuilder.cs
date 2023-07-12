@@ -6,6 +6,7 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
+using Insperex.EventHorizon.EventStreaming.Subscriptions.Backoff;
 using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.Subscriptions;
@@ -22,7 +23,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
     private DateTime? _startDateTime;
     private string _subscriptionName = AssemblyUtil.AssemblyName;
     private bool _guaranteeMessageOrderOnFailure;
-    private BackoffPolicyBuilder _retryBackoffPolicyBuilder;
+    private IBackoffStrategy _backoffStrategy;
     private Func<SubscriptionContext<T>, Task> _onBatch;
     private SubscriptionType _subscriptionType = Abstractions.Models.SubscriptionType.KeyShared;
 
@@ -92,10 +93,9 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         return this;
     }
 
-    public SubscriptionBuilder<T> RetryBackoffPolicy(Func<BackoffPolicyBuilder, BackoffPolicyBuilder> config)
+    public SubscriptionBuilder<T> BackoffStrategy(IBackoffStrategy backoffStrategy)
     {
-        var builder = new BackoffPolicyBuilder();
-        _retryBackoffPolicyBuilder = config(builder);
+        _backoffStrategy = backoffStrategy;
         return this;
     }
 
@@ -117,7 +117,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
             StartDateTime = _startDateTime,
             IsBeginning = _isBeginning,
             IsMessageOrderGuaranteedOnFailure = _guaranteeMessageOrderOnFailure,
-            RetryBackoffPolicy = _retryBackoffPolicyBuilder?.Build(),
+            BackoffStrategy = _backoffStrategy,
             OnBatch = _onBatch,
         };
         var logger = _loggerFactory.CreateLogger<Subscription<T>>();
