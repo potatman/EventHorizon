@@ -18,6 +18,9 @@ public class FailureHandlerFactory
 
     public IFailureHandler<T> Create<T>(SubscriptionConfig<T> config) where T: class, ITopicMessage, new()
     {
+        if (!config.RedeliverFailedMessages)
+            return new OptOutFailureHandler<T>();
+
         if (config.IsMessageOrderGuaranteedOnFailure)
             return new OrderGuaranteedFailureHandler<T>(config, _messageDatabase,
                 _loggerFactory.CreateLogger<OrderGuaranteedFailureHandler<T>>());

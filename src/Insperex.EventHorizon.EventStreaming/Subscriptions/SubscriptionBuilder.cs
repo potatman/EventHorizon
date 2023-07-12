@@ -22,6 +22,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
     private TimeSpan _noBatchDelay = TimeSpan.FromMilliseconds(200);
     private DateTime? _startDateTime;
     private string _subscriptionName = AssemblyUtil.AssemblyName;
+    private bool _redeliverFailedMessages = true;
     private bool _guaranteeMessageOrderOnFailure;
     private IBackoffStrategy _backoffStrategy;
     private Func<SubscriptionContext<T>, Task> _onBatch;
@@ -87,6 +88,12 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         return this;
     }
 
+    public SubscriptionBuilder<T> RedeliverFailedMessages(bool redeliver)
+    {
+        _redeliverFailedMessages = redeliver;
+        return this;
+    }
+
     public SubscriptionBuilder<T> GuaranteeMessageOrderOnFailure(bool guarantee)
     {
         _guaranteeMessageOrderOnFailure = guarantee;
@@ -107,6 +114,8 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
 
     public Subscription<T> Build()
     {
+        EnsureValid();
+
         var config = new SubscriptionConfig<T>
         {
             Topics = _topics.Distinct().ToArray(),
@@ -116,6 +125,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
             BatchSize = _batchSize,
             StartDateTime = _startDateTime,
             IsBeginning = _isBeginning,
+            RedeliverFailedMessages = _redeliverFailedMessages,
             IsMessageOrderGuaranteedOnFailure = _guaranteeMessageOrderOnFailure,
             BackoffStrategy = _backoffStrategy,
             OnBatch = _onBatch,
@@ -124,5 +134,15 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
 
         // Return
         return new Subscription<T>(_factory, config, logger);
+    }
+
+    private void EnsureValid()
+    {
+        var anyFailureHandling = _backoffStrategy != null || _guaranteeMessageOrderOnFailure;
+        if (!_redeliverFailedMessages && anyFailureHandling)
+        {
+            throw new InvalidOperationException(
+                "If any failure handling options are set, expect RedeliverFailedMessages to be true.");
+        }
     }
 }

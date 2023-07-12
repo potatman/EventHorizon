@@ -138,7 +138,16 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         foreach (var message in messages)
         {
             var unackedMessage = _unackedMessages[message.TopicData.Id];
-            await consumer.NegativeAcknowledge(unackedMessage.MessageId);
+
+            if (_config.RedeliverFailedMessages)
+            {
+                await consumer.NegativeAcknowledge(unackedMessage.MessageId);
+            }
+            else
+            {
+                await consumer.AcknowledgeAsync(unackedMessage.MessageId);
+            }
+
             _unackedMessages.Remove(message.TopicData.Id);
         }
     }
