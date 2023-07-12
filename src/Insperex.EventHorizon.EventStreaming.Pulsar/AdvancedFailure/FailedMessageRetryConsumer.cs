@@ -16,22 +16,22 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 /// in which we retry any failed messages in an attempt to get the message's stream out of failure state.
 /// </summary>
 /// <typeparam name="T">Type of message from the primary topic.</typeparam>
-public class FailedMessageRetryHandler<T>: ITopicConsumer<T> where T : class, ITopicMessage, new()
+public class FailedMessageRetryConsumer<T>: ITopicConsumer<T> where T : class, ITopicMessage, new()
 {
     private const int MaxStreams = 300;
 
     private readonly StreamFailureState<T> _streamFailureState;
     private readonly RetryTopicReader<T> _reader;
-    private readonly ILogger<FailedMessageRetryHandler<T>> _logger;
+    private readonly ILogger<FailedMessageRetryConsumer<T>> _logger;
     private readonly int _batchSize;
 
-    public FailedMessageRetryHandler(SubscriptionConfig<T> config, StreamFailureState<T> streamFailureState,
+    public FailedMessageRetryConsumer(SubscriptionConfig<T> config, StreamFailureState<T> streamFailureState,
         PulsarClientResolver clientResolver, ILoggerFactory loggerFactory)
     {
         _batchSize = config.BatchSize ?? 1000;
         _streamFailureState = streamFailureState;
         _reader = new RetryTopicReader<T>(clientResolver, loggerFactory.CreateLogger<RetryTopicReader<T>>());
-        _logger = loggerFactory.CreateLogger<FailedMessageRetryHandler<T>>();
+        _logger = loggerFactory.CreateLogger<FailedMessageRetryConsumer<T>>();
     }
 
     public PulsarKeyHashRanges KeyHashRanges { get; set; }

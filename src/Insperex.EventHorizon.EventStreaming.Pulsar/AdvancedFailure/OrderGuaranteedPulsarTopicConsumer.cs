@@ -44,7 +44,7 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
     private readonly ILogger<OrderGuaranteedPulsarTopicConsumer<T>> _logger;
     private readonly IPulsarKeyHashRangeProvider _keyHashRangeProvider;
     private readonly StreamFailureState<T> _streamFailureState;
-    private readonly FailedMessageRetryHandler<T> _failedMessageRetryHandler;
+    private readonly FailedMessageRetryConsumer<T> _failedMessageRetryConsumer;
     private readonly PrimaryTopicConsumer<T> _primaryTopicConsumer;
     private readonly Dictionary<BatchPhase, ITopicConsumer<T>> _phaseHandlers;
     private readonly OnCheckTimer _statsQueryTimer = new(TimeSpan.FromMinutes(1));
@@ -76,13 +76,13 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         _primaryTopicConsumer = new(_streamFailureState, clientResolver,
             loggerFactory.CreateLogger<PrimaryTopicConsumer<T>>(),
             _config, admin, _consumerName);
-        _failedMessageRetryHandler = new(_config, _streamFailureState,
+        _failedMessageRetryConsumer = new(_config, _streamFailureState,
             clientResolver, loggerFactory);
 
         _phaseHandlers = new()
         {
             [BatchPhase.Normal] = _primaryTopicConsumer,
-            [BatchPhase.FailureRetry] = _failedMessageRetryHandler,
+            [BatchPhase.FailureRetry] = _failedMessageRetryConsumer,
         };
     }
 
@@ -125,14 +125,14 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
                 $"Reloading key hash ranges for subscription {_config.SubscriptionName}, consumer {_consumerName}");
 
             _keyHashRanges = await GetSubscriptionHashRanges(ct);
-            _failedMessageRetryHandler.KeyHashRanges = _keyHashRanges;
+            _failedMessageRetryConsumer.KeyHashRanges = _keyHashRanges;
         }
 
         if (_phase == BatchPhase.FailureRetry)
         {
             try
             {
-                var failureRetryMessages = await _failedMessageRetryHandler.NextBatchAsync(ct);
+                var failureRetryMessages = await _failedMessageRetryConsumer.NextBatchAsync(ct);
                 if (failureRetryMessages.Any())
                 {
                     _logger.LogInformation($"Failure retry processing: got {failureRetryMessages.Length} events in batch");
