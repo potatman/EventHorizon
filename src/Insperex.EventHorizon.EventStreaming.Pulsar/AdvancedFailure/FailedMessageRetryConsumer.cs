@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -59,7 +59,7 @@ public class FailedMessageRetryConsumer<T>: ITopicConsumer<T> where T : class, I
                 // Check if any streams didn't get any messages (and aren't still expecting a retry at some stage).
 
                 //_logger.LogInformation("Some topic/streams might be up to date");
-                await MarkTopicStreamsUpToDate(messages, topicStreamsForRetry);
+                await MarkQuietTopicStreamsUpToDate(messages, topicStreamsForRetry);
             }
 
             return messages;
@@ -71,7 +71,7 @@ public class FailedMessageRetryConsumer<T>: ITopicConsumer<T> where T : class, I
         }
     }
 
-    private async Task MarkTopicStreamsUpToDate(MessageContext<T>[] messages, TopicStreamState[] topicStreamsForRetry)
+    private async Task MarkQuietTopicStreamsUpToDate(MessageContext<T>[] messages, TopicStreamState[] topicStreamsForRetry)
     {
         var messageTopicStreams = messages
             .Select(m => (m.TopicData.Topic, m.Data.StreamId))
