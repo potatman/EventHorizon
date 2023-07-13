@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -96,23 +96,44 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
     public async Task<PulsarKeyHashRanges> GetTopicConsumerKeyHashRanges(string topic, string subscriptionName,
         string consumerName, CancellationToken ct)
     {
+        const int attempts = 20;
+
+        int attempt = 0;
+
+        do
+        {
+            var keyHashRanges = await TryTopicConsumerKeyHashRanges(topic, subscriptionName, consumerName, ct);
+            if (keyHashRanges != null) return keyHashRanges;
+
+            await Task.Delay(TimeSpan.FromSeconds(1), ct);
+        } while (++attempt < attempts);
+
+        return null;
+    }
+
+    private async Task<PulsarKeyHashRanges> TryTopicConsumerKeyHashRanges(string topic, string subscriptionName, string consumerName,
+        CancellationToken ct)
+    {
         var stats = await GetTopicStatsJson(topic, ct, subscriptionBacklogSize: false);
 
         var subscriptionsRoot = stats.GetProperty("subscriptions");
         var subscriptions = subscriptionsRoot.EnumerateObject().Select(p => p.Name).ToArray();
-        var fullSubscriptionName = subscriptions.Single(s => s.Contains(subscriptionName));
-        var consumers = subscriptionsRoot
-            .GetProperty(fullSubscriptionName)
-            .GetProperty("consumers")
-            .EnumerateArray();
-
-        foreach (var consumer in consumers)
+        var fullSubscriptionName = subscriptions.FirstOrDefault(s => s.Contains(subscriptionName));
+        if (!string.IsNullOrEmpty(fullSubscriptionName))
         {
-            if (consumer.TryGetProperty("consumerName", out var consumerNameProp) &&
-                consumerNameProp.GetString() == consumerName)
+            var consumers = subscriptionsRoot
+                .GetProperty(fullSubscriptionName)
+                .GetProperty("consumers")
+                .EnumerateArray();
+
+            foreach (var consumer in consumers)
             {
-                var jsonRanges = consumer.GetProperty("keyHashRanges").EnumerateArray().ToArray();
-                return BuildKeyHashRanges(jsonRanges);
+                if (consumer.TryGetProperty("consumerName", out var consumerNameProp) &&
+                    consumerNameProp.GetString() == consumerName)
+                {
+                    var jsonRanges = consumer.GetProperty("keyHashRanges").EnumerateArray().ToArray();
+                    return BuildKeyHashRanges(jsonRanges);
+                }
             }
         }
 

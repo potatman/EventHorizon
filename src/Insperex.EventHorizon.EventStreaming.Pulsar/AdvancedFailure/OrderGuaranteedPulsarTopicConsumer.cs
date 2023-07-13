@@ -113,12 +113,6 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
             _ => BatchPhase.Normal,
         };
 
-        if (_keyHashRanges == null)
-        {
-            // Pause a moment to ensure Pulsar can deliver key hash ranges when we query stats.
-            await Task.Delay(TimeSpan.FromSeconds(1), ct);
-        }
-
         if (_keyHashRanges == null || ShouldQuerySubscriptionStats())
         {
             _logger.LogInformation(
