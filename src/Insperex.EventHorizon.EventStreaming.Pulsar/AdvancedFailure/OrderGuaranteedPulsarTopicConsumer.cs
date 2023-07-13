@@ -7,7 +7,6 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
-using Insperex.EventHorizon.EventStreaming.Pulsar.Interfaces;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Insperex.EventHorizon.EventStreaming.Util;
@@ -42,7 +41,7 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
 
     private readonly SubscriptionConfig<T> _config;
     private readonly ILogger<OrderGuaranteedPulsarTopicConsumer<T>> _logger;
-    private readonly IPulsarKeyHashRangeProvider _keyHashRangeProvider;
+    private readonly PulsarTopicAdmin<T> _topicAdmin;
     private readonly StreamFailureState<T> _streamFailureState;
     private readonly FailedMessageRetryConsumer<T> _failedMessageRetryConsumer;
     private readonly PrimaryTopicConsumer<T> _primaryTopicConsumer;
@@ -60,22 +59,20 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         PulsarClientResolver clientResolver,
         SubscriptionConfig<T> config,
         IStreamFactory streamFactory,
-        ILoggerFactory loggerFactory,
-        IPulsarKeyHashRangeProvider keyHashRangeProvider)
+        ILoggerFactory loggerFactory)
     {
         _logger = loggerFactory.CreateLogger<OrderGuaranteedPulsarTopicConsumer<T>>();
 
-        var admin = (PulsarTopicAdmin<T>)streamFactory.CreateAdmin<T>();
+        _topicAdmin = (PulsarTopicAdmin<T>)streamFactory.CreateAdmin<T>();
         _config = config;
-        _keyHashRangeProvider = keyHashRangeProvider;
 
-        FailureStateTopic<T> failureStateTopic = new(_config, clientResolver, admin,
+        FailureStateTopic<T> failureStateTopic = new(_config, clientResolver, _topicAdmin,
             loggerFactory.CreateLogger<FailureStateTopic<T>>());
         _streamFailureState = new(_config, loggerFactory.CreateLogger<StreamFailureState<T>>(),
             failureStateTopic);
         _primaryTopicConsumer = new(_streamFailureState, clientResolver,
             loggerFactory.CreateLogger<PrimaryTopicConsumer<T>>(),
-            _config, admin, _consumerName);
+            _config, _topicAdmin, _consumerName);
         _failedMessageRetryConsumer = new(_config, _streamFailureState,
             clientResolver, loggerFactory);
 
@@ -182,7 +179,7 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
     /// </summary>
     private async Task<PulsarKeyHashRanges> GetSubscriptionHashRanges(CancellationToken ct)
     {
-        return await _keyHashRangeProvider.GetSubscriptionHashRanges(_config.Topics.First(),
+        return await _topicAdmin.GetTopicConsumerKeyHashRanges(_config.Topics.First(),
             _config.SubscriptionName, _consumerName, ct);
     }
 }

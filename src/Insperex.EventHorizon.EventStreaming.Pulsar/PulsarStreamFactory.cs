@@ -37,10 +37,8 @@ public class PulsarStreamFactory : IStreamFactory
     {
         if (config.IsMessageOrderGuaranteedOnFailure)
         {
-            var admin = (PulsarTopicAdmin<T>) CreateAdmin<T>();
-
             return new OrderGuaranteedPulsarTopicConsumer<T>(_clientResolver, config,
-                this, _loggerFactory, new PulsarAdminKeyHashRangeProvider<T>(admin));
+                this, _loggerFactory);
         }
         return new PulsarTopicConsumer<T>(_clientResolver, config, CreateAdmin<T>());
     }
