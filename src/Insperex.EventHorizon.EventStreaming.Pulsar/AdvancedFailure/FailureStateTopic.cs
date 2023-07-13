@@ -91,20 +91,20 @@ public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
         return _producer;
     }
 
-    public IEnumerable<TopicStreamState> GetTopicStreams()
+    public TopicStreamState[] GetTopicStreams(Func<TopicStreamState, bool> predicate, int limit)
     {
         return _tableView.Values
-            .Where(ts => !ts.IsResolved);
+            .Where(ts => !ts.IsResolved && predicate(ts))
+            .Take(limit)
+            .ToArray();
     }
 
-    public IEnumerable<TopicStreamState> FindTopicStreams((string Topic, string StreamId)[] topicStreams)
+    public TopicStreamState[] FindTopicStreams((string Topic, string StreamId)[] topicStreams)
     {
-        foreach (var topicStream in topicStreams)
-        {
-            var state = _tableView.GetValueOrDefault(topicStream.Key());
-            if (state is {IsResolved: false})
-                yield return state;
-        }
+        return topicStreams
+            .Select(ts => _tableView.GetValueOrDefault(ts.Key()))
+            .Where(s => s is {IsResolved: false})
+            .ToArray();
     }
 
     public TopicStreamState FindTopicStream((string Topic, string StreamId) topicStream)

@@ -43,10 +43,8 @@ public class FailedMessageRetryConsumer<T>: ITopicConsumer<T> where T : class, I
 
     public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
     {
-        var topicStreamsForRetry = _streamFailureState.TopicStreamsForRetry()
-            .Where(ts => KeyHashRanges.IsMatch(ts.StreamId))
-            .Take(MaxStreams)
-            .ToArray();
+        var topicStreamsForRetry =
+            _streamFailureState.TopicStreamsForRetry(DateTime.UtcNow, KeyHashRanges, MaxStreams);
 
         //_logger.LogInformation($"Topic/streams for retry: {topicStreamsForRetry.Length}");
         if (topicStreamsForRetry.Length == 0) return Array.Empty<MessageContext<T>>();

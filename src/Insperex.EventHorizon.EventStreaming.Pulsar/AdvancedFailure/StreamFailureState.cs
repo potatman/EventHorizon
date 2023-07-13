@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
+using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Insperex.EventHorizon.EventStreaming.Subscriptions.Backoff;
 using Microsoft.Extensions.Logging;
@@ -49,12 +50,14 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
 
     #region Queries
 
-    public IEnumerable<TopicStreamState> TopicStreamsForRetry()
+    public TopicStreamState[] TopicStreamsForRetry(DateTime asOf, PulsarKeyHashRanges keyHashRanges, int limit)
     {
-        return _failureStateTopic.GetTopicStreams()
-            .Where(ts =>
+        return _failureStateTopic.GetTopicStreams(
+            ts =>
                 !ts.IsUpToDate
-                && (!ts.NextRetry.HasValue || DateTime.UtcNow >= ts.NextRetry.Value));
+                && (!ts.NextRetry.HasValue || asOf >= ts.NextRetry.Value)
+                && keyHashRanges.IsMatch(ts.StreamId),
+            limit);
     }
 
     /// <summary>
@@ -62,7 +65,7 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
     /// </summary>
     public TopicStreamState[] FindTopicStreams((string Topic, string StreamId)[] topicStreams)
     {
-        return _failureStateTopic.FindTopicStreams(topicStreams).ToArray();
+        return _failureStateTopic.FindTopicStreams(topicStreams);
     }
 
     #endregion Queries
