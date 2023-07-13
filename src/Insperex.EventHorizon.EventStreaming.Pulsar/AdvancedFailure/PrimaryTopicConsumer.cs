@@ -7,6 +7,7 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
+using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Insperex.EventHorizon.EventStreaming.Tracing;
@@ -31,6 +32,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
     private readonly ITopicAdmin<T> _admin;
     private readonly string _consumerName;
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
+    private PulsarKeyHashRanges _keyHashRanges;
     private MessageId[] _messageIds;
     private IConsumer<T> _consumer;
 
@@ -50,7 +52,19 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         _consumerName = consumerName;
         _intercept = new OtelConsumerInterceptor.OTelConsumerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
+        this.KeyHashRangeOutlierFound = false;
     }
+
+    public PulsarKeyHashRanges KeyHashRanges
+    {
+        set
+        {
+            _keyHashRanges = value;
+            KeyHashRangeOutlierFound = false; // Reset the flag.
+        }
+    }
+
+    public bool KeyHashRangeOutlierFound { get; private set; }
 
     public async Task InitAsync()
     {
@@ -129,6 +143,8 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
                 ))
             .ToArray();
 
+        CheckForStreamIdsOutsideKeyHashRange(messagesToRelay);
+
         var topicStreamsToResolve = messagesToRelay
             .GroupBy(m => (m.Data.StreamId, m.Topic))
             .Where(ts =>
@@ -139,6 +155,17 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         await ResolveUpToDateTopicStreams(topicStreamsToResolve);
 
         return messagesToRelay;
+    }
+
+    private void CheckForStreamIdsOutsideKeyHashRange((T Data, Message<T> OriginalMessage, string Topic)[] messagesToRelay)
+    {
+        if (!KeyHashRangeOutlierFound && _keyHashRanges != null)
+        {
+            if (messagesToRelay.Any(m => !_keyHashRanges.IsMatch(m.Data.StreamId)))
+            {
+                KeyHashRangeOutlierFound = true;
+            }
+        }
     }
 
     private async Task ResolveUpToDateTopicStreams((string Topic, string StreamId)[] topicStreams)

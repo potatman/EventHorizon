@@ -47,7 +47,7 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
     private readonly FailedMessageRetryConsumer<T> _failedMessageRetryConsumer;
     private readonly PrimaryTopicConsumer<T> _primaryTopicConsumer;
     private readonly Dictionary<BatchPhase, ITopicConsumer<T>> _phaseHandlers;
-    private readonly OnCheckTimer _statsQueryTimer = new(TimeSpan.FromMinutes(1));
+    private readonly OnCheckTimer _statsQueryTimer = new(TimeSpan.FromMinutes(30));
     private readonly object _batchInProgressLock = new object();
     private bool _batchInProgress;
 
@@ -126,6 +126,7 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
                 _config.SubscriptionName, _consumerName);
 
             _keyHashRanges = await GetSubscriptionHashRanges(ct);
+            _primaryTopicConsumer.KeyHashRanges = _keyHashRanges;
             _failedMessageRetryConsumer.KeyHashRanges = _keyHashRanges;
         }
 
@@ -178,7 +179,9 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
     /// <summary>
     /// Checks whether it's an appropriate time to query stats for the current subscription.
     /// </summary>
-    private bool ShouldQuerySubscriptionStats() => _statsQueryTimer.Check();
+    private bool ShouldQuerySubscriptionStats() =>
+        _primaryTopicConsumer.KeyHashRangeOutlierFound
+        || _statsQueryTimer.Check();
 
     /// <summary>
     /// Query the Pulsar admin API for allotted key hash ranges for this consumer.
