@@ -63,7 +63,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         {
             var messagesToRelay = await NextNormalBatch(ct);
 
-            //_logger.LogInformation($"Normal batch: {messagesToRelay.Length} messages");
+            //_logger.LogInformation("Normal batch: {messageCount} messages", messagesToRelay.Length);
 
             if (!messagesToRelay.Any())
             {

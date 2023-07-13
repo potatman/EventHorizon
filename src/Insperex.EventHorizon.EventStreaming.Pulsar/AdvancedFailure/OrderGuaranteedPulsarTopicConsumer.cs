@@ -122,7 +122,8 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         if (_keyHashRanges == null || ShouldQuerySubscriptionStats())
         {
             _logger.LogInformation(
-                $"Reloading key hash ranges for subscription {_config.SubscriptionName}, consumer {_consumerName}");
+                "Reloading key hash ranges for subscription {subscriptionName}, consumer {consumerName}",
+                _config.SubscriptionName, _consumerName);
 
             _keyHashRanges = await GetSubscriptionHashRanges(ct);
             _failedMessageRetryConsumer.KeyHashRanges = _keyHashRanges;
@@ -135,7 +136,9 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
                 var failureRetryMessages = await _failedMessageRetryConsumer.NextBatchAsync(ct);
                 if (failureRetryMessages.Any())
                 {
-                    _logger.LogInformation($"Failure retry processing: got {failureRetryMessages.Length} events in batch");
+                    _logger.LogInformation(
+                        "Failure retry processing: got {eventCount} events in batch",
+                        failureRetryMessages.Length);
                     return failureRetryMessages;
                 }
                 _phase = BatchPhase.Normal;
