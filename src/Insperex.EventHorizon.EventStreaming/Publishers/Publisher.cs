@@ -53,7 +53,14 @@ public class Publisher<T> : IAsyncDisposable
                 .Buffer(_config.BatchSize)
                 .Subscribe(async x =>
                 {
-                    await _producer.SendAsync(x.ToArray());
+                    try
+                    {
+                        await _producer.SendAsync(x.ToArray());
+                    }
+                    catch (Exception e)
+                    {
+                        tcs.SetException(e);
+                    }
                 },
                 () =>
                 {
