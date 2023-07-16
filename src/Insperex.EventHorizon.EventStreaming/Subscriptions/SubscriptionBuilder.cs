@@ -16,7 +16,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
     private readonly ILoggerFactory _loggerFactory;
     private readonly ITopicResolver _topicResolver;
     private readonly List<string> _topics;
-    private int? _batchSize;
+    private int? _batchSize = 1000;
     private bool? _isBeginning = true;
     private TimeSpan _noBatchDelay = TimeSpan.FromMilliseconds(200);
     private DateTime? _startDateTime;
