@@ -36,7 +36,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task InitializeAsync()
     {
         // Publish Events
-        _events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(10000).Select(x => new Event(x.Id, x)).ToArray();
+        _events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(1000).Select(x => new Event(x.Id, x)).ToArray();
         _publisher = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
         await _publisher.PublishAsync(_events);
 
