@@ -188,7 +188,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         catch (Exception ex)
         {
             // ignore disposed
-            if (!_disposed) return Array.Empty<MessageContext<T>>();
+            if (_disposed) return Array.Empty<MessageContext<T>>();
 
             // log error
             _logger.LogError(ex, "Subscription - Failed to load events => {Error} {Subscription}", ex.Message, _config.SubscriptionName);
