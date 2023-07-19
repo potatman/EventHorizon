@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Linq;
-using Elasticsearch.Net;
+using Elastic.Clients.Elasticsearch;
+using Elastic.Clients.Elasticsearch.IndexManagement;
+using Elastic.Transport;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Util;
@@ -11,14 +13,13 @@ using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Nest;
 
 namespace Insperex.EventHorizon.EventStore.ElasticSearch;
 
 public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactory<T>, ILockStoreFactory<T>
     where T : class, IState
 {
-    private readonly IElasticClient _client;
+    private readonly ElasticsearchClient _client;
     private readonly AttributeUtil _attributeUtil;
     private readonly ILoggerFactory _loggerFactory;
     private readonly Type _type;
@@ -32,17 +33,17 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
         _elasticAttr = _attributeUtil.GetOne<ElasticIndexAttribute>(_type);
 
         // Client Configuration
-        var connectionPool = new StickyConnectionPool(options.Value.Uris.Select(u => new Uri(u)));
-        var settings = new ConnectionSettings(connectionPool)
+        var connectionPool = new StickyNodePool(options.Value.Uris.Select(u => new Uri(u)));
+        var settings = new ElasticsearchClientSettings(connectionPool)
             .PingTimeout(TimeSpan.FromSeconds(10))
             .DeadTimeout(TimeSpan.FromSeconds(60))
             .RequestTimeout(TimeSpan.FromSeconds(60))
             .DisableDirectStreaming();
 
         if (options.Value.UserName != null && options.Value.Password != null)
-            settings = settings.BasicAuthentication(options.Value.UserName, options.Value.Password);
+            settings = settings.Authentication(new BasicAuthentication(options.Value.UserName, options.Value.Password));
 
-        _client = new ElasticClient(settings);
+        _client = new ElasticsearchClient(settings);
 
 
         var indexSettings = new IndexSettings

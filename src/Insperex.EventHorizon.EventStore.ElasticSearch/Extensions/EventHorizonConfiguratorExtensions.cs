@@ -1,15 +1,10 @@
 ﻿using System;
-using System.Linq;
-using Elasticsearch.Net;
 using Insperex.EventHorizon.Abstractions;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStore.ElasticSearch.Models;
 using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Locks;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Nest;
 
 namespace Insperex.EventHorizon.EventStore.ElasticSearch.Extensions;
 

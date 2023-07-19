@@ -1,5 +1,5 @@
 using System;
-using Elasticsearch.Net;
+using Elastic.Clients.Elasticsearch;
 
 namespace Insperex.EventHorizon.EventStore.ElasticSearch.Attributes
 {
