@@ -117,7 +117,6 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
     private async Task AckAsync(params MessageContext<T>[] messages)
     {
-        var consumer = await GetConsumerAsync();
         if (messages?.Any() != true) return;
         foreach (var message in messages)
         {
@@ -136,11 +135,11 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
             if (_config.RedeliverFailedMessages)
             {
-                await consumer.NegativeAcknowledge(unackedMessage.MessageId);
+                await _consumer.NegativeAcknowledge(unackedMessage.MessageId);
             }
             else
             {
-                await consumer.AcknowledgeAsync(unackedMessage.MessageId);
+                await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
             }
 
             _unackedMessages.Remove(message.TopicData.Id);
