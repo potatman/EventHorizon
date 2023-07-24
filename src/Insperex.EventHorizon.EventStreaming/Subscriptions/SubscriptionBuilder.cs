@@ -17,7 +17,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
     private readonly ILoggerFactory _loggerFactory;
     private readonly ITopicResolver _topicResolver;
     private readonly List<string> _topics;
-    private int? _batchSize;
+    private int? _batchSize = 1000;
     private bool? _isBeginning = true;
     private TimeSpan _noBatchDelay = TimeSpan.FromMilliseconds(200);
     private DateTime? _startDateTime;
@@ -27,6 +27,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
     private IBackoffStrategy _backoffStrategy;
     private Func<SubscriptionContext<T>, Task> _onBatch;
     private SubscriptionType _subscriptionType = Abstractions.Models.SubscriptionType.KeyShared;
+    private bool _isPreload;
 
     public SubscriptionBuilder(IStreamFactory factory, ILoggerFactory loggerFactory)
     {
@@ -88,6 +89,12 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         return this;
     }
 
+    public SubscriptionBuilder<T> IsPreLoad(bool isPreload)
+    {
+        _isPreload = isPreload;
+        return this;
+    }
+
     public SubscriptionBuilder<T> RedeliverFailedMessages(bool redeliver)
     {
         _redeliverFailedMessages = redeliver;
@@ -125,6 +132,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
             BatchSize = _batchSize,
             StartDateTime = _startDateTime,
             IsBeginning = _isBeginning,
+            IsPreload = _isPreload,
             RedeliverFailedMessages = _redeliverFailedMessages,
             IsMessageOrderGuaranteedOnFailure = _guaranteeMessageOrderOnFailure,
             BackoffStrategy = _backoffStrategy,

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
@@ -38,14 +39,39 @@ public class Publisher<T> : IAsyncDisposable
 
         // Get topic
         var sw = Stopwatch.StartNew();
-        using var activity = TraceConstants.ActivitySource.StartActivity();
+        var activity = TraceConstants.ActivitySource.StartActivity();
         activity?.SetTag(TraceConstants.Tags.Count, messages.Length);
         try
         {
-            await _producer.SendAsync(messages);
-            _logger.LogInformation("Publisher - Sent {Type}(s) {Count} {Topic} in {Duration}",
-                _typeName, messages.Length, _config.Topic, sw.ElapsedMilliseconds);
-            activity?.SetStatus(ActivityStatusCode.Ok);
+            // await _producer.SendAsync(messages);
+            // _logger.LogInformation("Publisher - Sent {Type}(s) {Count} {Topic} in {Duration}",
+            //     _typeName, messages.Length, _config.Topic, sw.ElapsedMilliseconds);
+            // activity?.SetStatus(ActivityStatusCode.Ok);
+
+            var tcs = new TaskCompletionSource<bool?>();
+            messages.ToObservable()
+                .Buffer(_config.BatchSize)
+                .Subscribe(async x =>
+                {
+                    try
+                    {
+                        await _producer.SendAsync(x.ToArray());
+                    }
+                    catch (Exception e)
+                    {
+                        tcs.SetException(e);
+                    }
+                },
+                () =>
+                {
+                    tcs.SetResult(true);
+                    _logger.LogInformation("Publisher - Sent {Type}(s) {Count} {Topic} in {Duration}",
+                        _typeName, messages.Length, _config.Topic, sw.ElapsedMilliseconds);
+                    activity?.SetStatus(ActivityStatusCode.Ok);
+                    activity?.Dispose();
+                });
+
+            await tcs.Task;
         }
         catch (Exception ex)
         {

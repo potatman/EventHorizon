@@ -27,4 +27,5 @@ public class SubscriptionConfig<T> where T : ITopicMessage
     [NotLogged] public IBackoffStrategy BackoffStrategy { get; set; }
 
     [NotLogged] public Func<SubscriptionContext<T>, Task> OnBatch { get; set; }
+    [NotLogged] public bool IsPreload { get; set; }
 }

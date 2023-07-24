@@ -11,7 +11,6 @@ using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 using Insperex.EventHorizon.EventStreaming.Util;
-using Microsoft.Extensions.Logging;
 using Pulsar.Client.Api;
 using Pulsar.Client.Common;
 using Pulsar.Client.Otel;
@@ -23,6 +22,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
 {
     private readonly PulsarClientResolver _clientResolver;
     private readonly PublisherConfig _config;
+    private readonly AttributeUtil _attributeUtil;
     private readonly ITopicAdmin<T> _admin;
     private readonly OTelProducerInterceptor.OTelProducerInterceptor<T> _intercept;
     private readonly string _publisherName;
@@ -32,10 +32,12 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     public PulsarTopicProducer(
         PulsarClientResolver clientResolver,
         PublisherConfig config,
+        AttributeUtil attributeUtil,
         ITopicAdmin<T> admin)
     {
         _clientResolver = clientResolver;
         _config = config;
+        _attributeUtil = attributeUtil;
         _admin = admin;
         _publisherName = NameUtil.AssemblyNameWithGuid;
         _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<T>(
@@ -48,11 +50,10 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         var producer = await GetProducerAsync();
         foreach (var message in messages)
         {
-            var func = AssemblyUtil.PropertyDict.GetValueOrDefault(message.Type)?
-                .FirstOrDefault(x => x.GetCustomAttribute<StreamPartitionKeyAttribute>(true) != null);
-
-            var key = func?.GetValue(message)?.ToString() ?? message.StreamId;
-            var msg = producer.NewMessage(message, key);
+            // var type = AssemblyUtil.ActionDict[message.Type];
+            // var func = _attributeUtil.GetOnePropertyInfo<StreamPartitionKeyAttribute>(type);
+            // var key = func?.GetValue(message)?.ToString() ?? message.StreamId;
+            var msg = producer.NewMessage(message, message.StreamId);
 
             // Send Message
             if (_config.IsGuaranteed)
@@ -68,7 +69,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         if (_producer != null) return _producer;
 
         // Lock is for Parallel Requests for some Producer
-        await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(3));
+        await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(10));
 
         // Second Release is if they got past first
         if (_producer != null) return _producer;

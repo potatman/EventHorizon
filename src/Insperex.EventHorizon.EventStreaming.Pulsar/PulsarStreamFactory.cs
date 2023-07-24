@@ -30,7 +30,7 @@ public class PulsarStreamFactory : IStreamFactory
 
     public ITopicProducer<T> CreateProducer<T>(PublisherConfig config) where T : class, ITopicMessage, new()
     {
-        return new PulsarTopicProducer<T>(_clientResolver, config, CreateAdmin<T>());
+        return new PulsarTopicProducer<T>(_clientResolver, config, _attributeUtil, CreateAdmin<T>());
     }
 
     public ITopicConsumer<T> CreateConsumer<T>(SubscriptionConfig<T> config) where T : class, ITopicMessage, new()

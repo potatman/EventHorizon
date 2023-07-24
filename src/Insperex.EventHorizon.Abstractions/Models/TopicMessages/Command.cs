@@ -7,6 +7,11 @@ namespace Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 
 public class Command : ITopicMessage
 {
+    public string Id { get; set; }
+    public string StreamId { get; set; }
+    public string Type { get; set; }
+    public string Payload { get; set; }
+
     public Command()
     {
         Id = Guid.NewGuid().ToString();
@@ -19,9 +24,4 @@ public class Command : ITopicMessage
         Payload = JsonSerializer.Serialize(payload);
         Type = payload.GetType().Name;
     }
-
-    public string Id { get; set; }
-    public string StreamId { get; set; }
-    public string Type { get; set; }
-    public string Payload { get; set; }
 }

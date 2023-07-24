@@ -27,7 +27,6 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
     private IConsumer<T> _consumer;
     private readonly Dictionary<string, Message<T>> _unackedMessages = new();
-    private readonly SemaphoreSlim _semaphoreSlim;
 
     public PulsarTopicConsumer(
         PulsarClientResolver clientResolver,
@@ -39,7 +38,6 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         _admin = admin;
         _intercept = new OtelConsumerInterceptor.OTelConsumerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
-        _semaphoreSlim = new SemaphoreSlim(1, 1);
     }
 
     public async Task InitAsync()
@@ -51,8 +49,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     {
         try
         {
-            // var consumer = await GetConsumerAsync();
-            // var messages = await consumer.BatchReceiveAsync(ct);
+            // var messages = await _consumer.BatchReceiveAsync(ct);
             var messages = await GetNext(ct);
             if (!messages.Any())
             {
@@ -93,15 +90,14 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     {
         var list = new List<Message<T>>();
 
-        var consumer = await GetConsumerAsync();
-        // var messages = await consumer.BatchReceiveAsync(ct);
+        // var messages = await _consumer.BatchReceiveAsync(ct);
         // return messages.ToArray();
         try
         {
             while (list.Count < _config.BatchSize && !ct.IsCancellationRequested)
             {
                 var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-                var message = await consumer.ReceiveAsync(cts.Token);
+                var message = await _consumer.ReceiveAsync(cts.Token);
                 list.Add(message);
             }
         }
@@ -126,14 +122,13 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         foreach (var message in messages)
         {
             var unackedMessage = _unackedMessages[message.TopicData.Id];
-            await consumer.AcknowledgeAsync(unackedMessage.MessageId);
+            await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
             _unackedMessages.Remove(message.TopicData.Id);
         }
     }
 
     private async Task NackAsync(params MessageContext<T>[] messages)
     {
-        var consumer = await GetConsumerAsync();
         if (messages?.Any() != true) return;
         foreach (var message in messages)
         {
@@ -154,15 +149,6 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
     private async Task<IConsumer<T>> GetConsumerAsync()
     {
-        // Defensive
-        if (_consumer != null) return _consumer;
-
-        // Lock is for Parallel Requests for some Producer
-        await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(3));
-
-        // Second Release is if they got past first
-        if (_consumer != null) return _consumer;
-
         // Ensure Topic Exists
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         foreach (var topic in _config.Topics)
@@ -195,7 +181,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             await consumer.SeekAsync(_config.StartDateTime.Value.Ticks);
 
         // Return
-        return _consumer = consumer;
+        return consumer;
     }
 
     public async ValueTask DisposeAsync()

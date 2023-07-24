@@ -34,7 +34,7 @@ public class User : IState,
 }
 
 // Commands
-public record ChangeUserName(string Name) : ICommand<User>;
+public record ChangeUserName([property: StreamPartitionKey]string Name) : ICommand<User>;
 
 // Events
 public record UserNameChangedV2(string Name) : IEvent<User>;
