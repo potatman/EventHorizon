@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -144,6 +144,13 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
 
         // Normal phase.
         var messages = await _primaryTopicConsumer.NextBatchAsync(ct);
+        if (messages.Length == 0)
+        {
+            lock (_batchInProgressLock)
+            {
+                _batchInProgress = false;
+            }
+        }
         return messages;
     }
 
