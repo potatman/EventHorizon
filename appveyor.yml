@@ -7,6 +7,8 @@ environment:
     secure: otfsPx1BAgExY/kZkP2q79UlcBeM7N6dmOgb6ejiFgv0rYfrj4ceTVCE7hVqkf9q
   nuget_apikey:
     secure: SOuDY2KpiBzP9VTGv0EXsgj66HPoQF3IM5UUBK8nN6Sv4+uznwHGeGcEJrVAD0nP
+  github_nuget_apikey:
+    secure: REwHqDgDWHoujm/lBbXsBFrCh0+68E948v07bNmLCwYl1O8/9KghKN+114SLksUg
   docker_password:
     secure: 3BLFSWasBkoBDnePlBhgN0zzV0lRnmJ+BJ2WFEKHIKMt1f0j/CimHAZKFSzu9jvA
   octopus_apikey:
@@ -33,7 +35,7 @@ test_script:
 
 after_test: 
   - bash ~/tools/dist/dotnet/sonar.sh stop $sonar_token
-  - bash ~/tools/dist/dotnet/publish_nuget.sh $nuget_apikey
+  - bash ~/tools/dist/dotnet/publish_nuget.sh $nuget_apikey $github_nuget_apikey
   
 deploy_script: 
  - bash ~/tools/dist/shared/publish_docker.sh $docker_password out

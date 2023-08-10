@@ -43,11 +43,12 @@ public class Publisher<T> : IAsyncDisposable
         activity?.SetTag(TraceConstants.Tags.Count, messages.Length);
         try
         {
-            // await _producer.SendAsync(messages);
-            // _logger.LogInformation("Publisher - Sent {Type}(s) {Count} {Topic} in {Duration}",
-            //     _typeName, messages.Length, _config.Topic, sw.ElapsedMilliseconds);
-            // activity?.SetStatus(ActivityStatusCode.Ok);
+            await _producer.SendAsync(messages);
+            _logger.LogInformation("Publisher - Sent {Type}(s) {Count} {Topic} in {Duration}",
+                _typeName, messages.Length, _config.Topic, sw.ElapsedMilliseconds);
+            activity?.SetStatus(ActivityStatusCode.Ok);
 
+            /*
             var tcs = new TaskCompletionSource<bool?>();
             messages.ToObservable()
                 .Buffer(_config.BatchSize)
@@ -72,6 +73,7 @@ public class Publisher<T> : IAsyncDisposable
                 });
 
             await tcs.Task;
+            */
         }
         catch (Exception ex)
         {
