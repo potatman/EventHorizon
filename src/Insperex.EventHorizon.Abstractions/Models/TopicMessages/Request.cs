@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text.Json;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
+using Insperex.EventHorizon.Abstractions.Util;
 
 namespace Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 
@@ -24,4 +25,6 @@ public class Request : ITopicMessage
         Payload = JsonSerializer.Serialize(payload);
         Type = payload.GetType().Name;
     }
+
+    public object GetPayload()  => JsonSerializer.Deserialize(Payload, AssemblyUtil.ActionDict[Type]);
 }

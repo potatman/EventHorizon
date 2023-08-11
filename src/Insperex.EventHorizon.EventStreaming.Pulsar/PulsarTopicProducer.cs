@@ -48,7 +48,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         var producer = await GetProducerAsync();
         foreach (var message in messages)
         {
-            var func = AssemblyUtil.PropertyDict.GetValueOrDefault(message.Type)?
+            var func = AssemblyUtil.PropertyDict.GetValueOrDefault(message.GetType().Name)?
                 .FirstOrDefault(x => x.GetCustomAttribute<StreamPartitionKeyAttribute>(true) != null);
 
             var key = func?.GetValue(message)?.ToString() ?? message.StreamId;

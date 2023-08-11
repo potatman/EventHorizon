@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
-using Insperex.EventHorizon.EventStreaming.Extensions;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Samples.Models;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
@@ -19,7 +18,7 @@ public class PriceChangeTracker : IStreamConsumer<Event>
     {
         _logger = logger;
     }
-    
+
     public Task OnBatch(SubscriptionContext<Event> context)
     {
         var changes = context.Messages
@@ -35,7 +34,7 @@ public class PriceChangeTracker : IStreamConsumer<Event>
 
             var priceChange = change as PriceChanged;
             _logger.LogInformation("{Type} {Id} = {Price}", priceChange.GetType().Name, priceChange.Id, priceChange.Price);
-            
+
         }
         return Task.CompletedTask;
     }

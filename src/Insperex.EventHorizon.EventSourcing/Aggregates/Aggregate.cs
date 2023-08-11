@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Net;
-using System.Text.Json;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models;
@@ -12,8 +11,6 @@ using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventSourcing.Util;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Models;
-using Insperex.EventHorizon.EventStreaming.Extensions;
-using OpenTelemetry.Trace;
 
 namespace Insperex.EventHorizon.EventSourcing.Aggregates;
 
