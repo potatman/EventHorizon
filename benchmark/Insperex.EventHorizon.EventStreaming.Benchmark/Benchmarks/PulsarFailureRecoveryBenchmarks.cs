@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.Benchmark.Extensions;
 using Insperex.EventHorizon.EventStreaming.Benchmark.Singletons;
+using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Samples.Models;
 using Insperex.EventHorizon.EventStreaming.Subscriptions.Backoff;
@@ -17,8 +19,9 @@ namespace Insperex.EventHorizon.EventStreaming.Benchmark.Benchmarks;
 
 public class PulsarFailureRecoveryBenchmarks
 {
-    private const int InputEventCount = 1_000;
+    private const int InputEventCount = 5_000;
     private const int BatchSize = 100;
+    private const int IterationsPerScenario = 3;
 
     private Publisher<Event> _publisher;
     private StreamingClient _streamingClient;
@@ -37,22 +40,102 @@ public class PulsarFailureRecoveryBenchmarks
         var events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(InputEventCount)
             .Select(x => new Event(x.Id, ++sequenceId, x)).ToArray();
         _publisher = PulsarSingleton.Instance.GetPublisher<Feed1PriceChanged>();
+
         _publisher.PublishAsync(events).Wait();  //.GetAwaiter().GetResult();
     }
 
-    [PerfBenchmark(Description = "Pulsar consumer with failure handling",
-        NumberOfIterations = 1, RunMode = RunMode.Iterations, TestMode = TestMode.Measurement)]
-    [TimingMeasurement]
-    [MemoryMeasurement(MemoryMetric.TotalBytesAllocated)]
-    public void SingleConsumerInFailureScenario(BenchmarkContext context)
+    [PerfCleanup]
+    public void Cleanup()
     {
-        var handler = new PartialNackListStreamConsumer(context.Trace.AsXunitOutput(),
-            0.03, 3, 2, 100, true);
+        _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged)).Wait();
 
-        RunFailureScenario(context, handler).GetAwaiter().GetResult();
+        var topicAdmin = PulsarSingleton.Instance.GetTopicAdmin();
+        topicAdmin.DeleteTopicAsync(
+            $"persistent://test_pricing/Event/subscription__Insperex.EventHorizon.EventStreaming.Benchmark-FailBenchmark_{UniqueTestId}__streamFailureState",
+            CancellationToken.None).Wait();
     }
 
-    private async Task RunFailureScenario(BenchmarkContext context, PartialNackListStreamConsumer handler)
+    [PerfBenchmark(Description = "Pulsar consumer with no failures",
+        NumberOfIterations = IterationsPerScenario, RunMode = RunMode.Iterations, TestMode = TestMode.Measurement)]
+    [TimingMeasurement]
+    [MemoryMeasurement(MemoryMetric.TotalBytesAllocated)]
+    public void Single_consumer_with_no_failures(BenchmarkContext context)
+    {
+        var handler = new ListStreamConsumer<Event>();
+
+        RunFailureScenario(context, handler,
+            () => InputEventCount <= handler.List.Count)
+            .GetAwaiter().GetResult();
+    }
+
+    [PerfBenchmark(Description = "Pulsar consumer with very light level of failures",
+        NumberOfIterations = IterationsPerScenario, RunMode = RunMode.Iterations, TestMode = TestMode.Measurement)]
+    [TimingMeasurement]
+    [MemoryMeasurement(MemoryMetric.TotalBytesAllocated)]
+    public void Single_consumer_with_very_light_failures(BenchmarkContext context)
+    {
+        var handler = new PartialNackListStreamConsumer(context.Trace.AsXunitOutput(),
+            0.005, 1, 1, 50, false);
+
+        RunFailureScenario(context, handler,
+            () => InputEventCount <= handler.List.Count)
+            .GetAwaiter().GetResult();
+
+        handler.Report();
+    }
+
+    [PerfBenchmark(Description = "Pulsar consumer with light level of failures",
+        NumberOfIterations = IterationsPerScenario, RunMode = RunMode.Iterations, TestMode = TestMode.Measurement)]
+    [TimingMeasurement]
+    [MemoryMeasurement(MemoryMetric.TotalBytesAllocated)]
+    public void Single_consumer_with_light_failures(BenchmarkContext context)
+    {
+        var handler = new PartialNackListStreamConsumer(context.Trace.AsXunitOutput(),
+            0.03, 3, 2, 100, false);
+
+        RunFailureScenario(context, handler,
+            () => InputEventCount <= handler.List.Count)
+            .GetAwaiter().GetResult();
+
+        handler.Report();
+    }
+
+    [PerfBenchmark(Description = "Pulsar consumer with moderate level of failures",
+        NumberOfIterations = IterationsPerScenario, RunMode = RunMode.Iterations, TestMode = TestMode.Measurement,
+        SkipWarmups = true)]
+    [TimingMeasurement]
+    [MemoryMeasurement(MemoryMetric.TotalBytesAllocated)]
+    public void Single_consumer_with_moderate_failures(BenchmarkContext context)
+    {
+        var handler = new PartialNackListStreamConsumer(context.Trace.AsXunitOutput(),
+            0.1, 8, 4, 1000, false);
+
+        RunFailureScenario(context, handler,
+            () => InputEventCount <= handler.List.Count)
+            .GetAwaiter().GetResult();
+
+        handler.Report();
+    }
+
+    [PerfBenchmark(Description = "Pulsar consumer with heavy level of failures",
+        NumberOfIterations = IterationsPerScenario, RunMode = RunMode.Iterations, TestMode = TestMode.Measurement,
+        SkipWarmups = true)]
+    [TimingMeasurement]
+    [MemoryMeasurement(MemoryMetric.TotalBytesAllocated)]
+    public void Single_consumer_with_heavy_failures(BenchmarkContext context)
+    {
+        var handler = new PartialNackListStreamConsumer(context.Trace.AsXunitOutput(),
+            0.6, 20, 6, 2000, false);
+
+        RunFailureScenario(context, handler,
+            () => InputEventCount <= handler.List.Count)
+            .GetAwaiter().GetResult();
+
+        handler.Report();
+    }
+
+    private async Task RunFailureScenario(BenchmarkContext context, IStreamConsumer<Event> handler,
+        Func<bool> endCondition)
     {
         // Consume
         await using var subscription = await _streamingClient.CreateSubscription<Event>()
@@ -63,7 +146,7 @@ public class PulsarFailureRecoveryBenchmarks
             .GuaranteeMessageOrderOnFailure(true)
             .ExponentialBackoff(b => b
                 .StartAt(TimeSpan.FromMilliseconds(10))
-                .Max(TimeSpan.FromSeconds(15)))
+                .Max(TimeSpan.FromSeconds(8)))
             .OnBatch(async ctx =>
             {
                 try
@@ -80,8 +163,6 @@ public class PulsarFailureRecoveryBenchmarks
             .StartAsync();
 
         // Wait for List
-        await WaitUtil.WaitForTrue(() => InputEventCount <= handler.List.Count, TimeSpan.FromMinutes(10));
-
-        handler.Report();
+        await WaitUtil.WaitForTrue(endCondition, TimeSpan.FromMinutes(10));
     }
 }
