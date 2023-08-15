@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
@@ -29,6 +27,7 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
     private readonly ILogger<StreamFailureState<T>> _logger;
     private readonly FailureStateTopic<T> _failureStateTopic;
     private readonly IBackoffStrategy _backoffStrategy;
+    private PulsarKeyHashRanges _keyHashRanges;
 
     public StreamFailureState(SubscriptionConfig<T> config, ILogger<StreamFailureState<T>> logger,
         FailureStateTopic<T> failureStateTopic)
@@ -48,16 +47,48 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
 
     #endregion Lifecycle
 
+    #region State
+
+    private bool _detectedZeroTrackedTopicStreams;
+    private int _trackedTopicStreamsGuess;
+
+    /// <summary>
+    /// We may not need to query the failure state topic at times. #optimization
+    /// </summary>
+    private bool ShortCircuitFailureStateTopic => _trackedTopicStreamsGuess == 0 && _detectedZeroTrackedTopicStreams;
+
+    public PulsarKeyHashRanges KeyHashRanges
+    {
+        get => _keyHashRanges;
+        set
+        {
+            _keyHashRanges = value;
+            // Reset all volatile state tracking flags.
+            _detectedZeroTrackedTopicStreams = false;
+            _trackedTopicStreamsGuess = 0;
+        }
+}
+
+    #endregion State
+
     #region Queries
 
-    public TopicStreamState[] TopicStreamsForRetry(DateTime asOf, PulsarKeyHashRanges keyHashRanges, int limit)
+    public TopicStreamState[] TopicStreamsForRetry(DateTime asOf, int limit)
     {
-        return _failureStateTopic.GetTopicStreams(
-            ts =>
-                !ts.IsUpToDate
-                && (!ts.NextRetry.HasValue || asOf >= ts.NextRetry.Value)
-                && keyHashRanges.IsMatch(ts.StreamId),
-            limit);
+        if (ShortCircuitFailureStateTopic) return Array.Empty<TopicStreamState>();
+
+        var (topicStreams, totalTrackedTopicStreams) =
+            _failureStateTopic.GetTopicStreams(
+                KeyHashRanges,
+                ts =>
+                    !ts.IsUpToDate
+                    && (!ts.NextRetry.HasValue || asOf >= ts.NextRetry.Value),
+                limit);
+
+        _detectedZeroTrackedTopicStreams = totalTrackedTopicStreams == 0;
+        _trackedTopicStreamsGuess = Math.Max(_trackedTopicStreamsGuess, totalTrackedTopicStreams);
+
+        return topicStreams;
     }
 
     /// <summary>
@@ -65,7 +96,9 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
     /// </summary>
     public TopicStreamState[] FindTopicStreams((string Topic, string StreamId)[] topicStreams)
     {
-        return _failureStateTopic.FindTopicStreams(topicStreams);
+        return ShortCircuitFailureStateTopic
+            ? Array.Empty<TopicStreamState>()
+            : _failureStateTopic.FindTopicStreams(topicStreams);
     }
 
     #endregion Queries
@@ -75,6 +108,7 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
     public async Task TopicStreamUpToDate(string topic, string streamId)
     {
         //_logger.LogInformation("Up to date: {topic} => {streamId}", topic, streamId);
+        _detectedZeroTrackedTopicStreams = false;
         var state = _failureStateTopic.FindTopicStream((topic, streamId));
         if (state != null)
         {
@@ -86,6 +120,7 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
     public async Task TopicStreamResolved(string topic, string streamId)
     {
         //_logger.LogInformation("Resolved: {topic} => {streamId}", topic, streamId);
+        _trackedTopicStreamsGuess = Math.Max(0, _trackedTopicStreamsGuess - 1);
         var state = _failureStateTopic.FindTopicStream((topic, streamId));
         if (state != null)
         {
@@ -98,6 +133,8 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
     {
         //_logger.LogInformation("Msg FAIL: {topic} => {streamId} => {id}", message.TopicData.Topic, message.Data.StreamId, message.TopicData.Id);
 
+        _trackedTopicStreamsGuess++;
+        _detectedZeroTrackedTopicStreams = false;
         var state = EnsureTopicForStream(message);
 
         if (state.NextRetry.HasValue) state.TimesRetried++;
@@ -112,6 +149,7 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
     {
         //_logger.LogInformation("Msg SUCCEED: {topic} => {streamId} => {id}", message.TopicData.Topic, message.Data.StreamId, message.TopicData.Id);
 
+        _detectedZeroTrackedTopicStreams = false;
         var state = EnsureTopicForStream(message);
 
         state.TimesRetried = 0;

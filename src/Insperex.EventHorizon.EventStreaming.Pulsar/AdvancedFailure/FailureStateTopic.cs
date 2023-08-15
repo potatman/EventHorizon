@@ -91,12 +91,26 @@ public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
         return _producer;
     }
 
-    public TopicStreamState[] GetTopicStreams(Func<TopicStreamState, bool> predicate, int limit)
+    public (TopicStreamState[] TopicStreams, int TotalTrackedTopicStreams) GetTopicStreams(
+        PulsarKeyHashRanges keyHashRanges, Func<TopicStreamState, bool> predicate, int limit)
     {
-        return _tableView.Values
-            .Where(ts => !ts.IsResolved && predicate(ts))
+        var totalTrackedTopicStreams = 0;
+
+        var results = _tableView.Values
+            .Where(ts => !ts.IsResolved && keyHashRanges.IsMatch(ts.StreamId))
+            // Tally the total number of topic/streams in the given key hash ranges,
+            // even if they are to be subsequently filtered by the given predicate.
+            // It'll be useful to the caller to know what the total number of tracked topic/streams is.
+            .Where(_ =>
+            {
+                totalTrackedTopicStreams++;
+                return true;
+            })
+            .Where(predicate)
             .Take(limit)
             .ToArray();
+
+        return (results, totalTrackedTopicStreams);
     }
 
     public TopicStreamState[] FindTopicStreams((string Topic, string StreamId)[] topicStreams)

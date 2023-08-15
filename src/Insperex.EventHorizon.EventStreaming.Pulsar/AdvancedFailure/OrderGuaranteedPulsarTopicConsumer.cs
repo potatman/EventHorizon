@@ -117,8 +117,8 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
                 _config.SubscriptionName, _consumerName);
 
             _keyHashRanges = await GetSubscriptionHashRanges(ct);
+            _streamFailureState.KeyHashRanges = _keyHashRanges;
             _primaryTopicConsumer.KeyHashRanges = _keyHashRanges;
-            _failedMessageRetryConsumer.KeyHashRanges = _keyHashRanges;
         }
 
         if (_phase == BatchPhase.FailureRetry)
