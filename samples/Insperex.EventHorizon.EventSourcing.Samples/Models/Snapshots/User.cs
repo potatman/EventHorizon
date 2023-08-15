@@ -16,7 +16,7 @@ namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 [SnapshotStore("test_snapshot_bank_user")]
 public class User : IState,
     IHandleCommand<ChangeUserName>,
-    IApplyEvent<UserNameChanged>
+    IApplyEvent<UserNameChangedV2>
 {
     public string Id { get; set; }
     public string Name { get; set; }
@@ -24,10 +24,10 @@ public class User : IState,
     public void Handle(ChangeUserName command, AggregateContext context)
     {
         if(Name != command.Name)
-            context.AddEvent(new UserNameChanged(command.Name));
+            context.AddEvent(new UserNameChangedV2(command.Name));
     }
 
-    public void Apply(UserNameChanged @event)
+    public void Apply(UserNameChangedV2 @event)
     {
         Name = @event.Name;
     }
@@ -37,4 +37,14 @@ public class User : IState,
 public record ChangeUserName(string Name) : ICommand<User>;
 
 // Events
-public record UserNameChanged(string Name) : IEvent<User>;
+public record UserNameChangedV2(string Name) : IEvent<User>;
+
+// Legacy Events
+[Obsolete]
+public record UserNameChanged(string Name) : IEvent<User>, IUpgradeTo<UserNameChangedV2>
+{
+    public UserNameChangedV2 Upgrade()
+    {
+        return new UserNameChangedV2(Name);
+    }
+}
