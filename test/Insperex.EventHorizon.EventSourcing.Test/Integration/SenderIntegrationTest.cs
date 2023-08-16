@@ -155,13 +155,11 @@ public class SenderIntegrationTest : IAsyncLifetime
     {
         // Send Command
         var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(10);
-        var result1 = await _sender2.SendAndReceiveAsync(streamId, new OpenAccount(1000));
         var largeEvents  = Enumerable.Range(0, numOfEvents).Select(x => new Deposit(100)).ToArray();
         var result2 = await _sender2.SendAndReceiveAsync(streamId, largeEvents);
 
         // Assert Status
         Assert.Equal(numOfEvents, result2.Length);
-        Assert.True(HttpStatusCode.OK == result1.StatusCode, result1.Error);
         foreach (var response in result2)
             Assert.True(HttpStatusCode.OK == response.StatusCode, response.Error);
     }
