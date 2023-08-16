@@ -55,7 +55,7 @@ public class PulsarFailureRecoveryBenchmarks
             CancellationToken.None).Wait();
     }
 
-    [PerfBenchmark(Description = "Pulsar consumer with no failures",
+    [PerfBenchmark(Description = "Pulsar consumer with no failures", Skip = "Not run by default",
         NumberOfIterations = IterationsPerScenario, RunMode = RunMode.Iterations, TestMode = TestMode.Measurement)]
     [TimingMeasurement]
     [MemoryMeasurement(MemoryMetric.TotalBytesAllocated)]
@@ -68,7 +68,7 @@ public class PulsarFailureRecoveryBenchmarks
             .GetAwaiter().GetResult();
     }
 
-    [PerfBenchmark(Description = "Pulsar consumer with very light level of failures",
+    [PerfBenchmark(Description = "Pulsar consumer with very light level of failures", Skip = "Not run by default",
         NumberOfIterations = IterationsPerScenario, RunMode = RunMode.Iterations, TestMode = TestMode.Measurement)]
     [TimingMeasurement]
     [MemoryMeasurement(MemoryMetric.TotalBytesAllocated)]
@@ -84,7 +84,7 @@ public class PulsarFailureRecoveryBenchmarks
         handler.Report();
     }
 
-    [PerfBenchmark(Description = "Pulsar consumer with light level of failures",
+    [PerfBenchmark(Description = "Pulsar consumer with light level of failures", Skip = "Not run by default",
         NumberOfIterations = IterationsPerScenario, RunMode = RunMode.Iterations, TestMode = TestMode.Measurement)]
     [TimingMeasurement]
     [MemoryMeasurement(MemoryMetric.TotalBytesAllocated)]
@@ -100,7 +100,7 @@ public class PulsarFailureRecoveryBenchmarks
         handler.Report();
     }
 
-    [PerfBenchmark(Description = "Pulsar consumer with moderate level of failures",
+    [PerfBenchmark(Description = "Pulsar consumer with moderate level of failures", Skip = "Not run by default",
         NumberOfIterations = IterationsPerScenario, RunMode = RunMode.Iterations, TestMode = TestMode.Measurement,
         SkipWarmups = true)]
     [TimingMeasurement]
@@ -117,7 +117,7 @@ public class PulsarFailureRecoveryBenchmarks
         handler.Report();
     }
 
-    [PerfBenchmark(Description = "Pulsar consumer with heavy level of failures",
+    [PerfBenchmark(Description = "Pulsar consumer with heavy level of failures", Skip = "Not run by default",
         NumberOfIterations = IterationsPerScenario, RunMode = RunMode.Iterations, TestMode = TestMode.Measurement,
         SkipWarmups = true)]
     [TimingMeasurement]
