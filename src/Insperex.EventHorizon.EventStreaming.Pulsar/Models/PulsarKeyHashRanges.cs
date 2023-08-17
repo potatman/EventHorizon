@@ -42,6 +42,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Models
         /// </summary>
         public bool IsMatch(string key)
         {
+            if (Ranges == null || Ranges.Length == 0) return true;
             var hash = MurmurHash3.Hash(key) % 65536;
             return IsMatch(hash);
         }

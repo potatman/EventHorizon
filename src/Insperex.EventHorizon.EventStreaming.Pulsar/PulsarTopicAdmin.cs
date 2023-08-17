@@ -131,8 +131,13 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
                 if (consumer.TryGetProperty("consumerName", out var consumerNameProp) &&
                     consumerNameProp.GetString() == consumerName)
                 {
-                    var jsonRanges = consumer.GetProperty("keyHashRanges").EnumerateArray().ToArray();
-                    return BuildKeyHashRanges(jsonRanges);
+                    if (consumer.TryGetProperty("keyHashRanges", out var keyHashRangesProp))
+                    {
+                        var jsonRanges = keyHashRangesProp.EnumerateArray().ToArray();
+                        return BuildKeyHashRanges(jsonRanges);
+                    }
+
+                    return new PulsarKeyHashRanges(); // No ranges found - this instance will match all keys.
                 }
             }
         }
