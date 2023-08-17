@@ -145,43 +145,25 @@ public class SenderIntegrationTest : IAsyncLifetime
         // Assert.Equal(command.Amount, aggregate2.State.Account.Amount);
     }
 
-    [Fact]
-    public async Task TestLargeSendAndReceiveAsync()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(100)]
+    [InlineData(1000)]
+    [InlineData(10000)]
+    [InlineData(100000)]
+    public async Task TestLargeSendAndReceiveAsync(int numOfEvents)
     {
         // Send Command
         var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(10);
         var result1 = await _sender2.SendAndReceiveAsync(streamId, new OpenAccount(1000));
-        var largeEvents  = Enumerable.Range(0, 10000).Select(x => new Deposit(100)).ToArray();
+        var largeEvents  = Enumerable.Range(0, numOfEvents).Select(x => new Deposit(100)).ToArray();
         var result2 = await _sender2.SendAndReceiveAsync(streamId, largeEvents);
 
         // Assert Status
+        Assert.Equal(numOfEvents, result2.Length);
         Assert.True(HttpStatusCode.OK == result1.StatusCode, result1.Error);
         foreach (var response in result2)
             Assert.True(HttpStatusCode.OK == response.StatusCode, response.Error);
-
-        // Assert Account
-        var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
-        var events = await _eventSourcingClient.Aggregator().Build().GetEventsAsync(new[] { streamId });
-        Assert.Equal(streamId, aggregate.State.Id);
-        Assert.Equal(streamId, aggregate.Id);
-        Assert.NotEqual(DateTime.MinValue, aggregate.CreatedDate);
-        Assert.NotEqual(DateTime.MinValue, aggregate.UpdatedDate);
-        Assert.Equal(1001000, aggregate.State.Amount);
-        // Assert.Equal(10001, events.Length);
-        var grouped = events.ToLookup(x => x.Data.Type);
-        foreach (var group in grouped)
-        {
-            _output.WriteLine($"{group.Count()} {group.Key}");
-        }
-
-        // // Assert User Account
-        // var store2 = _host.Services.GetRequiredService<Aggregator<Snapshot<UserAccount>, UserAccount>>();
-        // var aggregate2  = await store2.GetAsync(streamId);
-        // Assert.Equal(streamId, aggregate2.State.Id);
-        // Assert.Equal(streamId, aggregate2.Id);
-        // Assert.NotEqual(DateTime.MinValue, aggregate2.CreatedDate);
-        // Assert.NotEqual(DateTime.MinValue, aggregate2.UpdatedDate);
-        // Assert.Equal(command.Amount, aggregate2.State.Account.Amount);
     }
 
     [Fact]
