@@ -83,7 +83,7 @@ public class Sender
             var responses = _subscriptionTracker.GetResponses(requestDict.Values.ToArray(), _config.GetErrorResult);
             foreach (var response in responses)
                 responseDict[response.Id] = response;
-            await Task.Delay(200);
+            await Task.Delay(10);
         }
 
         // Add Timed Out Results
