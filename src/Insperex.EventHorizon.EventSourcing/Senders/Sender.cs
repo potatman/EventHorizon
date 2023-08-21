@@ -95,9 +95,16 @@ public class Sender
                     _config.GetErrorResult?.Invoke(request, HttpStatusCode.RequestTimeout, error), error, (int)HttpStatusCode.RequestTimeout);
             }
 
-        var errors = responseDict.Where(x => x.Value.Error != null).GroupBy(x => x.Value.Error);
+        var errors = responseDict
+            .Where(x => x.Value.Error != null)
+            .GroupBy(x => x.Value.Error)
+            .ToArray();
+
         foreach (var group in errors)
             _logger.LogError("Sender - Response Error(s) {Count} => {Error}", group.Count(), group.Key);
+
+        if (!errors.Any())
+            _logger.LogInformation("Sender - All {Count} Response(s) Received in {Duration}", responseDict.Count, sw.ElapsedMilliseconds);
 
         return responseDict.Values.ToArray();
     }
