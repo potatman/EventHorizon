@@ -142,6 +142,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             .ConsumerName(NameUtil.AssemblyNameWithGuid)
             .SubscriptionType(GetSubscriptionType(_config.SubscriptionType))
             .SubscriptionName(_config.SubscriptionName)
+            .ReceiverQueueSize(1000000000) // Allows non-persistent queues to not lose messages
             .Intercept(_intercept);
 
         if (_config.Topics != null)
@@ -154,9 +155,6 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                 _config.IsBeginning == true
                     ? SubscriptionInitialPosition.Earliest
                     : SubscriptionInitialPosition.Latest);
-
-        if (_config.BatchSize != null)
-            builder = builder.ReceiverQueueSize(_config.BatchSize.Value);
 
         var consumer = await builder.SubscribeAsync();
 
