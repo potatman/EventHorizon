@@ -49,7 +49,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         try
         {
             // var messages = await _consumer.BatchReceiveAsync(ct);
-            var messages = await GetNext(ct);
+            var messages = await GetNextBatchAsync(ct);
             if (!messages.Any())
             {
                 await Task.Delay(_config.NoBatchDelay, ct);
@@ -85,17 +85,15 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
     }
 
-    public async Task<Message<T>[]> GetNext(CancellationToken ct)
+    private async Task<Message<T>[]> GetNextCustomAsync(CancellationToken ct)
     {
         var list = new List<Message<T>>();
 
-        // var messages = await _consumer.BatchReceiveAsync(ct);
-        // return messages.ToArray();
         try
         {
             while (list.Count < _config.BatchSize && !ct.IsCancellationRequested)
             {
-                var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+                var cts = new CancellationTokenSource(25);
                 var message = await _consumer.ReceiveAsync(cts.Token);
                 list.Add(message);
             }
@@ -103,6 +101,21 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         catch (TaskCanceledException e)
         {
             // ignore
+        }
+
+        return list.ToArray();
+    }
+
+    private async Task<Message<T>[]> GetNextBatchAsync(CancellationToken ct)
+    {
+        var list = new List<Message<T>>();
+
+        while (list.Count < _config.BatchSize && !ct.IsCancellationRequested)
+        {
+            var message = await _consumer.BatchReceiveAsync(ct);
+            if (!message.Any())
+                return list.ToArray();
+            list.AddRange(message);
         }
 
         return list.ToArray();
