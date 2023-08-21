@@ -48,13 +48,9 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     {
         try
         {
-            // var messages = await _consumer.BatchReceiveAsync(ct);
-            var messages = await GetNextBatchAsync(ct);
+            var messages = await GetNextCustomAsync(ct);
             if (!messages.Any())
-            {
-                await Task.Delay(_config.NoBatchDelay, ct);
                 return null;
-            }
 
             var contexts =  messages
                 .Select((x,i) =>
