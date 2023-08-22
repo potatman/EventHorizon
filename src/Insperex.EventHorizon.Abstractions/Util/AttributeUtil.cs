@@ -17,13 +17,6 @@ public class AttributeUtil
     private readonly ConcurrentDictionary<string, object[]> _stateCache = new();
     private readonly ConcurrentDictionary<Type, PropertyInfo> _propertyInfoCache = new();
 
-    public T GetOneRequired<T>(Type type) where T : Attribute
-    {
-        var result = GetOne<T>(type);
-        if (GetOne<T>(type) == null) throw new Exception($"Missing {typeof(T).Name} for {type}");
-        return result;
-    }
-
     public T GetOne<T>(Type type) where T : Attribute => GetAll<T>(type).FirstOrDefault();
 
     public T[] GetAll<T>(Type type) where T : Attribute

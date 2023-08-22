@@ -34,16 +34,16 @@ public class IgniteEventStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFa
 
     public ICrudStore<Lock> GetLockStore()
     {
-        return new IgniteCrudStore<Lock>(_client, _attributeUtil.GetOneRequired<SnapshotStoreAttribute>(_type).BucketId);
+        return new IgniteCrudStore<Lock>(_client, _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId);
     }
 
     public ICrudStore<Snapshot<T>> GetSnapshotStore()
     {
-        return new IgniteCrudStore<Snapshot<T>>(_client, _attributeUtil.GetOneRequired<SnapshotStoreAttribute>(_type).BucketId);
+        return new IgniteCrudStore<Snapshot<T>>(_client, _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId);
     }
 
     public ICrudStore<View<T>> GetViewStore()
     {
-        return new IgniteCrudStore<View<T>>(_client, _attributeUtil.GetOneRequired<ViewStoreAttribute>(_type).Database);
+        return new IgniteCrudStore<View<T>>(_client, _attributeUtil.GetOne<ViewStoreAttribute>(_type).Database);
     }
 }
