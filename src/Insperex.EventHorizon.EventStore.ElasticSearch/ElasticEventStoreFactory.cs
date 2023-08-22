@@ -29,7 +29,7 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
         _type = typeof(T);
         _attributeUtil = attributeUtil;
         _loggerFactory = loggerFactory;
-        _elasticAttr = _attributeUtil.GetOne<ElasticIndexAttribute>(_type);
+        _elasticAttr = _attributeUtil.GetOneRequired<ElasticIndexAttribute>(_type);
 
         // Client Configuration
         var connectionPool = new StickyConnectionPool(options.Value.Uris.Select(u => new Uri(u)));
@@ -56,7 +56,7 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
     public ICrudStore<Lock> GetLockStore()
     {
         var store = new ElasticCrudStore<Lock>(_elasticAttr, _client,
-            _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId,
+            _attributeUtil.GetOneRequired<SnapshotStoreAttribute>(_type).BucketId,
             _loggerFactory.CreateLogger<ElasticCrudStore<Lock>>());
         return store;
     }
@@ -64,7 +64,7 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
     public ICrudStore<Snapshot<T>> GetSnapshotStore()
     {
         var store = new ElasticCrudStore<Snapshot<T>>(_elasticAttr, _client,
-            _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId,
+            _attributeUtil.GetOneRequired<SnapshotStoreAttribute>(_type).BucketId,
             _loggerFactory.CreateLogger<ElasticCrudStore<Snapshot<T>>>());
 
         return store;
@@ -73,7 +73,7 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
     public ICrudStore<View<T>> GetViewStore()
     {
         return new ElasticCrudStore<View<T>>(_elasticAttr, _client,
-            _attributeUtil.GetOne<ViewStoreAttribute>(_type).Database,
+            _attributeUtil.GetOneRequired<ViewStoreAttribute>(_type).Database,
             _loggerFactory.CreateLogger<ElasticCrudStore<View<T>>>());
     }
 }

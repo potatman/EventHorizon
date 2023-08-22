@@ -44,7 +44,7 @@ public class MongoCrudStore<T> : ICrudStore<T>
 
     public async Task SetupAsync(CancellationToken ct)
     {
-        var mongoAttr = _attributeUtil.GetOne<MongoCollectionAttribute>(typeof(T));
+        var mongoAttr = _attributeUtil.GetOneRequired<MongoCollectionAttribute>(typeof(T));
         if (mongoAttr?.ReadConcernLevel != null) _collection.WithReadConcern(new ReadConcern(mongoAttr.ReadConcernLevel));
         if (mongoAttr?.ReadPreferenceMode != null) _collection.WithReadPreference(new ReadPreference(mongoAttr.ReadPreferenceMode));
         if (mongoAttr?.WriteConcernLevel != null)
