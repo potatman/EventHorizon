@@ -33,23 +33,24 @@ public static class AssemblyUtil
     public static readonly Version AssemblyVersion = Assembly.GetName().Version;
     public static readonly string AssemblyNameAndVersion = $"{AssemblyName}-{AssemblyVersion}";
 
+
     public static readonly ImmutableDictionary<string, PropertyInfo[]> PropertyDict = TypeDictionary
-        .Where(x => typeof(IState).IsAssignableFrom(x.Value) || typeof(IAction).IsAssignableFrom(x.Value))
+        .Where(x => x.Value.GetInterface(nameof(IState)) != null || x.Value.GetInterface(nameof(IAction)) != null)
         .ToImmutableDictionary(x => x.Key, x => x.Value.GetProperties());
 
     public static readonly ImmutableDictionary<string, Type> StateDict = TypeDictionary
-        .Where(x => typeof(IState).IsAssignableFrom(x.Value))
+        .Where(x => x.Value.GetInterface(nameof(IState)) != null)
         .ToImmutableDictionary(x => x.Key, x => x.Value);
 
     public static readonly ImmutableDictionary<string, PropertyInfo[]> PropertyDictOfStates = PropertyDict
         .ToImmutableDictionary(x => x.Key, x => x.Value
-            .Where(p => typeof(IState).IsAssignableFrom(p.PropertyType)).ToArray());
+            .Where(p => p.PropertyType.GetInterface(nameof(IState)) != null).ToArray());
 
     public static readonly ImmutableDictionary<string, Type[]> SubStateDict = PropertyDictOfStates
         .ToImmutableDictionary(x => x.Key, x => x.Value.Select(s => s.PropertyType).ToArray());
 
     public static readonly ImmutableDictionary<string, Type> ActionDict = TypeDictionary
-        .Where(x => typeof(IAction).IsAssignableFrom(x.Value))
+        .Where(x => x.Value.GetInterface(nameof(IAction)) != null)
         .ToImmutableDictionary(x => x.Key, x => x.Value);
 
 }
