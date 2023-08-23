@@ -20,14 +20,11 @@ public static class AggregateAssemblyUtil
     public static readonly ILookup<string, Type> StateToRequestsLookup = GetStatesToActionLookup(typeof(IRequest<,>));
     public static readonly ILookup<string, Type> StateToEventsLookup = GetStatesToActionLookup(typeof(IEvent<>));
 
-    private static ImmutableDictionary<string, Type[]> GetStateHandlersDict(MemberInfo type) => AssemblyUtil.StateDict
-        .ToImmutableDictionary(x => x.Key, x => x.Value.GetInterfaces().Where(i => i.Name == type.Name).ToArray());
-
-    private static ImmutableDictionary<string, Dictionary<string, MethodInfo>> GetStateActionHandlerDict(MemberInfo type, string methodName) => AssemblyUtil.StateDict
+    private static ImmutableDictionary<string, Dictionary<string, MethodInfo>> GetStateActionHandlerDict(Type interfaceType, string methodName) => AssemblyUtil.StateDict
         .ToImmutableDictionary(x => x.Key, x => x.Value.GetInterfaces()
-            .Where(i => i.Name == type.Name).ToDictionary(d => d.GetGenericArguments()[0].Name, d => d.GetMethod(methodName)));
+            .Where(i => i.Name == interfaceType.Name).ToDictionary(d => d.GetGenericArguments()[0].Name, d => d.GetMethod(methodName)));
 
-    private static ILookup<string, Type> GetStatesToActionLookup(Type type) => AssemblyUtil.TypeDictionary.Values
+    private static ILookup<string, Type> GetStatesToActionLookup(Type type) => AssemblyUtil.ActionDict.Values
             .Where(x => x.GetInterface(type.Name) != null)
             .ToLookup(x => x.GetInterface(type.Name)?.GetGenericArguments()[0].Name);
 }
