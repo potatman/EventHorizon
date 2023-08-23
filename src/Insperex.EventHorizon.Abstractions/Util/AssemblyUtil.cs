@@ -41,15 +41,15 @@ public static class AssemblyUtil
         .Where(x => typeof(IState).IsAssignableFrom(x.Value))
         .ToImmutableDictionary(x => x.Key, x => x.Value);
 
-    public static readonly ImmutableDictionary<string, Type> ActionDict = TypeDictionary
-        .Where(x => typeof(IAction).IsAssignableFrom(x.Value))
-        .ToImmutableDictionary(x => x.Key, x => x.Value);
-
     public static readonly ImmutableDictionary<string, PropertyInfo[]> PropertyDictOfStates = PropertyDict
         .ToImmutableDictionary(x => x.Key, x => x.Value
             .Where(p => typeof(IState).IsAssignableFrom(p.PropertyType)).ToArray());
 
     public static readonly ImmutableDictionary<string, Type[]> SubStateDict = PropertyDictOfStates
         .ToImmutableDictionary(x => x.Key, x => x.Value.Select(s => s.PropertyType).ToArray());
+
+    public static readonly ImmutableDictionary<string, Type> ActionDict = TypeDictionary
+        .Where(x => typeof(IAction).IsAssignableFrom(x.Value))
+        .ToImmutableDictionary(x => x.Key, x => x.Value);
 
 }
