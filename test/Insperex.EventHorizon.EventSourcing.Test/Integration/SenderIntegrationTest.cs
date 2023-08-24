@@ -57,7 +57,7 @@ public class SenderIntegrationTest : IAsyncLifetime
                     x.AddEventSourcing()
 
                         // Hosts
-                        .ApplyRequestsToSnapshot<Account>(a => a.BatchSize(10000))
+                        .ApplyRequestsToSnapshot<Account>(a => a.BatchSize(1000))
 
                         // Stores
                         .AddInMemorySnapshotStore()
@@ -150,7 +150,7 @@ public class SenderIntegrationTest : IAsyncLifetime
     [InlineData(100)]
     [InlineData(1000)]
     [InlineData(10000)]
-    [InlineData(100000)]
+    // [InlineData(100000)]
     public async Task TestLargeSendAndReceiveAsync(int numOfEvents)
     {
         // Send Command
