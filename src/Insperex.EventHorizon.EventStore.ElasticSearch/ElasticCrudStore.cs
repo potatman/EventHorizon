@@ -75,7 +75,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
                     .Size(1)
                     .Source(new SourceConfig(new SourceFilter
                     {
-                        Includes = new[] { "UpdatedDate" }
+                        Includes = new[] { "updatedDate" }
                     }))
                     .Query(q =>
                         q.Bool(b =>
