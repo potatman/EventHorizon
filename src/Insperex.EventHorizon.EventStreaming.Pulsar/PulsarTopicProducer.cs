@@ -48,19 +48,23 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     public async Task SendAsync(params T[] messages)
     {
         var producer = await GetProducerAsync();
-        foreach (var message in messages)
-        {
-            // var type = AssemblyUtil.ActionDict[message.Type];
-            // var func = _attributeUtil.GetOnePropertyInfo<StreamPartitionKeyAttribute>(type);
-            // var key = func?.GetValue(message)?.ToString() ?? message.StreamId;
-            var msg = producer.NewMessage(message, message.StreamId);
+        var tasks = messages.AsParallel()
+            .Select(async message =>
+            {
+                // var type = AssemblyUtil.ActionDict[message.Type];
+                // var func = _attributeUtil.GetOnePropertyInfo<StreamPartitionKeyAttribute>(type);
+                // var key = func?.GetValue(message)?.ToString() ?? message.StreamId;
+                var msg = producer.NewMessage(message, message.StreamId);
 
-            // Send Message
-            if (_config.IsGuaranteed)
-                await producer.SendAsync(msg);
-            else
-                await producer.SendAndForgetAsync(msg);
-        }
+                // Send Message
+                if (_config.IsGuaranteed)
+                    await producer.SendAsync(msg);
+                else
+                    await producer.SendAndForgetAsync(msg);
+            })
+            .ToArray();
+
+        await Task.WhenAll(tasks);
     }
 
     private async Task<IProducer<T>> GetProducerAsync()

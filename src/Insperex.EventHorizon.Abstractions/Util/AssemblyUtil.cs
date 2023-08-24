@@ -35,11 +35,11 @@ public static class AssemblyUtil
 
 
     public static readonly ImmutableDictionary<string, PropertyInfo[]> PropertyDict = TypeDictionary
-        .Where(x => x.Value.GetInterface(nameof(IState)) != null || x.Value.GetInterface(nameof(IAction)) != null)
+        .Where(x => typeof(IState).IsAssignableFrom(x.Value) || typeof(IAction).IsAssignableFrom(x.Value))
         .ToImmutableDictionary(x => x.Key, x => x.Value.GetProperties());
 
     public static readonly ImmutableDictionary<string, Type> StateDict = TypeDictionary
-        .Where(x => x.Value.GetInterface(nameof(IState)) != null)
+        .Where(x => typeof(IState).IsAssignableFrom(x.Value))
         .ToImmutableDictionary(x => x.Key, x => x.Value);
 
     public static readonly ImmutableDictionary<string, PropertyInfo[]> PropertyDictOfStates = PropertyDict
@@ -50,7 +50,7 @@ public static class AssemblyUtil
         .ToImmutableDictionary(x => x.Key, x => x.Value.Select(s => s.PropertyType).ToArray());
 
     public static readonly ImmutableDictionary<string, Type> ActionDict = TypeDictionary
-        .Where(x => x.Value.GetInterface(nameof(IAction)) != null)
+        .Where(x => typeof(IAction).IsAssignableFrom(x.Value) && x.Value.IsClass)
         .ToImmutableDictionary(x => x.Key, x => x.Value);
 
 }

@@ -10,7 +10,7 @@
         <PackageReference Include="AspNetCore.HealthChecks.System" Version="6.0.5" />
         <PackageReference Include="Pulsar.Client" Version="2.12.4" />
         <PackageReference Include="Pulsar.Client.Otel" Version="0.1.2" />
-        <PackageReference Include="SharpPulsar.Admin" Version="2.14.0" />
+        <PackageReference Include="SharpPulsar.Admin" Version="2.13.0" />
     </ItemGroup>
 
     <ItemGroup>

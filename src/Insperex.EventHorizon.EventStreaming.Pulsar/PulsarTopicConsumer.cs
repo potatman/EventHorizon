@@ -48,13 +48,9 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     {
         try
         {
-            // var messages = await _consumer.BatchReceiveAsync(ct);
-            var messages = await GetNext(ct);
+            var messages = await GetNextCustomAsync(ct);
             if (!messages.Any())
-            {
-                await Task.Delay(_config.NoBatchDelay, ct);
                 return null;
-            }
 
             var contexts =  messages
                 .Select((x,i) =>
@@ -85,17 +81,15 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
     }
 
-    public async Task<Message<T>[]> GetNext(CancellationToken ct)
+    private async Task<Message<T>[]> GetNextCustomAsync(CancellationToken ct)
     {
         var list = new List<Message<T>>();
 
-        // var messages = await _consumer.BatchReceiveAsync(ct);
-        // return messages.ToArray();
         try
         {
             while (list.Count < _config.BatchSize && !ct.IsCancellationRequested)
             {
-                var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+                var cts = new CancellationTokenSource(25);
                 var message = await _consumer.ReceiveAsync(cts.Token);
                 list.Add(message);
             }
@@ -103,6 +97,21 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         catch (TaskCanceledException e)
         {
             // ignore
+        }
+
+        return list.ToArray();
+    }
+
+    private async Task<Message<T>[]> GetNextBatchAsync(CancellationToken ct)
+    {
+        var list = new List<Message<T>>();
+
+        while (list.Count < _config.BatchSize && !ct.IsCancellationRequested)
+        {
+            var message = await _consumer.BatchReceiveAsync(ct);
+            if (!message.Any())
+                return list.ToArray();
+            list.AddRange(message);
         }
 
         return list.ToArray();
@@ -142,6 +151,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             .ConsumerName(NameUtil.AssemblyNameWithGuid)
             .SubscriptionType(GetSubscriptionType(_config.SubscriptionType))
             .SubscriptionName(_config.SubscriptionName)
+            .ReceiverQueueSize(1000000000) // Allows non-persistent queues to not lose messages
             .Intercept(_intercept);
 
         if (_config.Topics != null)
@@ -154,9 +164,6 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                 _config.IsBeginning == true
                     ? SubscriptionInitialPosition.Earliest
                     : SubscriptionInitialPosition.Latest);
-
-        if (_config.BatchSize != null)
-            builder = builder.ReceiverQueueSize(_config.BatchSize.Value);
 
         var consumer = await builder.SubscribeAsync();
 

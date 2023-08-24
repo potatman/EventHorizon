@@ -18,7 +18,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
     private readonly List<string> _topics;
     private int? _batchSize = 1000;
     private bool? _isBeginning = true;
-    private TimeSpan _noBatchDelay = TimeSpan.FromMilliseconds(200);
+    private TimeSpan _noBatchDelay = TimeSpan.FromMilliseconds(10);
     private DateTime? _startDateTime;
     private string _subscriptionName = AssemblyUtil.AssemblyName;
     private Func<SubscriptionContext<T>, Task> _onBatch;

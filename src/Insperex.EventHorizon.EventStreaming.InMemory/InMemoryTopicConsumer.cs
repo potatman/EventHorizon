@@ -84,13 +84,7 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
         }
 
         // Delay if no messages
-        if (!list.Any())
-        {
-            await Task.Delay(_config.NoBatchDelay, ct);
-            return null;
-        }
-
-        return list.ToArray();
+        return !list.Any() ? null : list.ToArray();
     }
 
     public Task AckAsync(params MessageContext<T>[] messages)
