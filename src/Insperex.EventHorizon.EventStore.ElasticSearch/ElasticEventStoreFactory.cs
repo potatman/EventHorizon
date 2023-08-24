@@ -44,14 +44,6 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
             settings = settings.Authentication(new BasicAuthentication(options.Value.UserName, options.Value.Password));
 
         _client = new ElasticsearchClient(settings);
-
-
-        var indexSettings = new IndexSettings
-        {
-            NumberOfShards = 1,
-            NumberOfReplicas = 1,
-            ["key"] = "value"
-        };
     }
 
     public ICrudStore<Lock> GetLockStore()

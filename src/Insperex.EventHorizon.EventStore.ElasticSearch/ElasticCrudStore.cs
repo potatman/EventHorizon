@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Elastic.Clients.Elasticsearch;
+using Elastic.Clients.Elasticsearch.Core.Search;
 using Elastic.Clients.Elasticsearch.IndexManagement;
 using Elastic.Transport;
 using Elastic.Transport.Products.Elasticsearch;
@@ -59,7 +60,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.MultiGetAsync<TE>(m => m
             .Index(_dbName)
             .Ids(ids)
-            .Refresh(_elasticAttr?.Refresh.Value == Refresh.True.Value)
+            .Refresh(ElasticIndexAttribute.GetRefresh(_elasticAttr?.Refresh).Value == Refresh.True.Value)
         , ct);
 
         ThrowErrors(res);
@@ -72,17 +73,16 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.SearchAsync<Snapshot<TE>>(x =>
                 x.Index(_dbName)
                     .Size(1)
-                    .Source(s =>
-                        s.Includes(i =>
-                            i.Fields(f => f.UpdatedDate)
-                        )
-                    )
+                    .Source(new SourceConfig(new SourceFilter
+                    {
+                        Includes = new[] { "UpdatedDate" }
+                    }))
                     .Query(q =>
                         q.Bool(b =>
                             b.Filter(f => f.MatchAll())
                         )
                     )
-                    .Sort(s => s.Descending(f => f.UpdatedDate))
+                    .Sort(s => s.Field(f => f.UpdatedDate).Doc(d => d.Order(SortOrder.Desc)))
             , ct);
 
         ThrowErrors(res);
@@ -95,7 +95,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.BulkAsync(
             b => b.Index(_dbName)
                 .CreateMany(objs)
-                .Refresh(_elasticAttr?.Refresh), ct);
+                .Refresh(ElasticIndexAttribute.GetRefresh(_elasticAttr?.Refresh)), ct);
 
         var result = new DbResult { PassedIds = objs.Select(x => x.Id).ToArray() };
         if (res.Errors)
@@ -113,7 +113,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.BulkAsync(
             b => b.Index(_dbName)
                 .IndexMany(objs)
-                .Refresh(_elasticAttr?.Refresh), ct);
+                .Refresh(ElasticIndexAttribute.GetRefresh(_elasticAttr?.Refresh)), ct);
 
         var result = new DbResult { PassedIds = objs.Select(x => x.Id).ToArray(), FailedIds = Array.Empty<string>() };
         if (res.Errors)
@@ -132,7 +132,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.BulkAsync(
             b => b.Index(_dbName)
                 .DeleteMany(objs)
-                .Refresh(_elasticAttr?.Refresh), ct);
+                .Refresh(ElasticIndexAttribute.GetRefresh(_elasticAttr?.Refresh)), ct);
 
         ThrowErrors(res);
     }
