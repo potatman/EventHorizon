@@ -156,7 +156,6 @@ public class SenderIntegrationTest : IAsyncLifetime
     public async Task TestLargeSendAndReceiveAsync(int numOfEvents)
     {
         // Send Command
-        var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(10);
         var largeRequests  = Enumerable.Range(0, numOfEvents).Select(x => new Deposit(1)).ToArray();
         var allRequests = largeRequests.Select(x => new Request(Guid.NewGuid().ToString(), x)).ToArray();
         var responses = await _sender2.SendAndReceiveAsync<Account>(allRequests);
