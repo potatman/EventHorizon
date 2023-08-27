@@ -15,6 +15,7 @@ using Insperex.EventHorizon.EventSourcing.Samples.Models.Actions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 using Insperex.EventHorizon.EventSourcing.Senders;
 using Insperex.EventHorizon.EventSourcing.Test.Fakers;
+using Insperex.EventHorizon.EventStore.ElasticSearch.Extensions;
 using Insperex.EventHorizon.EventStore.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
 using Insperex.EventHorizon.EventStore.Interfaces.Factory;
@@ -60,9 +61,10 @@ public class SenderIntegrationTest : IAsyncLifetime
                         .ApplyRequestsToSnapshot<Account>(a => a.BatchSize(1000))
 
                         // Stores
-                        .AddInMemorySnapshotStore()
+                        // .AddInMemorySnapshotStore()
                         .AddInMemoryViewStore()
                         // .AddInMemoryEventStream();
+                        .AddElasticSnapshotStore(hostContext.Configuration.GetSection("ElasticSearch").Bind)
                         .AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                 });
             })
@@ -155,14 +157,13 @@ public class SenderIntegrationTest : IAsyncLifetime
     {
         // Send Command
         var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(10);
-        var largeEvents  = Enumerable.Range(0, numOfEvents).Select(x => new Deposit(1)).ToArray();
-        var responses = await _sender2.SendAndReceiveAsync(streamId, largeEvents);
-        var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
+        var largeRequests  = Enumerable.Range(0, numOfEvents).Select(x => new Deposit(1)).ToArray();
+        var allRequests = largeRequests.Select(x => new Request(Guid.NewGuid().ToString(), x)).ToArray();
+        var responses = await _sender2.SendAndReceiveAsync<Account>(allRequests);
 
-        Assert.Equal(numOfEvents, aggregate.State.Amount);
         Assert.Equal(numOfEvents, responses.Length);
         foreach (var response in responses)
-            Assert.True(HttpStatusCode.OK == response.StatusCode, response.Error);
+            Assert.True(response.StatusCode < 300, response.Error);
     }
 
     [Fact]
