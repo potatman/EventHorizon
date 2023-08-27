@@ -105,9 +105,9 @@ public class Aggregator<TParent, T>
 
     private void TriggerHandle<TM>(TM[] messages, Dictionary<string, Aggregate<T>> aggregateDict) where TM : ITopicMessage
     {
+        var sw = Stopwatch.StartNew();
         foreach (var message in messages)
         {
-            var sw = Stopwatch.StartNew();
             var agg = aggregateDict.GetValueOrDefault(message.StreamId);
             if (agg.Error != null)
                 continue;
@@ -124,8 +124,6 @@ public class Aggregator<TParent, T>
             {
                 agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
             }
-            _logger.LogInformation("TriggerHandled {Count} {Type} Aggregate(s) in {Duration}",
-                aggregateDict.Count, typeof(T).Name, sw.ElapsedMilliseconds);
         }
 
         // OnCompleted Hook
@@ -139,6 +137,8 @@ public class Aggregator<TParent, T>
             foreach (var agg in passed)
                 agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
         }
+        _logger.LogInformation("TriggerHandled {Count} {Type} Aggregate(s) in {Duration}",
+            aggregateDict.Count, typeof(T).Name, sw.ElapsedMilliseconds);
     }
 
     #region Save
