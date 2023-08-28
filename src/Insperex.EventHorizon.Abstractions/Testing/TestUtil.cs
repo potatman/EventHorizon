@@ -8,19 +8,18 @@ namespace Insperex.EventHorizon.Abstractions.Testing;
 
 public static class TestUtil
 {
-    public static void SetTestBucketIds(AttributeUtil attributeUtil, params Type[] types)
+    public static void SetTestBucketIds(AttributeUtil attributeUtil, string postfix, params Type[] types)
     {
-        var iteration = $"_{Guid.NewGuid().ToString()[..8]}";
         foreach (var type in types)
         {
             var snapAttr = attributeUtil.GetOne<SnapshotStoreAttribute>(type);
             var viewAttr = attributeUtil.GetOne<ViewStoreAttribute>(type);
             var streamAttrs = attributeUtil.GetAll<StreamAttribute>(type);
 
-            if (snapAttr != null) snapAttr.BucketId += iteration;
-            if (viewAttr != null) viewAttr.Database += iteration;
+            if (snapAttr != null) snapAttr.BucketId += postfix;
+            if (viewAttr != null) viewAttr.Database += postfix;
             foreach (var streamAttr in streamAttrs)
-                streamAttr.Topic += iteration;
+                streamAttr.Topic += postfix;
 
             // Update All
             if (snapAttr != null) attributeUtil.Set(type, snapAttr);

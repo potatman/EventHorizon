@@ -8,11 +8,12 @@ namespace Insperex.EventHorizon.Abstractions.Testing;
 
 public static class HostExtensions
 {
-    public static IHost AddTestBucketIds(this IHost host)
+    public static IHost AddTestBucketIds(this IHost host, string postfix = null)
     {
+        postfix ??= $"_{Guid.NewGuid().ToString()[..8]}";
         var attributeUtil = host.Services.GetRequiredService<AttributeUtil>();
-        TestUtil.SetTestBucketIds(attributeUtil, AssemblyUtil.StateDict.Values.ToArray());
-        TestUtil.SetTestBucketIds(attributeUtil, AssemblyUtil.ActionDict.Values.ToArray());
+        TestUtil.SetTestBucketIds(attributeUtil, postfix, AssemblyUtil.StateDict.Values.ToArray());
+        TestUtil.SetTestBucketIds(attributeUtil, postfix, AssemblyUtil.ActionDict.Values.ToArray());
         return host;
     }
 }
