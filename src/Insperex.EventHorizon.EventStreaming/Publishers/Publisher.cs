@@ -44,8 +44,8 @@ public class Publisher<T> : IAsyncDisposable
         try
         {
             await _producer.SendAsync(messages);
-            _logger.LogInformation("Publisher - Sent {Type}(s) {Count} {Topic} in {Duration}",
-                _typeName, messages.Length, _config.Topic, sw.ElapsedMilliseconds);
+            _logger.LogInformation("Publisher - Sent {Count} {Type}(s) in {Duration} {Topic} ",
+                messages.Length, _typeName, sw.ElapsedMilliseconds, _config.Topic);
             activity?.SetStatus(ActivityStatusCode.Ok);
 
             /*

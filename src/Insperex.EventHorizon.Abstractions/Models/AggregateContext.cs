@@ -16,7 +16,8 @@ namespace Insperex.EventHorizon.Abstractions.Models
 
         public void AddEvent(IEvent @event)
         {
-            Events.Add(@event);
+            if(@event != null)
+                Events.Add(@event);
         }
     }
 }
