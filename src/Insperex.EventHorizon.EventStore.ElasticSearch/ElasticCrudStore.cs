@@ -129,15 +129,13 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
 
     public async Task DeleteAsync(string[] ids, CancellationToken ct)
     {
-        var objs = ids.Select(x => new { Id = x }).ToArray();
-
-        // var req = new DeleteByQueryRequest(_dbName);
-        // req.Refresh = ElasticIndexAttribute.GetRefresh(_elasticAttr?.Refresh).Value == "true";
-        // req.Query = new Query(new SearchQuery());
         var res = await _client.DeleteByQueryAsync<TE>(_dbName, q => q
             .Query(rq => rq
                 .Ids(f => f.Values(ids))
             ).Refresh(ElasticIndexAttribute.GetRefresh(_elasticAttr?.Refresh).Value == "true"), ct);
+
+        // TODO: contact elastic and figure out why this doesn't work
+        // var objs = ids.Select(x => new { Id = x }).ToArray();
         // var res = await _client.BulkAsync(
         //     b => b.Index(_dbName)
         //         .DeleteMany(objs)
