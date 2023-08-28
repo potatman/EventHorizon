@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.Core.Search;
 using Elastic.Clients.Elasticsearch.IndexManagement;
+using Elastic.Clients.Elasticsearch.QueryDsl;
 using Elastic.Transport;
 using Elastic.Transport.Products.Elasticsearch;
 using Insperex.EventHorizon.EventStore.ElasticSearch.Attributes;
@@ -129,10 +130,19 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
     public async Task DeleteAsync(string[] ids, CancellationToken ct)
     {
         var objs = ids.Select(x => new { Id = x }).ToArray();
-        var res = await _client.BulkAsync(
-            b => b.Index(_dbName)
-                .DeleteMany(objs)
-                .Refresh(ElasticIndexAttribute.GetRefresh(_elasticAttr?.Refresh)), ct);
+
+        // var req = new DeleteByQueryRequest(_dbName);
+        // req.Refresh = ElasticIndexAttribute.GetRefresh(_elasticAttr?.Refresh).Value == "true";
+        // req.Query = new Query(new SearchQuery());
+        var res = await _client.DeleteByQueryAsync<TE>(_dbName, q => q
+            .Query(rq => rq
+                .Ids(f => f.Values(ids))
+            ).Refresh(ElasticIndexAttribute.GetRefresh(_elasticAttr?.Refresh).Value == "true"), ct);
+        // var res = await _client.BulkAsync(
+        //     b => b.Index(_dbName)
+        //         .DeleteMany(objs)
+        //         .Index(_dbName)
+        //         .Refresh(ElasticIndexAttribute.GetRefresh(_elasticAttr?.Refresh)), ct);
 
         ThrowErrors(res);
     }
