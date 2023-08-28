@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
+using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Insperex.EventHorizon.EventStreaming.Readers;
 using Insperex.EventHorizon.EventStreaming.Util;
@@ -96,7 +97,7 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
 
         if (_config.Keys?.Any() == true)
             builder = builder.KeyHashRange(_config.Keys
-                .Select(x => MurmurHash3.Hash(x) % 65536)
+                .Select(x => MurmurHash3.Hash(x) % PulsarTopicConstants.HashKey)
                 .Select(x => new Range(x, x))
                 .ToArray());
 
