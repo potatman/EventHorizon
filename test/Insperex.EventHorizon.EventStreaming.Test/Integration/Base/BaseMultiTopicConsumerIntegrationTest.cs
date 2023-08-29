@@ -25,14 +25,22 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     private readonly ListStreamConsumer<Event> _handler;
     private Publisher<Event> _publisher1;
     private Publisher<Event> _publisher2;
+    private readonly PartialNackListStreamConsumer _partialNackHandler;
 
     protected BaseMultiTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
+        var random = new Random((int)DateTime.UtcNow.Ticks);
+        UniqueTestId = $"{random.Next()}";
+
         _outputHelper = outputHelper;
         _streamingClient = provider.GetRequiredService<StreamingClient>();
         _timeout = TimeSpan.FromSeconds(20);
         _handler = new ListStreamConsumer<Event>();
+        _partialNackHandler = new(_outputHelper, 0.03, 3, 2,
+            100, false);
     }
+
+    protected string UniqueTestId { get; init; }
 
     public async Task InitializeAsync()
     {
@@ -86,5 +94,30 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
         // Assert
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);
         AssertUtil.AssertEventsValid(_events, _handler.List.ToArray());
+    }
+
+    [Fact]
+    public async Task TestSingleConsumerWithFailures()
+    {
+        // Consume
+        await using var subscription = await _streamingClient.CreateSubscription<Event>()
+            .SubscriptionName($"Fails_{UniqueTestId}")
+            .AddStream<Feed1PriceChanged>()
+            .AddStream<Feed2PriceChanged>()
+            .BatchSize(_events.Length / 10)
+            .OnBatch(_partialNackHandler.OnBatch) // Will nack at least some messages.
+            .Build()
+            .StartAsync();
+
+        // Wait for List
+        await WaitUtil.WaitForTrue(() => _events.Length <= _partialNackHandler.List.Count, _timeout);
+
+        _partialNackHandler.Report();
+        Assert.True(_partialNackHandler.RedeliveredMessages == 0,
+            $"There were {_partialNackHandler.RedeliveredMessages} redeliveries of previously-accepted messages. Should not have any!");
+
+        // Assert
+        // Expecting the advanced failure handling to preserve message ordering despite the nacks.
+        AssertUtil.AssertEventsValid(_events, _partialNackHandler.List.ToArray());
     }
 }
