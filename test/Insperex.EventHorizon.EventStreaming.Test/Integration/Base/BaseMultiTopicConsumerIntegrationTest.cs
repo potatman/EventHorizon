@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Samples.Models;
+using Insperex.EventHorizon.EventStreaming.Subscriptions.Backoff;
 using Insperex.EventHorizon.EventStreaming.Test.Fakers;
 using Insperex.EventHorizon.EventStreaming.Test.Shared;
 using Insperex.EventHorizon.EventStreaming.Test.Util;
@@ -105,6 +106,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
             .AddStream<Feed1PriceChanged>()
             .AddStream<Feed2PriceChanged>()
             .BatchSize(_events.Length / 10)
+            .FailedMessageRedeliveryDelay(TimeSpan.FromMilliseconds(5))
             .OnBatch(_partialNackHandler.OnBatch) // Will nack at least some messages.
             .Build()
             .StartAsync();
