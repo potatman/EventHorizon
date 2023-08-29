@@ -152,6 +152,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             .SubscriptionType(GetSubscriptionType(_config.SubscriptionType))
             .SubscriptionName(_config.SubscriptionName)
             .ReceiverQueueSize(1000000000) // Allows non-persistent queues to not lose messages
+            .NegativeAckRedeliveryDelay(TimeSpan.FromMilliseconds(5))
             .Intercept(_intercept);
 
         if (_config.Topics != null)
