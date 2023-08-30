@@ -66,7 +66,16 @@ public class PartialNackListStreamConsumer : IStreamConsumer<Event>
                     _outputHelper.WriteLine($"Handler: {MessageKey(message)}: (ignore: accepted already!!)");
             }
 
-            if (!alreadyNackedThisStream && !alreadyAcceptedThisMessage)
+            if (alreadyNackedThisStream)
+            {
+                // This is a message from a stream that was already nacked in this batch. We'll nack it in the
+                // context here, but for internal reporting purposes we will not mark it NACKed since it wasn't
+                // the original nacked message.
+                // Nacking it in the context here hopefully prompts the underlying streaming provider to redeliver
+                // this one as well as the originally-nacked one.
+                context.Nack(message);
+            }
+            else if (!alreadyAcceptedThisMessage)
             {
                 _streams.Add(message.Data.StreamId);
 
@@ -150,6 +159,6 @@ public class PartialNackListStreamConsumer : IStreamConsumer<Event>
 
     private static string MessageKey(MessageContext<Event> message)
     {
-        return $"{message.TopicData.Topic}-{message.Data.StreamId}-{message.TopicData.Id}";
+        return $"{message.TopicData.Topic}-{message.Data.StreamId}-{message.Data.SequenceId}";
     }
 }

@@ -11,20 +11,29 @@ public static class AssertUtil
 {
     public static void AssertEventsValid(Event[] expected, params MessageContext<Event>[][] results)
     {
+        AssertEventsValid(expected, true, results);
+    }
+
+    public static void AssertEventsValid(Event[] expected, bool assertOrder, params MessageContext<Event>[][] results)
+    {
         var actual = results.SelectMany(x => x).ToArray();
 
         // Ensure each list has results
         for (var i = 0; i < results.Length; i++)
             Assert.True(results[i].Any(), $"list[{i}] is empty, all lists should receive events");
 
-        // Assert StreamId Order is Correct (within topic)
-        var lookup1 = actual.ToLookup(x => new { x.TopicData.Topic, x.Data.StreamId });
-        var keys = lookup1.Select(x => x.Key).ToArray();
-        foreach (var key in keys)
+        if (assertOrder)
         {
-            var ids = lookup1[key].Select(x => x.Data.SequenceId).ToArray();
-            var orderedIds = ids.OrderBy(x => x).ToArray();
-            Assert.True(ids.SequenceEqual(orderedIds), $"{key}{Environment.NewLine} Expected => [{string.Join(",", orderedIds)}]{Environment.NewLine}Actual => [{string.Join(",", ids)}]");
+            // Assert StreamId Order is Correct (within topic)
+            var lookup1 = actual.ToLookup(x => new { x.TopicData.Topic, x.Data.StreamId });
+            var keys = lookup1.Select(x => x.Key).ToArray();
+            foreach (var key in keys)
+            {
+                var ids = lookup1[key].Select(x => x.Data.SequenceId).ToArray();
+                var orderedIds = ids.OrderBy(x => x).ToArray();
+                Assert.True(ids.SequenceEqual(orderedIds),
+                    $"{key}{Environment.NewLine} Expected => [{string.Join(",", orderedIds)}]{Environment.NewLine}Actual => [{string.Join(",", ids)}]");
+            }
         }
 
         // Assert Count

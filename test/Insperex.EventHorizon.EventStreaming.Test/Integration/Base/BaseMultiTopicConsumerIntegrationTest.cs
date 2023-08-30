@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Samples.Models;
-using Insperex.EventHorizon.EventStreaming.Subscriptions.Backoff;
 using Insperex.EventHorizon.EventStreaming.Test.Fakers;
 using Insperex.EventHorizon.EventStreaming.Test.Shared;
 using Insperex.EventHorizon.EventStreaming.Test.Util;
@@ -18,15 +17,14 @@ namespace Insperex.EventHorizon.EventStreaming.Test.Integration.Base;
 [Trait("Category", "Integration")]
 public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
 {
-    private readonly ITestOutputHelper _outputHelper;
-    private readonly TimeSpan _timeout;
+    protected readonly ITestOutputHelper _outputHelper;
+    protected readonly TimeSpan _timeout;
     private Stopwatch _stopwatch;
-    private Event[] _events;
-    private readonly StreamingClient _streamingClient;
     private readonly ListStreamConsumer<Event> _handler;
+    protected readonly StreamingClient _streamingClient;
+    protected Event[] _events;
     private Publisher<Event> _publisher1;
     private Publisher<Event> _publisher2;
-    private readonly PartialNackListStreamConsumer _partialNackHandler;
 
     protected BaseMultiTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
@@ -37,11 +35,9 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
         _streamingClient = provider.GetRequiredService<StreamingClient>();
         _timeout = TimeSpan.FromSeconds(20);
         _handler = new ListStreamConsumer<Event>();
-        _partialNackHandler = new(_outputHelper, 0.03, 3, 2,
-            100, false);
     }
 
-    protected string UniqueTestId { get; init; }
+    protected string UniqueTestId { get; }
 
     public async Task InitializeAsync()
     {
@@ -95,31 +91,5 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
         // Assert
         await WaitUtil.WaitForTrue(() => _events.Length <= _handler.List.Count, _timeout);
         AssertUtil.AssertEventsValid(_events, _handler.List.ToArray());
-    }
-
-    [Fact]
-    public async Task TestSingleConsumerWithFailures()
-    {
-        // Consume
-        await using var subscription = await _streamingClient.CreateSubscription<Event>()
-            .SubscriptionName($"Fails_{UniqueTestId}")
-            .AddStream<Feed1PriceChanged>()
-            .AddStream<Feed2PriceChanged>()
-            .BatchSize(_events.Length / 10)
-            .FailedMessageRedeliveryDelay(TimeSpan.FromMilliseconds(5))
-            .OnBatch(_partialNackHandler.OnBatch) // Will nack at least some messages.
-            .Build()
-            .StartAsync();
-
-        // Wait for List
-        await WaitUtil.WaitForTrue(() => _events.Length <= _partialNackHandler.List.Count, _timeout);
-
-        _partialNackHandler.Report();
-        Assert.True(_partialNackHandler.RedeliveredMessages == 0,
-            $"There were {_partialNackHandler.RedeliveredMessages} redeliveries of previously-accepted messages. Should not have any!");
-
-        // Assert
-        // Expecting the advanced failure handling to preserve message ordering despite the nacks.
-        AssertUtil.AssertEventsValid(_events, _partialNackHandler.List.ToArray());
     }
 }
