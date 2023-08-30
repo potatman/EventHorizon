@@ -18,10 +18,10 @@ namespace Insperex.EventHorizon.EventStreaming.Test.Integration.Base;
 public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
 {
     protected readonly ITestOutputHelper _outputHelper;
+    protected readonly StreamingClient _streamingClient;
     private Stopwatch _stopwatch;
     protected readonly TimeSpan _timeout;
     protected Event[] _events;
-    protected readonly StreamingClient _streamingClient;
     private readonly ListStreamConsumer<Event> _handler;
     private Publisher<Event> _publisher;
 

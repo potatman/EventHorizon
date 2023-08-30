@@ -20,9 +20,9 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     protected readonly ITestOutputHelper _outputHelper;
     protected readonly TimeSpan _timeout;
     private Stopwatch _stopwatch;
-    private readonly ListStreamConsumer<Event> _handler;
-    protected readonly StreamingClient _streamingClient;
     protected Event[] _events;
+    protected readonly StreamingClient _streamingClient;
+    private readonly ListStreamConsumer<Event> _handler;
     private Publisher<Event> _publisher1;
     private Publisher<Event> _publisher2;
 
