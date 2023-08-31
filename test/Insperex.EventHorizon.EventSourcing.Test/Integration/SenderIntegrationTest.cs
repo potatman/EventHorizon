@@ -46,6 +46,7 @@ public class SenderIntegrationTest : IAsyncLifetime
     private readonly Sender _sender2;
     private readonly EventSourcingClient<Account> _eventSourcingClient;
     private readonly StreamingClient _streamingClient;
+    private readonly IHost _consumerHost;
 
     public SenderIntegrationTest(ITestOutputHelper output)
     {
@@ -61,10 +62,33 @@ public class SenderIntegrationTest : IAsyncLifetime
                         // Stores
                         .AddInMemoryViewStore()
                         .AddElasticSnapshotStore(hostContext.Configuration.GetSection("ElasticSearch").Bind)
-                        .AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind)
+                        .AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
+                });
+            })
+            .UseSerilog((_, config) =>
+            {
+                config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                    .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
+                    .Destructure.UsingAttributes();
+            })
+            .UseEnvironment("test")
+            .Build()
+            .AddTestBucketIds(postfix);
+
+        _consumerHost =  Host.CreateDefaultBuilder(Array.Empty<string>())
+            .ConfigureServices((hostContext, services) =>
+            {
+                services.AddEventHorizon(x =>
+                {
+                    x.AddEventSourcing()
 
                         // Hosts
-                        .ApplyRequestsToSnapshot<Account>(a => a.BatchSize(10000));
+                        .ApplyRequestsToSnapshot<Account>(a => a.BatchSize(10000))
+
+                        // Stores
+                        .AddInMemoryViewStore()
+                        .AddElasticSnapshotStore(hostContext.Configuration.GetSection("ElasticSearch").Bind)
+                        .AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                 });
             })
             .UseSerilog((_, config) =>
@@ -93,6 +117,7 @@ public class SenderIntegrationTest : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        await _consumerHost.StartAsync();
         await _senderHost.StartAsync();
         _stopwatch = Stopwatch.StartNew();
     }
@@ -104,6 +129,7 @@ public class SenderIntegrationTest : IAsyncLifetime
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Account));
         await _streamingClient.GetAdmin<Request>().DeleteTopicAsync(typeof(Account));
         await _senderHost.StopAsync();
+        await _consumerHost.StopAsync();
         _senderHost.Dispose();
     }
 
