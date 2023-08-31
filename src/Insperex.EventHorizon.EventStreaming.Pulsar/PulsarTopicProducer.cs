@@ -54,23 +54,27 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     {
         var producer = await GetProducerAsync();
         var tasks = messages.AsParallel()
-            .Select(async message =>
+            .GroupBy(x => x.StreamId)
+            .Select(async grouping =>
             {
-                // var type = AssemblyUtil.ActionDict[message.Type];
-                // var func = _attributeUtil.GetOnePropertyInfo<StreamPartitionKeyAttribute>(type);
-                // var key = func?.GetValue(message)?.ToString() ?? message.StreamId;
-                var key = message.StreamId;
+                foreach (var message in grouping)
+                {
+                    // var type = AssemblyUtil.ActionDict[message.Type];
+                    // var func = _attributeUtil.GetOnePropertyInfo<StreamPartitionKeyAttribute>(type);
+                    // var key = func?.GetValue(message)?.ToString() ?? message.StreamId;
+                    var key = message.StreamId;
 
-                if (_isHashed)
-                    key = (MurmurHash3.Hash(key) % PulsarTopicConstants.HashKey).ToString(CultureInfo.InvariantCulture);
+                    if (_isHashed)
+                        key = (MurmurHash3.Hash(key) % PulsarTopicConstants.HashKey).ToString(CultureInfo.InvariantCulture);
 
-                var msg = producer.NewMessage(message, key);
+                    var msg = producer.NewMessage(message, key);
 
-                // Send Message
-                if (_config.IsGuaranteed)
-                    await producer.SendAsync(msg);
-                else
-                    await producer.SendAndForgetAsync(msg);
+                    // Send Message
+                    if (_config.IsGuaranteed)
+                        await producer.SendAsync(msg);
+                    else
+                        await producer.SendAndForgetAsync(msg);
+                }
             })
             .ToArray();
 
