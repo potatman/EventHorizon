@@ -121,32 +121,39 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     public async Task AckAsync(params MessageContext<T>[] messages)
     {
         if (messages?.Any() != true) return;
-        foreach (var message in messages)
-        {
-            var unackedMessage = _unackedMessages[message.TopicData.Id];
-            await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
-            _unackedMessages.Remove(message.TopicData.Id);
-        }
+        var tasks = messages
+            .AsParallel()
+            .Select(async message =>
+            {
+
+                var unackedMessage = _unackedMessages[message.TopicData.Id];
+                await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
+                _unackedMessages.Remove(message.TopicData.Id);
+            })
+            .ToArray();
+
+        await Task.WhenAll(tasks);
     }
 
     public async Task NackAsync(params MessageContext<T>[] messages)
     {
         if (messages?.Any() != true) return;
-        foreach (var message in messages)
-        {
-            var unackedMessage = _unackedMessages[message.TopicData.Id];
-
-            if (_config.RedeliverFailedMessages)
+        var tasks = messages
+            .AsParallel()
+            .Select(async message =>
             {
-                await _consumer.NegativeAcknowledge(unackedMessage.MessageId);
-            }
-            else
-            {
-                await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
-            }
+                var unackedMessage = _unackedMessages[message.TopicData.Id];
 
-            _unackedMessages.Remove(message.TopicData.Id);
-        }
+                if (_config.RedeliverFailedMessages)
+                    await _consumer.NegativeAcknowledge(unackedMessage.MessageId);
+                else
+                    await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
+
+                _unackedMessages.Remove(message.TopicData.Id);
+            })
+            .ToArray();
+
+        await Task.WhenAll(tasks);
     }
 
     private async Task<IConsumer<T>> GetConsumerAsync()
