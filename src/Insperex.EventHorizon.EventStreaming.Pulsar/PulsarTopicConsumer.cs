@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,11 +9,13 @@ using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
+using Insperex.EventHorizon.EventStreaming.Subscriptions.Backoff;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 using Insperex.EventHorizon.EventStreaming.Util;
 using Pulsar.Client.Api;
 using Pulsar.Client.Common;
 using Pulsar.Client.Otel;
+using NotSupportedException = System.NotSupportedException;
 using SubscriptionType = Pulsar.Client.Common.SubscriptionType;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
@@ -49,13 +50,9 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     {
         try
         {
-            // var messages = await _consumer.BatchReceiveAsync(ct);
-            var messages = await GetNext(ct);
+            var messages = await GetNextCustomAsync(ct);
             if (!messages.Any())
-            {
-                await Task.Delay(_config.NoBatchDelay, ct);
                 return null;
-            }
 
             var contexts =  messages
                 .Select((x,i) =>
@@ -86,17 +83,15 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
     }
 
-    public async Task<Message<T>[]> GetNext(CancellationToken ct)
+    private async Task<Message<T>[]> GetNextCustomAsync(CancellationToken ct)
     {
         var list = new List<Message<T>>();
 
-        // var messages = await _consumer.BatchReceiveAsync(ct);
-        // return messages.ToArray();
         try
         {
             while (list.Count < _config.BatchSize && !ct.IsCancellationRequested)
             {
-                var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+                var cts = new CancellationTokenSource(25);
                 var message = await _consumer.ReceiveAsync(cts.Token);
                 list.Add(message);
             }
@@ -104,6 +99,21 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         catch (TaskCanceledException)
         {
             // ignore
+        }
+
+        return list.ToArray();
+    }
+
+    private async Task<Message<T>[]> GetNextBatchAsync(CancellationToken ct)
+    {
+        var list = new List<Message<T>>();
+
+        while (list.Count < _config.BatchSize && !ct.IsCancellationRequested)
+        {
+            var message = await _consumer.BatchReceiveAsync(ct);
+            if (!message.Any())
+                return list.ToArray();
+            list.AddRange(message);
         }
 
         return list.ToArray();
@@ -118,32 +128,39 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     private async Task AckAsync(params MessageContext<T>[] messages)
     {
         if (messages?.Any() != true) return;
-        foreach (var message in messages)
-        {
-            var unackedMessage = _unackedMessages[message.TopicData.Id];
-            await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
-            _unackedMessages.Remove(message.TopicData.Id);
-        }
+        var tasks = messages
+            .AsParallel()
+            .Select(async message =>
+            {
+
+                var unackedMessage = _unackedMessages[message.TopicData.Id];
+                await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
+                _unackedMessages.Remove(message.TopicData.Id);
+            })
+            .ToArray();
+
+        await Task.WhenAll(tasks);
     }
 
     private async Task NackAsync(params MessageContext<T>[] messages)
     {
         if (messages?.Any() != true) return;
-        foreach (var message in messages)
-        {
-            var unackedMessage = _unackedMessages[message.TopicData.Id];
-
-            if (_config.RedeliverFailedMessages)
+        var tasks = messages
+            .AsParallel()
+            .Select(async message =>
             {
-                await _consumer.NegativeAcknowledge(unackedMessage.MessageId);
-            }
-            else
-            {
-                await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
-            }
+                var unackedMessage = _unackedMessages[message.TopicData.Id];
 
-            _unackedMessages.Remove(message.TopicData.Id);
-        }
+                if (_config.RedeliverFailedMessages)
+                    await _consumer.NegativeAcknowledge(unackedMessage.MessageId);
+                else
+                    await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
+
+                _unackedMessages.Remove(message.TopicData.Id);
+            })
+            .ToArray();
+
+        await Task.WhenAll(tasks);
     }
 
     private async Task<IConsumer<T>> GetConsumerAsync()
@@ -158,6 +175,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             .ConsumerName(NameUtil.AssemblyNameWithGuid)
             .SubscriptionType(_config.SubscriptionType.ToPulsarSubscriptionType())
             .SubscriptionName(_config.SubscriptionName)
+            .ReceiverQueueSize(1000000000) // Allows non-persistent queues to not lose messages
             .Intercept(_intercept);
 
         if (_config.Topics != null)
@@ -171,8 +189,18 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                     ? SubscriptionInitialPosition.Earliest
                     : SubscriptionInitialPosition.Latest);
 
-        if (_config.BatchSize != null)
-            builder = builder.ReceiverQueueSize(_config.BatchSize.Value);
+        if (_config.BackoffStrategy != null)
+        {
+            if (_config.BackoffStrategy is IConstantBackoffStrategy strategy)
+            {
+                builder = builder.NegativeAckRedeliveryDelay(strategy.Delay);
+            }
+            else
+            {
+                throw new NotSupportedException(
+                    "Only constant backoff strategies supported for the default consumer.");
+            }
+        }
 
         var consumer = await builder.SubscribeAsync();
 

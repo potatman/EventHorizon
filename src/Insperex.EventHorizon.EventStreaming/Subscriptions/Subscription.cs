@@ -19,11 +19,9 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
     private readonly ILogger<Subscription<T>> _logger;
     private readonly ITopicConsumer<T> _consumer;
     private readonly ITopicAdmin<T> _admin;
-    private readonly ConcurrentQueue<MessageContext<T>[]> _queue = new();
     private bool _disposed;
     private bool _running;
     private bool _stopped;
-    private readonly int _queueLimit;
 
     public Subscription(IStreamFactory factory, SubscriptionConfig<T> config, ILogger<Subscription<T>> logger)
     {
@@ -31,7 +29,6 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         _logger = logger;
         _admin = factory.CreateAdmin<T>();
         _consumer = factory.CreateConsumer(_config);
-        _queueLimit = 5;
     }
 
     public async Task<Subscription<T>> StartAsync()
@@ -46,15 +43,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         _logger.LogInformation("Subscription - Started {@Config}", _config);
 
         // Start Loop
-        if (_config.IsPreload)
-        {
-            Task.Run(EnqueueLoop);
-            Task.Run(DequeueLoop);
-        }
-        else
-        {
-            Task.Run(BasicLoop);
-        }
+        Task.Run(BasicLoop);
 
         return this;
     }
@@ -104,66 +93,13 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         _stopped = true;
     }
 
-    private async void EnqueueLoop()
-    {
-        while (_running)
-        {
-            try
-            {
-                if ( _queue.Count <= _queueLimit)
-                {
-                    var batch = await LoadEvents();
-                    if (batch?.Any() == true)
-                        _queue.Enqueue(batch);
-                    else
-                        await Task.Delay(_config.NoBatchDelay);
-                }
-                else
-                    await Task.Delay(_config.NoBatchDelay);
-            }
-            catch (TaskCanceledException)
-            {
-                // Ignore Cancels
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Subscription - Unhandled Exception {Message} {Subscription}", ex.Message, _config.SubscriptionName);
-            }
-        }
-        _stopped = true;
-    }
-
-    private async void DequeueLoop()
-    {
-        while (_running)
-        {
-            try
-            {
-                var any = _queue.TryDequeue(out var batch);
-                if (any)
-                    await OnEvents(batch);
-                else
-                    await Task.Delay(_config.NoBatchDelay);
-            }
-            catch (TaskCanceledException)
-            {
-                // Ignore Cancels
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Subscription - Unhandled Exception {Message} {Subscription}", ex.Message, _config.SubscriptionName);
-            }
-        }
-        _stopped = true;
-    }
-
     private async Task<MessageContext<T>[]> LoadEvents()
     {
         using var activity = TraceConstants.ActivitySource.StartActivity();
         try
         {
             var sw = Stopwatch.StartNew();
-            var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             var batch = await _consumer.NextBatchAsync(cts.Token);
             activity?.SetTag(TraceConstants.Tags.Count, batch?.Length ?? 0);
             activity?.SetStatus(ActivityStatusCode.Ok);

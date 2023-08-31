@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,11 +18,11 @@ namespace Insperex.EventHorizon.EventStreaming.Test.Integration.Base;
 [Trait("Category", "Integration")]
 public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
 {
-    private readonly ITestOutputHelper _outputHelper;
-    private readonly TimeSpan _timeout;
+    protected readonly ITestOutputHelper _outputHelper;
+    protected readonly TimeSpan _timeout;
     private Stopwatch _stopwatch;
-    private Event[] _events;
-    private readonly StreamingClient _streamingClient;
+    protected Event[] _events;
+    protected readonly StreamingClient _streamingClient;
     private readonly ListStreamConsumer<Event> _handler;
     private Publisher<Event> _publisher1;
     private Publisher<Event> _publisher2;
@@ -101,7 +101,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     }
 
     [Fact]
-    public async Task TestSingleConsumerWithFailures()
+    public async Task TestSingleConsumerWithAdvancedFailures()
     {
         // Consume
         await using var subscription = await _streamingClient.CreateSubscription<Event>()

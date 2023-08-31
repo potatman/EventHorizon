@@ -90,8 +90,6 @@ public class Aggregator<TParent, T>
 
     public async Task<Response[]> HandleAsync<TM>(TM[] messages, CancellationToken ct) where TM : ITopicMessage
     {
-        _logger.LogInformation("{State} Handling {Count} {Type}", typeof(T).Name, messages.Length, typeof(TM).Name);
-
         // Load Aggregate
         var streamIds = messages.Select(x => x.StreamId).Distinct().ToArray();
         var aggregateDict = await GetAggregatesFromStatesAsync(streamIds, ct);
@@ -107,6 +105,7 @@ public class Aggregator<TParent, T>
 
     private void TriggerHandle<TM>(TM[] messages, Dictionary<string, Aggregate<T>> aggregateDict) where TM : ITopicMessage
     {
+        var sw = Stopwatch.StartNew();
         foreach (var message in messages)
         {
             var agg = aggregateDict.GetValueOrDefault(message.StreamId);
@@ -138,6 +137,8 @@ public class Aggregator<TParent, T>
             foreach (var agg in passed)
                 agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
         }
+        _logger.LogInformation("TriggerHandled {Count} {Type} Aggregate(s) in {Duration}",
+            aggregateDict.Count, typeof(T).Name, sw.ElapsedMilliseconds);
     }
 
     #region Save
@@ -176,6 +177,7 @@ public class Aggregator<TParent, T>
         try
         {
             // Save Snapshots and then track failures
+            var sw = Stopwatch.StartNew();
             var parents = aggregateDict.Values
                 .Where(x => x.Error == null)
                 .Where(x => x.IsDirty)
@@ -201,6 +203,8 @@ public class Aggregator<TParent, T>
                     HttpStatusCode.Created : HttpStatusCode.OK);
                 aggregateDict[id].SequenceId++;
             }
+            _logger.LogInformation("Saved {Count} {Type} Aggregate(s) in {Duration}",
+                aggregateDict.Count, typeof(T).Name, sw.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
@@ -284,6 +288,7 @@ public class Aggregator<TParent, T>
         try
         {
             // Load Snapshots
+            var sw = Stopwatch.StartNew();
             streamIds = streamIds.Distinct().ToArray();
             var snapshots = await _crudStore.GetAllAsync(streamIds, ct);
             var parentDict = snapshots.ToDictionary(x => x.Id);
@@ -304,6 +309,8 @@ public class Aggregator<TParent, T>
                 foreach (var agg in passed)
                     agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
             }
+            _logger.LogInformation("Loaded {Count} {Type} Aggregate(s) in {Duration}",
+                aggregateDict.Count, typeof(T).Name, sw.ElapsedMilliseconds);
 
             return aggregateDict;
         }

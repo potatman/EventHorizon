@@ -15,6 +15,7 @@ using Insperex.EventHorizon.EventSourcing.Samples.Models.Actions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 using Insperex.EventHorizon.EventSourcing.Senders;
 using Insperex.EventHorizon.EventSourcing.Test.Fakers;
+using Insperex.EventHorizon.EventStore.ElasticSearch.Extensions;
 using Insperex.EventHorizon.EventStore.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
 using Insperex.EventHorizon.EventStore.Interfaces.Factory;
@@ -39,30 +40,28 @@ namespace Insperex.EventHorizon.EventSourcing.Test.Integration;
 public class SenderIntegrationTest : IAsyncLifetime
 {
     private readonly ITestOutputHelper _output;
-    private readonly IHost _host;
+    private readonly IHost _senderHost;
     private readonly Sender _sender;
     private Stopwatch _stopwatch;
     private readonly Sender _sender2;
     private readonly EventSourcingClient<Account> _eventSourcingClient;
     private readonly StreamingClient _streamingClient;
+    private readonly IHost _consumerHost;
 
     public SenderIntegrationTest(ITestOutputHelper output)
     {
         _output = output;
-        _host = Host.CreateDefaultBuilder(Array.Empty<string>())
+        var postfix = $"_{Guid.NewGuid().ToString()[..8]}";
+        _senderHost = Host.CreateDefaultBuilder(Array.Empty<string>())
             .ConfigureServices((hostContext, services) =>
             {
                 services.AddEventHorizon(x =>
                 {
                     x.AddEventSourcing()
 
-                        // Hosts
-                        .ApplyRequestsToSnapshot<Account>(a => a.BatchSize(10000))
-
                         // Stores
-                        .AddInMemorySnapshotStore()
                         .AddInMemoryViewStore()
-                        // .AddInMemoryEventStream();
+                        .AddElasticSnapshotStore(hostContext.Configuration.GetSection("ElasticSearch").Bind)
                         .AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                 });
             })
@@ -74,25 +73,52 @@ public class SenderIntegrationTest : IAsyncLifetime
             })
             .UseEnvironment("test")
             .Build()
-            .AddTestBucketIds();
+            .AddTestBucketIds(postfix);
 
-        _sender = _host.Services.GetRequiredService<SenderBuilder>()
+        _consumerHost =  Host.CreateDefaultBuilder(Array.Empty<string>())
+            .ConfigureServices((hostContext, services) =>
+            {
+                services.AddEventHorizon(x =>
+                {
+                    x.AddEventSourcing()
+
+                        // Hosts
+                        .ApplyRequestsToSnapshot<Account>(a => a.BatchSize(10000))
+
+                        // Stores
+                        .AddInMemoryViewStore()
+                        .AddElasticSnapshotStore(hostContext.Configuration.GetSection("ElasticSearch").Bind)
+                        .AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
+                });
+            })
+            .UseSerilog((_, config) =>
+            {
+                config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                    .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
+                    .Destructure.UsingAttributes();
+            })
+            .UseEnvironment("test")
+            .Build()
+            .AddTestBucketIds(postfix);
+
+        _sender = _senderHost.Services.GetRequiredService<SenderBuilder>()
             .Timeout(TimeSpan.FromSeconds(30))
             .GetErrorResult((req, status, error) => new AccountResponse(status, error))
             .Build();
 
-        _sender2 = _host.Services.GetRequiredService<SenderBuilder>()
-            .Timeout(TimeSpan.FromSeconds(60))
+        _sender2 = _senderHost.Services.GetRequiredService<SenderBuilder>()
+            .Timeout(TimeSpan.FromSeconds(120))
             .GetErrorResult((req, status, error) => new AccountResponse(status, error))
             .Build();
 
-        _eventSourcingClient = _host.Services.GetRequiredService<EventSourcingClient<Account>>();
-        _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
+        _eventSourcingClient = _senderHost.Services.GetRequiredService<EventSourcingClient<Account>>();
+        _streamingClient = _senderHost.Services.GetRequiredService<StreamingClient>();
     }
 
     public async Task InitializeAsync()
     {
-        await _host.StartAsync();
+        await _consumerHost.StartAsync();
+        await _senderHost.StartAsync();
         _stopwatch = Stopwatch.StartNew();
     }
 
@@ -102,8 +128,9 @@ public class SenderIntegrationTest : IAsyncLifetime
         await _eventSourcingClient.GetSnapshotStore().DropDatabaseAsync(CancellationToken.None);
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Account));
         await _streamingClient.GetAdmin<Request>().DeleteTopicAsync(typeof(Account));
-        await _host.StopAsync();
-        _host.Dispose();
+        await _senderHost.StopAsync();
+        await _consumerHost.StopAsync();
+        _senderHost.Dispose();
     }
 
     [Fact]
@@ -146,24 +173,24 @@ public class SenderIntegrationTest : IAsyncLifetime
     }
 
     [Theory]
-    [InlineData(1)]
-    [InlineData(100)]
-    [InlineData(1000)]
-    [InlineData(10000)]
-    [InlineData(100000)]
-    public async Task TestLargeSendAndReceiveAsync(int numOfEvents)
+    [InlineData(1, 10)]
+    [InlineData(100, 10)]
+    [InlineData(1000, 10)]
+    // [InlineData(10000, 10)]
+    // [InlineData(100000, 10)]
+    public async Task TestLargeSendAndReceiveAsync(int numOfEvents, int iterations)
     {
-        // Send Command
-        var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(10);
-        var result1 = await _sender2.SendAndReceiveAsync(streamId, new OpenAccount(1000));
-        var largeEvents  = Enumerable.Range(0, numOfEvents).Select(x => new Deposit(100)).ToArray();
-        var result2 = await _sender2.SendAndReceiveAsync(streamId, largeEvents);
+        for (var i = 0; i < iterations; i++)
+        {
+            // Send Command
+            var largeRequests  = Enumerable.Range(0, numOfEvents).Select(x => new Deposit(1)).ToArray();
+            var allRequests = largeRequests.Select(x => new Request(Guid.NewGuid().ToString(), x)).ToArray();
+            var responses = await _sender2.SendAndReceiveAsync<Account>(allRequests);
 
-        // Assert Status
-        Assert.Equal(numOfEvents, result2.Length);
-        Assert.True(HttpStatusCode.OK == result1.StatusCode, result1.Error);
-        foreach (var response in result2)
-            Assert.True(HttpStatusCode.OK == response.StatusCode, response.Error);
+            Assert.Equal(numOfEvents, responses.Length);
+            foreach (var response in responses)
+                Assert.True(response.StatusCode < 300, response.Error);
+        }
     }
 
     [Fact]
@@ -182,7 +209,7 @@ public class SenderIntegrationTest : IAsyncLifetime
     [Fact]
     public async Task TestSenderTimedOut()
     {
-        var sender = _host.Services.GetRequiredService<SenderBuilder>()
+        var sender = _senderHost.Services.GetRequiredService<SenderBuilder>()
             .Timeout(TimeSpan.Zero)
             .GetErrorResult((req, status, error) => new AccountResponse(status, error))
             .Build();

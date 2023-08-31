@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
@@ -19,12 +20,12 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
     private readonly List<string> _topics;
     private int? _batchSize = 1000;
     private bool? _isBeginning = true;
-    private TimeSpan _noBatchDelay = TimeSpan.FromMilliseconds(200);
+    private TimeSpan _noBatchDelay = TimeSpan.FromMilliseconds(10);
     private DateTime? _startDateTime;
     private string _subscriptionName = AssemblyUtil.AssemblyName;
     private bool _redeliverFailedMessages = true;
     private bool _guaranteeMessageOrderOnFailure;
-    private IBackoffStrategy _backoffStrategy;
+    private IBackoffStrategy _backoffStrategy = new ConstantBackoffStrategy {Delay = TimeSpan.FromMilliseconds(10)};
     private Func<SubscriptionContext<T>, Task> _onBatch;
     private SubscriptionType _subscriptionType = Abstractions.Models.SubscriptionType.KeyShared;
     private bool _isPreload;

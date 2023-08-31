@@ -72,7 +72,7 @@ public class ValidationUtil
         var allStates = AssemblyUtil.SubStateDict[type.Name].Append(type).ToArray();
 
         ImmutableDictionary<string, Dictionary<string, MethodInfo>> stateHandlerLookup;
-        ILookup<string, Type> stateActionLookup;
+        IDictionary<string, Type[]> stateActionLookup;
         Func<Type, string> getErrorMessage;
 
         // Register Handlers
