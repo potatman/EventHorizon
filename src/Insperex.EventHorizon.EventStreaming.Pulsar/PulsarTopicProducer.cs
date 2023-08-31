@@ -51,8 +51,9 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     public async Task SendAsync(params T[] messages)
     {
         var producer = await GetProducerAsync();
-        var tasks = messages.AsParallel()
+        var tasks = messages
             .GroupBy(x => x.StreamId)
+            .AsParallel()
             .Select(async grouping =>
             {
                 foreach (var message in grouping)
