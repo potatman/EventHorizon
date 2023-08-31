@@ -76,18 +76,23 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         {
             var policies = new Policies();
 
-            // if (topic.IsPersisted)
+            if (topic.Namespace == PulsarTopicConstants.MessageNamespace)
             {
                 policies.Retention_policies = new RetentionPolicies
                 {
-                    // Note: pulsar will delete data with no subscriptions, if retention is not set to -1
+                    RetentionTimeInMinutes = 30,
+                    RetentionSizeInMB = -1
+                };
+            }
+            else
+            {
+                policies.Retention_policies = new RetentionPolicies
+                {
                     RetentionTimeInMinutes = _pulsarAttribute?.RetentionTimeInMinutes ?? -1,
                     RetentionSizeInMB = _pulsarAttribute?.RetentionSizeInMb ?? -1
                 };
-
-                if (topic.Namespace == PulsarTopicConstants.MessageNamespace)
-                    policies.Compaction_threshold = 1000000;
             }
+            // policies.Compaction_threshold = 1000000;
 
             try
             {
