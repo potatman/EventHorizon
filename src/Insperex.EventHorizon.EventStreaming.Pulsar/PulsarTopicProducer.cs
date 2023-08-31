@@ -63,7 +63,6 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
                     // var func = _attributeUtil.GetOnePropertyInfo<StreamPartitionKeyAttribute>(type);
                     // var key = func?.GetValue(message)?.ToString() ?? message.StreamId;
                     var key = message.StreamId;
-
                     if (_isHashed)
                         key = (MurmurHash3.Hash(key) % PulsarTopicConstants.HashKey).ToString(CultureInfo.InvariantCulture);
 
