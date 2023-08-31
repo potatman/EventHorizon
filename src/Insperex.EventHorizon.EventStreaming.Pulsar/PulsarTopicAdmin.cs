@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
@@ -40,6 +41,17 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
                 await _admin.CreateNonPartitionedTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, new Dictionary<string, string>(), ct);
             else
                 await _admin.CreateNonPartitionedTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, new Dictionary<string, string>(), ct);
+
+            var sw = Stopwatch.StartNew();
+            var duration = TimeSpan.FromSeconds(10).TotalMilliseconds;
+            while (sw.ElapsedMilliseconds < duration)
+            {
+                var topics = await _admin.GetTopicsAsync(topic.Tenant, topic.Namespace, topic.IsPersisted? Mode.PERSISTENT : Mode.NON_PERSISTENT, false, ct);
+                if (topics.Contains(topic.ToString()))
+                    break;
+
+                await Task.Delay(100);
+            }
         }
         catch (ApiException ex)
         {
