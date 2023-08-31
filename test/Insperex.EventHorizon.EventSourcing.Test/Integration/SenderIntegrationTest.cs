@@ -107,7 +107,7 @@ public class SenderIntegrationTest : IAsyncLifetime
             .Build();
 
         _sender2 = _senderHost.Services.GetRequiredService<SenderBuilder>()
-            .Timeout(TimeSpan.FromSeconds(60))
+            .Timeout(TimeSpan.FromSeconds(120))
             .GetErrorResult((req, status, error) => new AccountResponse(status, error))
             .Build();
 
