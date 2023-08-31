@@ -118,7 +118,13 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         return list.ToArray();
     }
 
-    public async Task AckAsync(params MessageContext<T>[] messages)
+    public async Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
+    {
+        await AckAsync(acks);
+        await NackAsync(nacks);
+    }
+
+    private async Task AckAsync(params MessageContext<T>[] messages)
     {
         if (messages?.Any() != true) return;
         var tasks = messages
@@ -135,7 +141,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         await Task.WhenAll(tasks);
     }
 
-    public async Task NackAsync(params MessageContext<T>[] messages)
+    private async Task NackAsync(params MessageContext<T>[] messages)
     {
         if (messages?.Any() != true) return;
         var tasks = messages
