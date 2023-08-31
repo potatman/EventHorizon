@@ -31,7 +31,6 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     private readonly string _publisherName;
     private IProducer<T> _producer;
     private readonly SemaphoreSlim _semaphoreSlim;
-    private readonly bool _isHashed;
 
     public PulsarTopicProducer(
         PulsarClientResolver clientResolver,
@@ -47,7 +46,6 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
         _semaphoreSlim = new SemaphoreSlim(1, 1);
-        _isHashed = PulsarTopicConstants.MessageTypes.Contains(typeof(T));
     }
 
     public async Task SendAsync(params T[] messages)
@@ -62,11 +60,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
                     // var type = AssemblyUtil.ActionDict[message.Type];
                     // var func = _attributeUtil.GetOnePropertyInfo<StreamPartitionKeyAttribute>(type);
                     // var key = func?.GetValue(message)?.ToString() ?? message.StreamId;
-                    var key = message.StreamId;
-                    if (_isHashed)
-                        key = (MurmurHash3.Hash(key) % PulsarTopicConstants.HashKey).ToString(CultureInfo.InvariantCulture);
-
-                    var msg = producer.NewMessage(message, key);
+                    var msg = producer.NewMessage(message, message.StreamId);
 
                     // Send Message
                     if (_config.IsGuaranteed)
