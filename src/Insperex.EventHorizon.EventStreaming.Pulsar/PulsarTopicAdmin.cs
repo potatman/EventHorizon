@@ -80,7 +80,7 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
             {
                 policies.Retention_policies = new RetentionPolicies
                 {
-                    RetentionTimeInMinutes = 30,
+                    RetentionTimeInMinutes = 10,
                     RetentionSizeInMB = -1
                 };
             }
