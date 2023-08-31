@@ -47,7 +47,7 @@ public class AttributeUtilUnitTest
     public void TestSetTestValues()
     {
         var origBucketId = _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId;
-        TestUtil.SetTestBucketIds(_attributeUtil, _type);
+        TestUtil.SetTestBucketIds(_attributeUtil, "123", _type);
         var newAttr = _attributeUtil.GetOne<SnapshotStoreAttribute>(_type);
 
         // Assert

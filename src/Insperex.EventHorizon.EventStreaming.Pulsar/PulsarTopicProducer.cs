@@ -1,14 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
+using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
+using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 using Insperex.EventHorizon.EventStreaming.Util;
 using Pulsar.Client.Api;
@@ -51,9 +54,9 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         var tasks = messages
             .GroupBy(x => x.StreamId)
             .AsParallel()
-            .Select(async streamMessages =>
+            .Select(async grouping =>
             {
-                foreach (var message in streamMessages)
+                foreach (var message in grouping)
                 {
                     // var type = AssemblyUtil.ActionDict[message.Type];
                     // var func = _attributeUtil.GetOnePropertyInfo<StreamPartitionKeyAttribute>(type);

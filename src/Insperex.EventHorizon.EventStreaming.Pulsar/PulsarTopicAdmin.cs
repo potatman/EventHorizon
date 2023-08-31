@@ -31,6 +31,7 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
     public async Task RequireTopicAsync(string str, CancellationToken ct)
     {
         var topic = PulsarTopicParser.Parse(str);
+        await RequireTenant(topic.Tenant, ct);
         await RequireNamespace(topic, ct);
 
         try
@@ -69,40 +70,29 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
 
     private async Task RequireNamespace(PulsarTopic topic, CancellationToken ct)
     {
-        // Ensure Tenant Exists
-        var tenants = await _admin.GetTenantsAsync(ct);
-        if (!tenants.Contains(topic.Tenant))
-        {
-            var clusters = await _admin.GetClustersAsync(ct);
-            var tenantInfo = new TenantInfo
-            {
-                AdminRoles = null, AllowedClusters = clusters
-            };
-            try
-            {
-                await _admin.CreateTenantAsync(topic.Tenant, tenantInfo, ct);
-            }
-            catch (Exception)
-            {
-                // Ignore race conditions
-            }
-        }
-
         // Ensure Namespace Exists
         var namespaces = await _admin.GetTenantNamespacesAsync(topic.Tenant, ct);
         if (!namespaces.Contains($"{topic.Tenant}/{topic.Namespace}"))
         {
             var policies = new Policies();
 
-            // if (topic.IsPersisted)
+            if (topic.Namespace == PulsarTopicConstants.MessageNamespace)
             {
                 policies.Retention_policies = new RetentionPolicies
                 {
-                    // Note: pulsar will delete data with no subscriptions, if retention is not set to -1
+                    RetentionTimeInMinutes = 10,
+                    RetentionSizeInMB = -1
+                };
+            }
+            else
+            {
+                policies.Retention_policies = new RetentionPolicies
+                {
                     RetentionTimeInMinutes = _pulsarAttribute?.RetentionTimeInMinutes ?? -1,
                     RetentionSizeInMB = _pulsarAttribute?.RetentionSizeInMb ?? -1
                 };
             }
+            // policies.Compaction_threshold = 1000000;
 
             try
             {
@@ -113,5 +103,30 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
                 // Ignore race conditions
             }
         }
+
+
+    }
+
+    private async Task RequireTenant(string tenant, CancellationToken ct)
+    {
+        // Ensure Tenant Exists
+        var tenants = await _admin.GetTenantsAsync(ct);
+        if (!tenants.Contains(tenant))
+        {
+            var clusters = await _admin.GetClustersAsync(ct);
+            var tenantInfo = new TenantInfo
+            {
+                AdminRoles = null, AllowedClusters = clusters
+            };
+            try
+            {
+                await _admin.CreateTenantAsync(tenant, tenantInfo, ct);
+            }
+            catch (Exception)
+            {
+                // Ignore race conditions
+            }
+        }
+
     }
 }
