@@ -7,6 +7,7 @@ using Insperex.EventHorizon.EventSourcing.Senders;
 using Insperex.EventHorizon.EventSourcing.Util;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming;
+using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -26,7 +27,8 @@ public static class ServiceCollectionExtensions
     }
 
     public static EventHorizonConfigurator ApplyRequestsToSnapshot<T>(this EventHorizonConfigurator configurator,
-        Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null)
+        Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null,
+        Func<SubscriptionBuilder<Request>, SubscriptionBuilder<Request>> onBuildSubscription = null)
         where T : class, IState
     {
         configurator.AddEventSourcing();
@@ -35,14 +37,16 @@ public static class ServiceCollectionExtensions
             var streamingClient = x.GetRequiredService<StreamingClient>();
             var builder = x.GetRequiredService<AggregateBuilder<Snapshot<T>, T>>();
             onBuild?.Invoke(builder);
-            return new AggregateConsumerHostedService<Snapshot<T>, Request, T>(streamingClient, builder.Build());
+            return new AggregateConsumerHostedService<Snapshot<T>, Request, T>(streamingClient,
+                builder.Build(), onBuildSubscription);
         });
 
         return configurator;
     }
 
     public static EventHorizonConfigurator ApplyCommandsToSnapshot<T>(this EventHorizonConfigurator configurator,
-        Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null)
+        Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null,
+        Func<SubscriptionBuilder<Command>, SubscriptionBuilder<Command>> onBuildSubscription = null)
         where T : class, IState
     {
         configurator.AddEventSourcing();
@@ -51,14 +55,16 @@ public static class ServiceCollectionExtensions
             var streamingClient = x.GetRequiredService<StreamingClient>();
             var builder = x.GetRequiredService<AggregateBuilder<Snapshot<T>, T>>();
             onBuild?.Invoke(builder);
-            return new AggregateConsumerHostedService<Snapshot<T>, Command, T>(streamingClient, builder.Build());
+            return new AggregateConsumerHostedService<Snapshot<T>, Command, T>(streamingClient,
+                builder.Build(), onBuildSubscription);
         });
 
         return configurator;
     }
 
     public static EventHorizonConfigurator ApplyEventsToView<T>(this EventHorizonConfigurator configurator,
-        Action<AggregateBuilder<View<T>, T>> onBuild = null)
+        Action<AggregateBuilder<View<T>, T>> onBuild = null,
+        Func<SubscriptionBuilder<Event>, SubscriptionBuilder<Event>> onBuildSubscription = null)
         where T : class, IState
     {
         configurator.AddEventSourcing();
@@ -68,14 +74,16 @@ public static class ServiceCollectionExtensions
             var builder = x.GetRequiredService<AggregateBuilder<View<T>, T>>();
             onBuild?.Invoke(builder);
             var aggregator = builder.Build();
-            return new AggregateConsumerHostedService<View<T>, Event, T>(streamingClient, aggregator);
+            return new AggregateConsumerHostedService<View<T>, Event, T>(streamingClient, aggregator,
+                onBuildSubscription);
         });
 
         return configurator;
     }
 
     public static EventHorizonConfigurator AddMigrationHostedService<TSource, TTarget>(this EventHorizonConfigurator configurator,
-        Action<AggregateBuilder<Snapshot<TTarget>, TTarget>> onBuild = null)
+        Action<AggregateBuilder<Snapshot<TTarget>, TTarget>> onBuild = null,
+        Func<SubscriptionBuilder<Event>, SubscriptionBuilder<Event>> onBuildSubscription = null)
         where TSource : class, IState, new()
         where TTarget : class, IState, new()
     {
@@ -87,7 +95,8 @@ public static class ServiceCollectionExtensions
             var builder = x.GetRequiredService<AggregateBuilder<Snapshot<TTarget>, TTarget>>();
             onBuild?.Invoke(builder);
             var aggregator = builder.Build();
-            return new AggregateMigrationHostedService<TSource,TTarget>(aggregator, streamingClient);
+            return new AggregateMigrationHostedService<TSource,TTarget>(aggregator, streamingClient,
+                onBuildSubscription);
         });
 
         return configurator;
