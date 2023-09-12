@@ -60,6 +60,8 @@ public class SenderIntegrationTest : IAsyncLifetime
                     x.AddEventSourcing()
 
                         // Stores
+                        .AddInMemoryViewStore()
+                        .AddElasticSnapshotStore(hostContext.Configuration.GetSection("ElasticSearch").Bind)
                         .AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                 });
             })
@@ -85,7 +87,7 @@ public class SenderIntegrationTest : IAsyncLifetime
 
                         // Stores
                         .AddInMemoryViewStore()
-                        .AddInMemorySnapshotStore()
+                        .AddElasticSnapshotStore(hostContext.Configuration.GetSection("ElasticSearch").Bind)
                         .AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                 });
             })
