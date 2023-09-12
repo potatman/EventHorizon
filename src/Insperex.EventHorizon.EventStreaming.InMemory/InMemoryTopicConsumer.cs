@@ -87,20 +87,14 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
         return !list.Any() ? null : list.ToArray();
     }
 
-    public Task AckAsync(params MessageContext<T>[] messages)
+    public Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
     {
-        var topics = messages.GroupBy(x => x.TopicData.Topic).ToArray();
+        var topics = acks.Concat(nacks)
+            .GroupBy(x => x.TopicData.Topic).ToArray();
         foreach (var topic in topics)
             _indexDatabase.Increment(topic.Key, _config.SubscriptionName, _consumers[topic.Key], topic.Count());
 
-        return Task.CompletedTask;
-    }
-
-    public Task NackAsync(params MessageContext<T>[] messages)
-    {
-        AckAsync(messages);
-
-        foreach (var message in messages)
+        foreach (var message in nacks)
             _backlogs[message.TopicData.Topic].Enqueue(message);
 
         return Task.CompletedTask;

@@ -17,22 +17,27 @@ namespace Insperex.EventHorizon.EventStreaming.Test.Integration.Base;
 [Trait("Category", "Integration")]
 public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
 {
-    private readonly ITestOutputHelper _outputHelper;
-    private readonly TimeSpan _timeout;
+    protected readonly ITestOutputHelper _outputHelper;
+    protected readonly TimeSpan _timeout;
     private Stopwatch _stopwatch;
-    private Event[] _events;
-    private readonly StreamingClient _streamingClient;
+    protected Event[] _events;
+    protected readonly StreamingClient _streamingClient;
     private readonly ListStreamConsumer<Event> _handler;
     private Publisher<Event> _publisher1;
     private Publisher<Event> _publisher2;
 
     protected BaseMultiTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
+        var random = new Random((int)DateTime.UtcNow.Ticks);
+        UniqueTestId = $"{random.Next()}";
+
         _outputHelper = outputHelper;
         _streamingClient = provider.GetRequiredService<StreamingClient>();
         _timeout = TimeSpan.FromSeconds(20);
         _handler = new ListStreamConsumer<Event>();
     }
+
+    protected string UniqueTestId { get; }
 
     public async Task InitializeAsync()
     {

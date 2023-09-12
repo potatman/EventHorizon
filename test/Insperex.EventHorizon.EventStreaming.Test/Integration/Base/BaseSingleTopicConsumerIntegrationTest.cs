@@ -17,26 +17,33 @@ namespace Insperex.EventHorizon.EventStreaming.Test.Integration.Base;
 [Trait("Category", "Integration")]
 public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
 {
-    private readonly ITestOutputHelper _outputHelper;
-    private readonly StreamingClient _streamingClient;
+    protected readonly ITestOutputHelper _outputHelper;
+    protected readonly StreamingClient _streamingClient;
     private Stopwatch _stopwatch;
-    private readonly TimeSpan _timeout;
-    private Event[] _events;
+    protected readonly TimeSpan _timeout;
+    protected Event[] _events;
     private readonly ListStreamConsumer<Event> _handler;
     private Publisher<Event> _publisher;
 
     protected BaseSingleTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
+        var random = new Random((int)DateTime.UtcNow.Ticks);
+        UniqueTestId = $"{random.Next()}";
+
         _outputHelper = outputHelper;
         _timeout = TimeSpan.FromSeconds(30);
         _streamingClient = provider.GetRequiredService<StreamingClient>();
         _handler = new ListStreamConsumer<Event>();
     }
 
+    protected string UniqueTestId { get; init; }
+
     public async Task InitializeAsync()
     {
         // Publish Events
-        _events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(1000).Select(x => new Event(x.Id, x)).ToArray();
+        int sequenceId = 0;
+        _events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(1000)
+            .Select(x => new Event(x.Id, ++sequenceId, x)).ToArray();
         _publisher = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
         await _publisher.PublishAsync(_events);
 

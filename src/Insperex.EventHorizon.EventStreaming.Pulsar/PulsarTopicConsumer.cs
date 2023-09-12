@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,11 +8,13 @@ using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
+using Insperex.EventHorizon.EventStreaming.Subscriptions.Backoff;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 using Insperex.EventHorizon.EventStreaming.Util;
 using Pulsar.Client.Api;
 using Pulsar.Client.Common;
 using Pulsar.Client.Otel;
+using NotSupportedException = System.NotSupportedException;
 using SubscriptionType = Pulsar.Client.Common.SubscriptionType;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
@@ -117,26 +118,48 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         return list.ToArray();
     }
 
-    public async Task AckAsync(params MessageContext<T>[] messages)
+    public async Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
     {
-        if (messages?.Any() != true) return;
-        foreach (var message in messages)
-        {
-            var unackedMessage = _unackedMessages[message.TopicData.Id];
-            await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
-            _unackedMessages.Remove(message.TopicData.Id);
-        }
+        await AckAsync(acks);
+        await NackAsync(nacks);
     }
 
-    public async Task NackAsync(params MessageContext<T>[] messages)
+    private async Task AckAsync(params MessageContext<T>[] messages)
     {
         if (messages?.Any() != true) return;
-        foreach (var message in messages)
-        {
-            var unackedMessage = _unackedMessages[message.TopicData.Id];
-            await _consumer.NegativeAcknowledge(unackedMessage.MessageId);
-            _unackedMessages.Remove(message.TopicData.Id);
-        }
+        var tasks = messages
+            .AsParallel()
+            .Select(async message =>
+            {
+
+                var unackedMessage = _unackedMessages[message.TopicData.Id];
+                await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
+                _unackedMessages.Remove(message.TopicData.Id);
+            })
+            .ToArray();
+
+        await Task.WhenAll(tasks);
+    }
+
+    private async Task NackAsync(params MessageContext<T>[] messages)
+    {
+        if (messages?.Any() != true) return;
+        var tasks = messages
+            .AsParallel()
+            .Select(async message =>
+            {
+                var unackedMessage = _unackedMessages[message.TopicData.Id];
+
+                if (_config.RedeliverFailedMessages)
+                    await _consumer.NegativeAcknowledge(unackedMessage.MessageId);
+                else
+                    await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
+
+                _unackedMessages.Remove(message.TopicData.Id);
+            })
+            .ToArray();
+
+        await Task.WhenAll(tasks);
     }
 
     private async Task<IConsumer<T>> GetConsumerAsync()
@@ -164,6 +187,19 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                 _config.IsBeginning == true
                     ? SubscriptionInitialPosition.Earliest
                     : SubscriptionInitialPosition.Latest);
+
+        if (_config.BackoffStrategy != null)
+        {
+            if (_config.BackoffStrategy is IConstantBackoffStrategy strategy)
+            {
+                builder = builder.NegativeAckRedeliveryDelay(strategy.Delay);
+            }
+            else
+            {
+                throw new NotSupportedException(
+                    "Only constant backoff strategies supported for the default consumer.");
+            }
+        }
 
         var consumer = await builder.SubscribeAsync();
 

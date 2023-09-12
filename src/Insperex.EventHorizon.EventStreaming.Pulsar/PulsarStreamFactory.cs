@@ -41,7 +41,7 @@ public class PulsarStreamFactory : IStreamFactory
 
     public ITopicAdmin<T> CreateAdmin<T>() where T : ITopicMessage
     {
-        return new PulsarTopicAdmin<T>(_clientResolver.GetAdminClient(), _attributeUtil, _loggerFactory.CreateLogger<PulsarTopicAdmin<T>>());
+        return new PulsarTopicAdmin<T>(_clientResolver.GetAdminClientAsync().Result, _attributeUtil, _loggerFactory.CreateLogger<PulsarTopicAdmin<T>>());
     }
 
     public ITopicResolver GetTopicResolver()
