@@ -106,6 +106,8 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
             result.PassedIds = objs.Where(x => !failedIds.Contains(x.Id)).Select(x => x.Id).ToArray();
         }
 
+        ThrowErrors(res);
+
         return result;
     }
 
@@ -123,6 +125,8 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
             result.FailedIds = objs.Where(x => failedIds.Contains(x.Id)).Select(x => x.Id).ToArray();
             result.PassedIds = objs.Where(x => !failedIds.Contains(x.Id)).Select(x => x.Id).ToArray();
         }
+
+        ThrowErrors(res);
 
         return result;
     }
@@ -145,9 +149,10 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         ThrowErrors(res);
     }
 
-    public Task DropDatabaseAsync(CancellationToken ct)
+    public async Task DropDatabaseAsync(CancellationToken ct)
     {
-        return _client.Indices.DeleteAsync(_dbName, ct);
+        var res = await _client.Indices.DeleteAsync(_dbName, ct);
+        ThrowErrors(res);
     }
 
     private void ThrowErrors(BulkResponse res)
