@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
@@ -24,7 +26,7 @@ public class BasicFailureHandler<T>: IFailureHandler<T> where T : class, ITopicM
 
     public MessageContext<T>[] GetMessagesForRetry(int capacity)
     {
-        var backlogList = new List<MessageContext<T>>();
+        var backlogList = BuildBacklogBuffer(capacity);
 
         foreach (var topic in _config.Topics)
         {
@@ -39,6 +41,13 @@ public class BasicFailureHandler<T>: IFailureHandler<T> where T : class, ITopicM
         }
 
         return backlogList.ToArray();
+    }
+
+    private List<MessageContext<T>> BuildBacklogBuffer(int capacity)
+    {
+        var totalBackloggedItemCount = _backlogs.Values.Sum(bl => bl.Count);
+        var backlogList = new List<MessageContext<T>>(Math.Min(capacity, totalBackloggedItemCount));
+        return backlogList;
     }
 
     public void FinalizeBatch(MessageContext<T>[] acks, MessageContext<T>[] nacks,
