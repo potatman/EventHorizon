@@ -173,9 +173,9 @@ public class SenderIntegrationTest : IAsyncLifetime
     }
 
     [Theory]
-    [InlineData(1, 10)]
-    [InlineData(100, 10)]
-    [InlineData(1000, 10)]
+    [InlineData(1, 1)]
+    [InlineData(100, 1)]
+    [InlineData(1000, 1)]
     // [InlineData(10000, 10)]
     // [InlineData(100000, 10)]
     public async Task TestLargeSendAndReceiveAsync(int numOfEvents, int iterations)

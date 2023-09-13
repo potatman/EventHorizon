@@ -16,6 +16,7 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
     private TimeSpan _sendTimeout = TimeSpan.FromMinutes(2);
     private bool _isGuaranteed;
     private int _batchSize = 100;
+    private bool _isOrderGuaranteed = true;
 
     public PublisherBuilder(IStreamFactory factory, ILoggerFactory loggerFactory)
     {
@@ -43,6 +44,12 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
         return this;
     }
 
+    public PublisherBuilder<T> IsOrderGuaranteed(bool isOrderGuaranteed)
+    {
+        _isOrderGuaranteed = isOrderGuaranteed;
+        return this;
+    }
+
     public PublisherBuilder<T> SendTimeout(TimeSpan sendTimeout)
     {
         _sendTimeout = sendTimeout;
@@ -61,6 +68,7 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
         {
             Topic = _topic,
             IsGuaranteed = _isGuaranteed,
+            IsOrderGuaranteed = _isOrderGuaranteed,
             SendTimeout = _sendTimeout,
             BatchSize = _batchSize
         };

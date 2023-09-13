@@ -1,8 +1,13 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using IdentityModel.Client;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using Pulsar.Client.Api;
 using SharpPulsar.Admin.v2;
 
@@ -21,20 +26,75 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
 
         public async Task<PulsarClient> GetPulsarClientAsync()
         {
-            return _client ??= await new PulsarClientBuilder()
+
+            if (_client != null)
+                return _client;
+
+            var builder = new PulsarClientBuilder()
                 .ServiceUrl(_options.Value.ServiceUrl)
-                .EnableTransaction(true)
-                .BuildAsync();
+                .EnableTransaction(true);
+
+            if (_options.Value.OAuth2 != null)
+            {
+                var fileUri = new Uri(_options.Value.OAuth2.File);
+                var audience = _options.Value.OAuth2.Audience;
+                var json = await ReadOAuth2File(fileUri);
+                builder = builder.Authentication(AuthenticationFactoryOAuth2.ClientCredentials(new Uri(json.IssuerUrl), audience, fileUri));
+            }
+
+            return await builder.BuildAsync();
         }
 
-        public IPulsarAdminRESTAPIClient GetAdminClient()
+        public async Task<IPulsarAdminRESTAPIClient> GetAdminClientAsync()
         {
-            return _admin ??= new PulsarAdminRESTAPIClient(GetAdminHttpClient());
+            if (_admin != null) return _admin;
+
+            var client = new HttpClient
+            {
+                BaseAddress = new Uri($"{_options.Value.AdminUrl}/admin/v2/")
+            };
+
+            if (_options.Value.OAuth2 != null)
+            {
+                var oauth2 = _options.Value.OAuth2;
+                var token = await GetTokenAsync(oauth2.TokenAddress, oauth2.GrantType, oauth2.Audience, new Uri(oauth2.File));
+                client.SetBearerToken(token);
+            }
+
+            return _admin = new PulsarAdminRESTAPIClient(client);
         }
 
-        public HttpClient GetAdminHttpClient()
+        private async Task<PulsarOAuthData> ReadOAuth2File(Uri fileUri)
         {
-            return new HttpClient {BaseAddress = new Uri($"{_options.Value.AdminUrl}/admin/v2/")};
+            // Load Json
+            var webRequest = WebRequest.Create(fileUri);
+            webRequest.Credentials = CredentialCache.DefaultCredentials;
+            webRequest.Method ="GET";
+            var webResponse = await webRequest.GetResponseAsync();
+            var contents = await new StreamReader(webResponse.GetResponseStream()).ReadToEndAsync();
+            return JsonConvert.DeserializeObject<PulsarOAuthData>(contents);
+        }
+
+        private async Task<string> GetTokenAsync(string tokenAddress, string grantType, string audience, Uri fileUri)
+        {
+            var json = await ReadOAuth2File(fileUri);
+            var request = new TokenRequest
+            {
+                Address = tokenAddress,
+                GrantType = grantType,
+                ClientId = json.ClientId,
+                ClientSecret = json.ClientSecret,
+                ClientCredentialStyle = ClientCredentialStyle.PostBody,
+            };
+            request.Parameters.Add("audience", audience);
+            request.Parameters.Add("type", json.Type);
+            request.Parameters.Add("client_email", json.ClientEmail);
+            request.Parameters.Add("issuer_url", json.IssuerUrl);
+
+            // Get Token
+            var client = new HttpClient();
+            var response = await client.RequestTokenAsync(request);
+            return response.AccessToken;
         }
     }
 }
