@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,7 +30,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         _elasticAttr = elasticAttr;
         _client = client;
         _logger = logger;
-        _dbName = bucketId + "_" + typeof(TE).Name;
+        _dbName = bucketId + "_" + typeof(TE).Name.Replace("`1", string.Empty).ToLower(CultureInfo.InvariantCulture);
     }
 
     public async Task SetupAsync(CancellationToken ct)
