@@ -38,7 +38,7 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
             .PingTimeout(TimeSpan.FromSeconds(10))
             .DeadTimeout(TimeSpan.FromSeconds(60))
             .RequestTimeout(TimeSpan.FromSeconds(60))
-            .DisableDirectStreaming();
+            ;
 
         if (options.Value.UserName != null && options.Value.Password != null)
             settings = settings.Authentication(new BasicAuthentication(options.Value.UserName, options.Value.Password));
