@@ -61,7 +61,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.MultiGetAsync<TE>(m => m
             .Index(_dbName)
             .Ids(ids)
-            .Refresh(ElasticIndexAttribute.GetRefresh(_elasticAttr?.Refresh).Value == Refresh.True.Value)
+            .Refresh(true)
         , ct);
 
         ThrowErrors(res);
