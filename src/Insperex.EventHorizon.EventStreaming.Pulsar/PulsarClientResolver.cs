@@ -64,6 +64,11 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
             return _admin = new PulsarAdminRESTAPIClient(client);
         }
 
+        public HttpClient GetAdminHttpClient()
+        {
+            return new HttpClient {BaseAddress = new Uri($"{_options.Value.AdminUrl}/admin/v2/")};
+        }
+
         private async Task<PulsarOAuthData> ReadOAuth2File(Uri fileUri)
         {
             // Load Json
