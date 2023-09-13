@@ -29,7 +29,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         _elasticAttr = elasticAttr;
         _client = client;
         _logger = logger;
-        _dbName = bucketId;
+        _dbName = bucketId + "_" + typeof(TE);
     }
 
     public async Task SetupAsync(CancellationToken ct)
