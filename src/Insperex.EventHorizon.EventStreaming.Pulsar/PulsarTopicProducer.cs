@@ -51,12 +51,37 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     public async Task SendAsync(params T[] messages)
     {
         var producer = await GetProducerAsync();
-        var tasks = messages
-            .GroupBy(x => x.StreamId)
-            .AsParallel()
-            .Select(async grouping =>
-            {
-                foreach (var message in grouping)
+
+        if (_config.IsOrderGuaranteed)
+        {
+            var tasks = messages
+                .GroupBy(x => x.StreamId)
+                .AsParallel()
+                .Select(async grouping =>
+                {
+                    foreach (var message in grouping)
+                    {
+                        // var type = AssemblyUtil.ActionDict[message.Type];
+                        // var func = _attributeUtil.GetOnePropertyInfo<StreamPartitionKeyAttribute>(type);
+                        // var key = func?.GetValue(message)?.ToString() ?? message.StreamId;
+                        var msg = producer.NewMessage(message, message.StreamId);
+
+                        // Send Message
+                        if (_config.IsGuaranteed)
+                            await producer.SendAsync(msg);
+                        else
+                            await producer.SendAndForgetAsync(msg);
+                    }
+                })
+                .ToArray();
+
+            await Task.WhenAll(tasks);
+        }
+        else
+        {
+            var tasks = messages
+                .AsParallel()
+                .Select(async message =>
                 {
                     // var type = AssemblyUtil.ActionDict[message.Type];
                     // var func = _attributeUtil.GetOnePropertyInfo<StreamPartitionKeyAttribute>(type);
@@ -68,11 +93,12 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
                         await producer.SendAsync(msg);
                     else
                         await producer.SendAndForgetAsync(msg);
-                }
-            })
-            .ToArray();
+                })
+                .ToArray();
 
-        await Task.WhenAll(tasks);
+            await Task.WhenAll(tasks);
+        }
+
     }
 
     private async Task<IProducer<T>> GetProducerAsync()
