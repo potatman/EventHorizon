@@ -18,14 +18,14 @@ public class LockFactory<T> where T : class, IState
         _lockStore = lockStore.GetLockStore();
     }
 
-    public LockDisposable CreateLock(string id)
+    public LockDisposable CreateLock(string id, string hostname)
     {
-        return new LockDisposable(_lockStore, id, TimeSpan.FromMinutes(5), _loggerFactory.CreateLogger<LockDisposable>());
+        return new LockDisposable(_lockStore, id, hostname, TimeSpan.FromMinutes(5), _loggerFactory.CreateLogger<LockDisposable>());
     }
 
-    public LockDisposable CreateLock(string id, TimeSpan timeout)
+    public LockDisposable CreateLock(string id, string hostname, TimeSpan timeout)
     {
         // Create Lock
-        return new LockDisposable(_lockStore, id, timeout, _loggerFactory.CreateLogger<LockDisposable>());
+        return new LockDisposable(_lockStore, id, hostname, timeout, _loggerFactory.CreateLogger<LockDisposable>());
     }
 }
