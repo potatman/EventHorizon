@@ -43,10 +43,17 @@ public class LockDisposable : IAsyncDisposable
 
     public async Task<bool> TryLockAsync()
     {
-        var @lock = new Lock { Id = _id, Expiration = DateTime.UtcNow.AddMilliseconds(_timeout.TotalMilliseconds), Owner = _hostname };
-        var result = await _crudStore.InsertAsync(new[] { @lock }, CancellationToken.None);
-        _ownsLock = result.FailedIds?.Any() != true;
-        _logger.LogInformation("Lock - Try lock {Name} on {Host}", _id, _hostname);
+        try
+        {
+            _logger.LogInformation("Lock - Try lock {Name} on {Host}", _id, _hostname);
+            var @lock = new Lock { Id = _id, Expiration = DateTime.UtcNow.AddMilliseconds(_timeout.TotalMilliseconds), Owner = _hostname };
+            var result = await _crudStore.InsertAsync(new[] { @lock }, CancellationToken.None);
+            _ownsLock = result.FailedIds?.Any() != true;
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Lock - Failed to Lock => {Message}", e.Message);
+        }
 
         if (!_ownsLock)
         {
