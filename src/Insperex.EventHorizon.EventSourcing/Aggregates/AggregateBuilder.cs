@@ -28,6 +28,7 @@ public class AggregateBuilder<TParent, T>
     private IAggregateMiddleware<T> _middleware;
     private readonly LockFactory<T> _lockFactory;
     private int? _batchSize;
+    private readonly ILogger<AggregateBuilder<TParent, T>> _logger;
 
     public AggregateBuilder(
         IServiceProvider serviceProvider,
@@ -42,6 +43,7 @@ public class AggregateBuilder<TParent, T>
         _serviceProvider = serviceProvider;
         _streamingClient = streamingClient;
         _loggerFactory = loggerFactory;
+        _logger = loggerFactory.CreateLogger<AggregateBuilder<TParent, T>>();
     }
 
     public AggregateBuilder<TParent, T> IsRebuildEnabled(bool isRebuildEnabled)
@@ -81,7 +83,9 @@ public class AggregateBuilder<TParent, T>
 
         // Create Store
         var @lock = _lockFactory.CreateLock($"Migrate-{typeof(T).Name}").WaitForLockAsync().GetAwaiter().GetResult();
+        _logger.LogInformation("{Store} Store - Start {TParent} {T} Migration {Host}", _crudStore.GetType().Name, typeof(TParent).Name, typeof(T).Name, Environment.MachineName);
         _crudStore.SetupAsync(CancellationToken.None).GetAwaiter().GetResult();
+        _logger.LogInformation("{Store} Store - Finished {TParent} {T} Migration {Host}", _crudStore.GetType().Name, typeof(TParent).Name, typeof(T).Name, Environment.MachineName);
         @lock.DisposeAsync().GetAwaiter().GetResult();
 
         // Validate Handlers if Enabled
