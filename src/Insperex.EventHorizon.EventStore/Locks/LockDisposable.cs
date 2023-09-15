@@ -16,6 +16,7 @@ public class LockDisposable : IAsyncDisposable
     private readonly ILogger<LockDisposable> _logger;
     private bool _isReleased;
     private bool _ownsLock;
+    private readonly string _hostname;
 
     public LockDisposable(ICrudStore<Lock> crudStore, string id, TimeSpan timeout, ILogger<LockDisposable> logger)
     {
@@ -26,6 +27,7 @@ public class LockDisposable : IAsyncDisposable
 
         // Used for when process is stopped mid way
         AppDomain.CurrentDomain.ProcessExit += OnExit;
+        _hostname = Environment.MachineName;
     }
 
     public async Task<LockDisposable> WaitForLockAsync()
@@ -41,18 +43,18 @@ public class LockDisposable : IAsyncDisposable
 
     public async Task<bool> TryLockAsync()
     {
-        var @lock = new Lock { Id = _id, Expiration = DateTime.UtcNow.AddMilliseconds(_timeout.TotalMilliseconds) };
+        var @lock = new Lock { Id = _id, Expiration = DateTime.UtcNow.AddMilliseconds(_timeout.TotalMilliseconds), Owner = _hostname };
         var result = await _crudStore.InsertAsync(new[] { @lock }, CancellationToken.None);
         _ownsLock = result.FailedIds?.Any() != true;
-        _logger.LogInformation("Lock - Try lock {Name} on {Host}", _id, Environment.MachineName);
+        _logger.LogInformation("Lock - Try lock {Name} on {Host}", _id, _hostname);
 
         if (!_ownsLock)
         {
             var current = (await _crudStore.GetAllAsync(new[] { _id }, CancellationToken.None)).FirstOrDefault();
             if (current != null)
-                return current.Expiration < DateTime.UtcNow;
+                return current.Expiration < DateTime.UtcNow || current.Owner == _hostname;
         }
-        _logger.LogInformation("Lock - Acquired lock {Name} on {Host}", _id, Environment.MachineName);
+        _logger.LogInformation("Lock - Acquired lock {Name} on {Host}", _id, _hostname);
 
         SetTimeout();
 
