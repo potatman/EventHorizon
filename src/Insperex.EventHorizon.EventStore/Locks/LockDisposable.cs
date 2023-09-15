@@ -32,12 +32,16 @@ public class LockDisposable : IAsyncDisposable
 
     public async Task<LockDisposable> WaitForLockAsync()
     {
+        _logger.LogInformation("Lock - Try lock {Name} on {Host}", _id, _hostname);
+        
         do
         {
             _ownsLock = await TryLockAsync();
             if (!_ownsLock)
                 await Task.Delay(200);
         } while (!_ownsLock);
+
+        _logger.LogInformation("Lock - Acquired lock {Name} on {Host}", _id, _hostname);
         return this;
     }
 
@@ -45,14 +49,13 @@ public class LockDisposable : IAsyncDisposable
     {
         try
         {
-            _logger.LogInformation("Lock - Try lock {Name} on {Host}", _id, _hostname);
             var @lock = new Lock { Id = _id, Expiration = DateTime.UtcNow.AddMilliseconds(_timeout.TotalMilliseconds), Owner = _hostname };
             var result = await _crudStore.InsertAsync(new[] { @lock }, CancellationToken.None);
             _ownsLock = result.FailedIds?.Any() != true;
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Lock - Failed to Lock => {Message}", e.Message);
+            // ignore
         }
 
         if (!_ownsLock)
@@ -60,9 +63,7 @@ public class LockDisposable : IAsyncDisposable
             var current = (await _crudStore.GetAllAsync(new[] { _id }, CancellationToken.None)).FirstOrDefault();
             if (current != null)
                 return current.Expiration < DateTime.UtcNow || current.Owner == _hostname;
-            await Task.Delay(100);
         }
-        _logger.LogInformation("Lock - Acquired lock {Name} on {Host}", _id, _hostname);
 
         SetTimeout();
 
