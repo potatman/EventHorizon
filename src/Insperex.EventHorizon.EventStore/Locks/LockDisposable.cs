@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStore.Locks;
 
@@ -12,13 +13,15 @@ public class LockDisposable : IAsyncDisposable
     private readonly ICrudStore<Lock> _crudStore;
     private readonly string _id;
     private readonly TimeSpan _timeout;
+    private readonly ILogger<LockDisposable> _logger;
     private bool _isReleased;
     private bool _ownsLock;
 
-    public LockDisposable(ICrudStore<Lock> crudStore, string id, TimeSpan timeout)
+    public LockDisposable(ICrudStore<Lock> crudStore, string id, TimeSpan timeout, ILogger<LockDisposable> logger)
     {
         _id = id;
         _timeout = timeout;
+        _logger = logger;
         _crudStore = crudStore;
 
         // Used for when process is stopped mid way
@@ -41,6 +44,7 @@ public class LockDisposable : IAsyncDisposable
         var @lock = new Lock { Id = _id, Expiration = DateTime.UtcNow.AddMilliseconds(_timeout.TotalMilliseconds) };
         var result = await _crudStore.InsertAsync(new[] { @lock }, CancellationToken.None);
         _ownsLock = result.FailedIds?.Any() != true;
+        _logger.LogInformation("Lock - Try lock {Name} on {Host}", _id, Environment.MachineName);
 
         if (!_ownsLock)
         {
@@ -48,6 +52,7 @@ public class LockDisposable : IAsyncDisposable
             if (current != null)
                 return current.Expiration < DateTime.UtcNow;
         }
+        _logger.LogInformation("Lock - Acquired lock {Name} on {Host}", _id, Environment.MachineName);
 
         SetTimeout();
 
@@ -61,6 +66,7 @@ public class LockDisposable : IAsyncDisposable
 
         _isReleased = true;
         await _crudStore.DeleteAsync(new[] { _id }, CancellationToken.None);
+        _logger.LogInformation("Lock - Released lock {Name} on {Host}", _id, Environment.MachineName);
         return this;
     }
 
