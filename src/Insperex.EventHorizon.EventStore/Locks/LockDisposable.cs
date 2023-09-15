@@ -18,16 +18,16 @@ public class LockDisposable : IAsyncDisposable
     private bool _ownsLock;
     private readonly string _hostname;
 
-    public LockDisposable(ICrudStore<Lock> crudStore, string id, TimeSpan timeout, ILogger<LockDisposable> logger)
+    public LockDisposable(ICrudStore<Lock> crudStore, string id, string hostname, TimeSpan timeout, ILogger<LockDisposable> logger)
     {
         _id = id;
+        _hostname = hostname;
         _timeout = timeout;
         _logger = logger;
         _crudStore = crudStore;
 
         // Used for when process is stopped mid way
         AppDomain.CurrentDomain.ProcessExit += OnExit;
-        _hostname = Environment.MachineName;
     }
 
     public async Task<LockDisposable> WaitForLockAsync()
