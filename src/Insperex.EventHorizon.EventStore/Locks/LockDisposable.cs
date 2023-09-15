@@ -53,6 +53,7 @@ public class LockDisposable : IAsyncDisposable
             var current = (await _crudStore.GetAllAsync(new[] { _id }, CancellationToken.None)).FirstOrDefault();
             if (current != null)
                 return current.Expiration < DateTime.UtcNow || current.Owner == _hostname;
+            await Task.Delay(100);
         }
         _logger.LogInformation("Lock - Acquired lock {Name} on {Host}", _id, _hostname);
 
