@@ -8,6 +8,7 @@ using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.Benchmark.Models;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
+using Insperex.EventHorizon.EventStreaming.Pulsar;
 using Insperex.EventHorizon.EventStreaming.Readers;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Insperex.EventHorizon.EventStreaming.Test.Util;
@@ -28,6 +29,7 @@ public class PulsarSingleton : IAsyncDisposable
     private readonly Dictionary<Type, Publisher<Event>> Publishers = new();
     private readonly Dictionary<Type, ITopicConsumer<Event>> Consumers = new();
     private readonly Dictionary<Type, Reader<Event>> Readers = new();
+    private PulsarTopicAdmin<Event> _topicAdmin;
 
     public Publisher<Event> GetPublisher<T>()
     {
@@ -70,6 +72,11 @@ public class PulsarSingleton : IAsyncDisposable
             .Build();
 
         return Readers[type];
+    }
+
+    public PulsarTopicAdmin<Event> GetTopicAdmin()
+    {
+        return _topicAdmin ??= (PulsarTopicAdmin<Event>) Factory.Value.CreateAdmin<Event>();
     }
 
     public Event[] FakeEvents(int count)

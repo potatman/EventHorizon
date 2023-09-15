@@ -1,11 +1,15 @@
-﻿using System;
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
+using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
+using Insperex.EventHorizon.EventStreaming.Pulsar;
 using Insperex.EventHorizon.EventStreaming.Samples.Models;
 using Insperex.EventHorizon.EventStreaming.Subscriptions.Backoff;
 using Insperex.EventHorizon.EventStreaming.Test.Integration.Base;
 using Insperex.EventHorizon.EventStreaming.Test.Shared;
 using Insperex.EventHorizon.EventStreaming.Test.Util;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -18,8 +22,19 @@ public class PulsarMultiTopicConsumerIntegrationTest : BaseMultiTopicConsumerInt
     {
     }
 
+    public override async Task DisposeAsync()
+    {
+        await base.DisposeAsync();
+
+        var streamFactory = Provider.GetRequiredService<IStreamFactory>();
+        var topicAdmin = (PulsarTopicAdmin<Event>)streamFactory.CreateAdmin<Event>();
+        await topicAdmin.DeleteTopicAsync(
+            $"persistent://test_pricing/Event/subscription__ReSharperTestRunner-Fails_{UniqueTestId}__streamFailureState",
+            CancellationToken.None);
+    }
+
     [Fact]
-    public async Task TestSingleConsumerWithFailures()
+    public async Task TestSingleConsumerWithNativePulsarFailures()
     {
         var handler = new PartialNackListStreamConsumer(_outputHelper, 0.03, 3, 2,
             100, true);

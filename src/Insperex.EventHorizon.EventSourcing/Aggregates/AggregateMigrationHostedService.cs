@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,9 +17,11 @@ namespace Insperex.EventHorizon.EventSourcing.Aggregates
     {
         private readonly Subscription<Event> _subscription;
 
-        public AggregateMigrationHostedService(Aggregator<Snapshot<TTarget>, TTarget> aggregator, StreamingClient streamingClient)
+        public AggregateMigrationHostedService(Aggregator<Snapshot<TTarget>, TTarget> aggregator,
+            StreamingClient streamingClient,
+            Func<SubscriptionBuilder<Event>, SubscriptionBuilder<Event>> onBuildSubscription = null)
         {
-            _subscription = streamingClient.CreateSubscription<Event>()
+            var builder = streamingClient.CreateSubscription<Event>()
                 .AddStream<TSource>()
                 .SubscriptionName($"Migrate-{typeof(TSource).Name}-{typeof(TTarget).Name}")
                 .OnBatch(async batch =>
@@ -40,8 +43,11 @@ namespace Insperex.EventHorizon.EventSourcing.Aggregates
                         .ToArray();
 
                     batch.Nack(failedMessages);
-                })
-                .Build();
+                });
+
+            if (onBuildSubscription != null) builder = onBuildSubscription(builder);
+
+            _subscription = builder.Build();
         }
 
         public Task StartAsync(CancellationToken cancellationToken) => _subscription.StartAsync();

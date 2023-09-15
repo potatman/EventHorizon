@@ -7,9 +7,12 @@ public class PulsarTopic
     public string Namespace { get; set; }
     public string Topic { get; set; }
 
+    public string PersistentString => IsPersisted ? "persistent" : "non-persistent";
+
+    public string ApiRoot => $"{PersistentString}/{Tenant}/{Namespace}/{Topic}";
+
     public override string ToString()
     {
-        var root = IsPersisted ? "persistent" : "non-persistent";
-        return $"{root}://{Tenant}/{Namespace}/{Topic}";
+        return $"{PersistentString}://{Tenant}/{Namespace}/{Topic}";
     }
 }
