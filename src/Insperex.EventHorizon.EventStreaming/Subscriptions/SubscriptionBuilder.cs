@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -24,6 +24,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
     private DateTime? _startDateTime;
     private string _subscriptionName = AssemblyUtil.AssemblyName;
     private bool _redeliverFailedMessages = true;
+    private bool _guaranteeMessageOrderOnFailure;
     private IBackoffStrategy _backoffStrategy = new ConstantBackoffStrategy {Delay = TimeSpan.FromMilliseconds(10)};
     private Func<SubscriptionContext<T>, Task> _onBatch;
     private SubscriptionType _subscriptionType = Abstractions.Models.SubscriptionType.KeyShared;
@@ -101,6 +102,12 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         return this;
     }
 
+    public SubscriptionBuilder<T> GuaranteeMessageOrderOnFailure(bool guarantee)
+    {
+        _guaranteeMessageOrderOnFailure = guarantee;
+        return this;
+    }
+
     public SubscriptionBuilder<T> BackoffStrategy(IBackoffStrategy backoffStrategy)
     {
         _backoffStrategy = backoffStrategy;
@@ -128,8 +135,9 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
             IsBeginning = _isBeginning,
             IsPreload = _isPreload,
             RedeliverFailedMessages = _redeliverFailedMessages,
+            IsMessageOrderGuaranteedOnFailure = _guaranteeMessageOrderOnFailure,
             BackoffStrategy = _backoffStrategy,
-            OnBatch = _onBatch
+            OnBatch = _onBatch,
         };
         var logger = _loggerFactory.CreateLogger<Subscription<T>>();
 
@@ -139,7 +147,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
 
     private void EnsureValid()
     {
-        var anyFailureHandling = _backoffStrategy != null;
+        var anyFailureHandling = _backoffStrategy != null || _guaranteeMessageOrderOnFailure;
         if (!_redeliverFailedMessages && anyFailureHandling)
         {
             throw new InvalidOperationException(

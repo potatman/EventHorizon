@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces;
@@ -20,7 +21,8 @@ public class AggregateConsumerHostedService<TParent, TAction, T> : IHostedServic
 
     public AggregateConsumerHostedService(
         StreamingClient streamingClient,
-        Aggregator<TParent, T> aggregator)
+        Aggregator<TParent, T> aggregator,
+        Func<SubscriptionBuilder<TAction>, SubscriptionBuilder<TAction>> onBuildSubscription = null)
     {
         _aggregator = aggregator;
 
@@ -35,6 +37,8 @@ public class AggregateConsumerHostedService<TParent, TAction, T> : IHostedServic
                 var responses = await aggregator.HandleAsync(messages, x.CancellationToken);
                 await aggregator.PublishResponseAsync(responses);
             });
+
+        if (onBuildSubscription != null) builder = onBuildSubscription(builder);
 
         if(config.BatchSize != null)
             builder = builder.BatchSize(config.BatchSize.Value);
