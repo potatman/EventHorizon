@@ -3,14 +3,17 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Elasticsearch.Net;
+using Elastic.Clients.Elasticsearch;
+using Elastic.Clients.Elasticsearch.Core.Search;
+using Elastic.Clients.Elasticsearch.IndexManagement;
+using Elastic.Clients.Elasticsearch.QueryDsl;
+using Elastic.Transport;
+using Elastic.Transport.Products.Elasticsearch;
 using Insperex.EventHorizon.EventStore.ElasticSearch.Attributes;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Microsoft.Extensions.Logging;
-using Nest;
-using IResponse = Nest.IResponse;
 
 namespace Insperex.EventHorizon.EventStore.ElasticSearch;
 
@@ -18,35 +21,32 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
     where TE : class, ICrudEntity
 {
     private readonly ElasticIndexAttribute _elasticAttr;
-    private readonly IElasticClient _client;
+    private readonly ElasticsearchClient _client;
     private readonly ILogger<ElasticCrudStore<TE>> _logger;
     private readonly string _dbName;
 
-    public ElasticCrudStore(ElasticIndexAttribute elasticAttr, IElasticClient client, string bucketId, ILogger<ElasticCrudStore<TE>> logger)
+    public ElasticCrudStore(ElasticIndexAttribute elasticAttr, ElasticsearchClient client, string bucketId, ILogger<ElasticCrudStore<TE>> logger)
     {
         _elasticAttr = elasticAttr;
         _client = client;
         _logger = logger;
-        _dbName = bucketId;
+        _dbName = bucketId + "_" + typeof(TE).Name.Replace("`1", string.Empty).ToLower(CultureInfo.InvariantCulture);
     }
 
     public async Task SetupAsync(CancellationToken ct)
     {
         var getReq = await _client.Indices.GetAsync(new GetIndexRequest(_dbName), ct);
-        if (getReq.IsValid) return;
+        if (getReq.IsValidResponse) return;
 
         var createReq = await _client.Indices.CreateAsync(_dbName, cfg =>
         {
-            cfg.Map<TE>(map => map.AutoMap())
-                .Settings(x =>
+            cfg.Settings(x =>
                 {
                     if (_elasticAttr?.Shards > 0) x.NumberOfShards(_elasticAttr?.Shards);
                     if (_elasticAttr?.Replicas > 0) x.NumberOfReplicas(_elasticAttr?.Replicas);
                     if (_elasticAttr?.RefreshIntervalMs > 0) x.RefreshInterval(_elasticAttr?.RefreshIntervalMs);
-                    if (_elasticAttr?.MaxResultWindow > 0) x.Setting("max_result_window", _elasticAttr?.MaxResultWindow);
-                    return x;
+                    if (_elasticAttr?.MaxResultWindow > 0) x.MaxResultWindow(_elasticAttr?.MaxResultWindow);
                 });
-            return cfg;
         }, ct);
 
         ThrowErrors(createReq);
@@ -59,15 +59,15 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
 
         ids = ids.Distinct().ToArray();
 
-        var res = await _client.MultiGetAsync(m => m
+        var res = await _client.MultiGetAsync<TE>(m => m
             .Index(_dbName)
-            .GetMany<TE>(ids, (g, id) => g.Index(_dbName))
-            .Refresh(_elasticAttr?.Refresh == Refresh.True)
+            .Ids(ids)
+            .Refresh(true)
         , ct);
 
         ThrowErrors(res);
 
-        return res.Hits.Select(x => x.Source as TE).Where(x => x != null).ToArray();
+        return res.Docs.Select(x => x.Match(y => y.Source, z => null)).Where(x => x != null).ToArray();
     }
 
     public async Task<DateTime> GetLastUpdatedDateAsync(CancellationToken ct)
@@ -75,17 +75,16 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.SearchAsync<Snapshot<TE>>(x =>
                 x.Index(_dbName)
                     .Size(1)
-                    .Source(s =>
-                        s.Includes(i =>
-                            i.Fields(f => f.UpdatedDate)
-                        )
-                    )
+                    .Source(new SourceConfig(new SourceFilter
+                    {
+                        Includes = new[] { "updatedDate" }
+                    }))
                     .Query(q =>
                         q.Bool(b =>
                             b.Filter(f => f.MatchAll())
                         )
                     )
-                    .Sort(s => s.Descending(f => f.UpdatedDate))
+                    .Sort(s => s.Field(f => f.UpdatedDate).Doc(d => d.Order(SortOrder.Desc)))
             , ct);
 
         ThrowErrors(res);
@@ -98,7 +97,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.BulkAsync(
             b => b.Index(_dbName)
                 .CreateMany(objs)
-                .Refresh(_elasticAttr?.Refresh), ct);
+                .Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh())), ct);
 
         var result = new DbResult { PassedIds = objs.Select(x => x.Id).ToArray() };
         if (res.Errors)
@@ -116,7 +115,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.BulkAsync(
             b => b.Index(_dbName)
                 .IndexMany(objs)
-                .Refresh(_elasticAttr?.Refresh), ct);
+                .Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh())), ct);
 
         var result = new DbResult { PassedIds = objs.Select(x => x.Id).ToArray(), FailedIds = Array.Empty<string>() };
         if (res.Errors)
@@ -131,54 +130,64 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
 
     public async Task DeleteAsync(string[] ids, CancellationToken ct)
     {
-        var objs = ids.Select(x => new { Id = x }).ToArray();
-        var res = await _client.BulkAsync(
-            b => b.Index(_dbName)
-                .DeleteMany(objs)
-                .Refresh(_elasticAttr?.Refresh), ct);
+        var res = await _client.DeleteByQueryAsync<TE>(_dbName, q => q
+            .Query(rq => rq
+                .Ids(f => f.Values(ids))
+            ).Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh()).Value == "true"), ct);
+
+        // TODO: contact elastic and figure out why this doesn't work
+        // var objs = ids.Select(x => new { Id = x }).ToArray();
+        // var res = await _client.BulkAsync(
+        //     b => b.Index(_dbName)
+        //         .DeleteMany(objs)
+        //         .Index(_dbName)
+        //         .Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh())), ct);
 
         ThrowErrors(res);
     }
 
     public Task DropDatabaseAsync(CancellationToken ct)
     {
-        return _client.Indices.DeleteAsync(_dbName, ct: ct);
+        return _client.Indices.DeleteAsync(_dbName, ct);
     }
 
-    private void ThrowErrors(MultiGetResponse res)
-    {
-        if (res.IsValid) return;
+    private string GetRefresh() => typeof(TE) == typeof(Lock)? Refresh.True.Value : _elasticAttr?.Refresh;
 
-        var failedHits = res.Hits.Where(x => x.Error != null).ToArray();
+    private void ThrowErrors(BulkResponse res)
+    {
+        if (res.IsValidResponse) return;
+
+        var failedHits = res.ItemsWithErrors.ToArray();
         if (failedHits.Any())
         {
             var first = failedHits.First();
             if (first.Error.Type == "index_not_found_exception")
                 return;
             else
-                throw new Exception(first.Error.Type);
+                throw new TransportException(first.Error.Type);
         }
 
-        ThrowErrors(res as IResponse);
+        ThrowErrors(res as ElasticsearchResponse);
     }
 
-    private void ThrowErrors(IResponse res)
+    private void ThrowErrors(ElasticsearchResponse res)
     {
-        if (res.IsValid) return;
+        if (res.IsValidResponse) return;
 
         // Low Level Errors
-        if (res.OriginalException != null)
+        if (res.TryGetOriginalException(out var originalException))
         {
             var max = Math.Min(2000, res.DebugInformation.Length);
-            _logger.LogError(res.OriginalException, res.DebugInformation.Substring(0, max));
-            throw res.OriginalException;
+            _logger.LogError(originalException, res.DebugInformation[..max]);
+            throw originalException;
         }
 
         // Low Level Errors
-        if (res.ServerError != null && res.ServerError.Error.Type != "index_already_exists_exception")
+        if (res.TryGetElasticsearchServerError(out var elasticsearchServerError) && elasticsearchServerError.Error != null
+            && elasticsearchServerError.Error.Type != "index_already_exists_exception")
         {
-            var ex = new ElasticsearchClientException(res.ServerError.ToString());
-            _logger.LogError(ex, res.ServerError.ToString());
+            var ex = new TransportException(elasticsearchServerError.ToString());
+            _logger.LogError(ex, elasticsearchServerError.ToString());
             throw ex;
         }
 
