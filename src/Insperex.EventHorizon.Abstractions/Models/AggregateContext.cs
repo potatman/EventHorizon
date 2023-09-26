@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 
 namespace Insperex.EventHorizon.Abstractions.Models
@@ -17,6 +18,13 @@ namespace Insperex.EventHorizon.Abstractions.Models
         public void AddEvent(IEvent @event)
         {
             if(@event != null)
+                Events.Add(@event);
+        }
+
+        public void AddEvents(IEvent[] events)
+        {
+            if (events?.Any() != true) return;
+            foreach (var @event in events)
                 Events.Add(@event);
         }
     }
