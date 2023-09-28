@@ -18,15 +18,21 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
         private readonly IOptions<PulsarConfig> _options;
         private PulsarAdminRESTAPIClient _admin;
         private PulsarClient _client;
+        private readonly Uri _fileUri;
 
         public PulsarClientResolver(IOptions<PulsarConfig> options)
         {
             _options = options;
+
+            // Create File for pulsar client
+            var fileName = $"{Path.GetTempPath()}{Guid.NewGuid()}.txt";
+            var json = JsonConvert.SerializeObject(_options.Value.OAuth2);
+            File.WriteAllText(fileName, json);
+            _fileUri = new Uri($"file:///{fileName}");
         }
 
         public async Task<PulsarClient> GetPulsarClientAsync()
         {
-
             if (_client != null)
                 return _client;
 
@@ -36,10 +42,8 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
 
             if (_options.Value.OAuth2 != null)
             {
-                var fileUri = new Uri(_options.Value.OAuth2.File);
                 var audience = _options.Value.OAuth2.Audience;
-                var json = await ReadOAuth2File(fileUri);
-                builder = builder.Authentication(AuthenticationFactoryOAuth2.ClientCredentials(new Uri(json.IssuerUrl), audience, fileUri));
+                builder = builder.Authentication(AuthenticationFactoryOAuth2.ClientCredentials(new Uri(_options.Value.OAuth2.IssuerUrl), audience, _fileUri));
             }
 
             return await builder.BuildAsync();
@@ -57,7 +61,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
             if (_options.Value.OAuth2 != null)
             {
                 var oauth2 = _options.Value.OAuth2;
-                var token = await GetTokenAsync(oauth2.TokenAddress, oauth2.GrantType, oauth2.Audience, new Uri(oauth2.File));
+                var token = await GetTokenAsync(oauth2.TokenAddress, oauth2.GrantType, oauth2.Audience, _fileUri);
                 client.SetBearerToken(token);
             }
 
@@ -69,7 +73,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
             return new HttpClient {BaseAddress = new Uri($"{_options.Value.AdminUrl}/admin/v2/")};
         }
 
-        private async Task<PulsarOAuthData> ReadOAuth2File(Uri fileUri)
+        private static async Task<PulsarOAuthData> ReadOAuth2File(Uri fileUri)
         {
             // Load Json
             var webRequest = WebRequest.Create(fileUri);
@@ -80,7 +84,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
             return JsonConvert.DeserializeObject<PulsarOAuthData>(contents);
         }
 
-        private async Task<string> GetTokenAsync(string tokenAddress, string grantType, string audience, Uri fileUri)
+        private static async Task<string> GetTokenAsync(string tokenAddress, string grantType, string audience, Uri fileUri)
         {
             var json = await ReadOAuth2File(fileUri);
             var request = new TokenRequest
