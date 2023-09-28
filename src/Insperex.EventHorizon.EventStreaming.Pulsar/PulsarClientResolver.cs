@@ -25,7 +25,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
             _options = options;
 
             // Create File for pulsar client
-            var fileName = $"{Path.GetTempPath()}{Guid.NewGuid()}.txt";
+            var fileName = $"{Path.GetTempPath()}{Path.PathSeparator}{Guid.NewGuid()}.txt";
             var json = JsonConvert.SerializeObject(_options.Value.OAuth2);
             File.WriteAllText(fileName, json);
             _fileUri = new Uri($"file:///{fileName}");
