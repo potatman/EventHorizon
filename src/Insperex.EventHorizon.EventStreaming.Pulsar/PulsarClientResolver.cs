@@ -25,10 +25,10 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
             _options = options;
 
             // Create File for pulsar client
-            var fileName = $"{Directory.GetCurrentDirectory()}{Path.PathSeparator}{Guid.NewGuid()}.txt";
+            var fileName = $"{Directory.GetCurrentDirectory()}{Path.DirectorySeparatorChar}oauth2.txt";
             var json = JsonConvert.SerializeObject(_options.Value.OAuth2);
             File.WriteAllText(fileName, json);
-            _fileUri = new Uri($"file:///{fileName}");
+            _fileUri = new Uri(fileName);
         }
 
         public async Task<PulsarClient> GetPulsarClientAsync()
