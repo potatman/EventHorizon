@@ -1,9 +1,10 @@
 version: "3.7"
 services:
   pulsar:
-    image: "apachepulsar/pulsar:3.1.0"
+    image: apachepulsar/pulsar:2.11.0
+    command: bin/pulsar standalone
+    hostname: pulsar
     ports:
-      - "6650:6650"
       - "8080:8080"
-    command: ["bin/pulsar", "standalone"]
-    restart: always
+      - "6650:6650"
+    restart: unless-stopped
