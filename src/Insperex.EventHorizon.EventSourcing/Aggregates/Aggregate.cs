@@ -36,7 +36,6 @@ public class Aggregate<T>
     public Aggregate(string streamId)
     {
         Id = streamId;
-        SequenceId = 1;
         CreatedDate = UpdatedDate = DateTime.UtcNow;
         Setup();
     }
@@ -44,7 +43,7 @@ public class Aggregate<T>
     public Aggregate(IStateParent<T> model)
     {
         Id = model.Id;
-        SequenceId = model.SequenceId + 1;
+        SequenceId = model.SequenceId;
         State = model.State;
         CreatedDate = model.CreatedDate;
         UpdatedDate = model.UpdatedDate;
@@ -76,7 +75,7 @@ public class Aggregate<T>
             var method = AggregateAssemblyUtil.StateToCommandHandlersDict.GetValueOrDefault(state.Key)?.GetValueOrDefault(command.Type);
             method?.Invoke(state.Value, parameters: new [] { payload, context } );
             foreach(var item in context.Events)
-                Apply(new Event(Id, SequenceId, item));
+                Apply(new Event(Id, ++SequenceId, item));
         }
     }
 
@@ -91,13 +90,13 @@ public class Aggregate<T>
             var result = method?.Invoke(state.Value, parameters: new [] { payload, context } );
             Responses.Add(new Response(request.Id, request.SenderId, Id, result, Error, (int)StatusCode));
             foreach(var item in context.Events)
-                Apply(new Event(Id, SequenceId, item));
+                Apply(new Event(Id, ++SequenceId, item));
         }
     }
 
     public void Apply(IEvent<T> @event)
     {
-        Apply(new Event(Id, SequenceId, @event));
+        Apply(new Event(Id, ++SequenceId, @event));
     }
 
     public void Apply(Event @event, bool isFirstTime = true)
@@ -153,7 +152,7 @@ public class Aggregate<T>
         AllStates[_type.Name] = State;
     }
 
-    public bool Exists() => SequenceId > 1;
+    public bool Exists() => SequenceId > 0;
 
     public Snapshot<T> GetSnapshot() => new(Id, SequenceId, State, CreatedDate, UpdatedDate);
     public View<T> GetView() => new(Id, SequenceId, State, CreatedDate, UpdatedDate);
