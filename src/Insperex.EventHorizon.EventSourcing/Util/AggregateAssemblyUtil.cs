@@ -30,8 +30,4 @@ public static class AggregateAssemblyUtil
             return AssemblyUtil.ActionDict.Values
                 .Where(a => a.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == type && i.GetGenericArguments()[0].Name == x.Key)).ToArray();
         });
-
-    //     AssemblyUtil.ActionDict.Values
-    // .Where(x => x.GetInterface(type.Name) != null)
-    // .ToLookup(x => x.GetInterface(type.Name)?.GetGenericArguments()[0].Name);
 }

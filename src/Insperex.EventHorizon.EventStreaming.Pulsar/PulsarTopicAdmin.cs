@@ -60,7 +60,7 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         catch (ApiException ex)
         {
             // 409 - Topic already exist
-            if (ex.StatusCode != 409)
+            if (ex.StatusCode > 300 && ex.StatusCode != 409)
                 throw;
         }
     }

@@ -76,7 +76,7 @@ public class Aggregate<T>
             var method = AggregateAssemblyUtil.StateToCommandHandlersDict.GetValueOrDefault(state.Key)?.GetValueOrDefault(command.Type);
             method?.Invoke(state.Value, parameters: new [] { payload, context } );
             foreach(var item in context.Events)
-                Apply((dynamic)new Event(Id, SequenceId, item));
+                Apply(new Event(Id, SequenceId, item));
         }
     }
 
@@ -91,7 +91,7 @@ public class Aggregate<T>
             var result = method?.Invoke(state.Value, parameters: new [] { payload, context } );
             Responses.Add(new Response(request.Id, request.SenderId, Id, result, Error, (int)StatusCode));
             foreach(var item in context.Events)
-                Apply((dynamic)new Event(Id, SequenceId, item));
+                Apply(new Event(Id, SequenceId, item));
         }
     }
 
