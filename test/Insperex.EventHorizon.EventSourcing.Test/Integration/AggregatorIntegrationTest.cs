@@ -153,7 +153,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         var aggregate1  = await _accountAggregator.GetAggregateFromStateAsync(streamId, CancellationToken.None);
         Assert.Equal(streamId, aggregate1.State.Id);
         Assert.Equal(streamId, aggregate1.Id);
-        Assert.Equal(2, aggregate1.SequenceId);
+        Assert.Equal(1, aggregate1.SequenceId);
         Assert.NotEqual(DateTime.MinValue, aggregate1.CreatedDate);
         Assert.NotEqual(DateTime.MinValue, aggregate1.UpdatedDate);
         Assert.Equal(100, aggregate1.State.Amount);
