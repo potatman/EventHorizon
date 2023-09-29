@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -27,7 +26,10 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
             // Create File for pulsar client
             var fileName = $"{Directory.GetCurrentDirectory()}{Path.DirectorySeparatorChar}oauth2.txt";
             var json = JsonConvert.SerializeObject(_options.Value.OAuth2);
-            File.WriteAllText(fileName, json);
+
+            if(!File.Exists(fileName))
+                File.WriteAllText(fileName, json);
+
             _fileUri = new Uri(fileName);
         }
 
