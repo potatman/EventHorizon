@@ -47,7 +47,7 @@ public class AggregateUnitTests
         var aggregate = new Aggregate<Account>(snapshotWrapper);
 
         Assert.Equal(snapshotWrapper.Id, aggregate.Id);
-        Assert.Equal(snapshotWrapper.SequenceId+1, aggregate.SequenceId);
+        Assert.Equal(snapshotWrapper.SequenceId, aggregate.SequenceId);
         Assert.Equal(snapshotWrapper.CreatedDate, aggregate.CreatedDate);
         Assert.Equal(snapshotWrapper.UpdatedDate, aggregate.UpdatedDate);
         Assert.Equal(state.Amount, aggregate.State.Amount);
@@ -61,7 +61,7 @@ public class AggregateUnitTests
         var aggregate = new Aggregate<Account>(_streamId);
 
         Assert.Equal(_streamId, aggregate.Id);
-        Assert.Equal(1, aggregate.SequenceId);
+        Assert.Equal(0, aggregate.SequenceId);
         Assert.NotEqual(default, aggregate.CreatedDate);
         Assert.Equal(aggregate.CreatedDate, aggregate.UpdatedDate);
         Assert.True(!aggregate.Exists());
@@ -166,7 +166,7 @@ public class AggregateUnitTests
         // Assert State and Agg
         Assert.Equal(_streamId, agg.Id);
         Assert.Equal(_streamId, agg.State.Id);
-        Assert.Equal(1, agg.SequenceId);
+        Assert.Equal(0, agg.SequenceId);
         Assert.Equal(0, agg.State.Amount);
 
         // Assert Event
