@@ -26,6 +26,8 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopicMessage, new()
 {
     private readonly StreamFailureState<T> _streamFailureState;
+    private readonly PulsarClientResolver _clientResolver;
+    private readonly ILogger<PrimaryTopicConsumer<T>> _logger;
     private readonly SubscriptionConfig<T> _config;
     private readonly ITopicAdmin<T> _admin;
     private readonly string _consumerName;
@@ -36,11 +38,15 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
 
     public PrimaryTopicConsumer(
         StreamFailureState<T> streamFailureState,
+        PulsarClientResolver clientResolver,
+        ILogger<PrimaryTopicConsumer<T>> logger,
         SubscriptionConfig<T> config,
         ITopicAdmin<T> admin,
         string consumerName)
     {
         _streamFailureState = streamFailureState;
+        _clientResolver = clientResolver;
+        _logger = logger;
         _config = config;
         _admin = admin;
         _consumerName = consumerName;
