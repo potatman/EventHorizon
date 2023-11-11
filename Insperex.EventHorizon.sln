@@ -50,7 +50,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compose", "compose", "{FC21
 		compose\Ignite\docker-compose.yml = compose\Ignite\docker-compose.yml
 		compose\MongoDb\docker-compose.yml = compose\MongoDb\docker-compose.yml
 		compose\Pulsar\docker-compose.yml = compose\Pulsar\docker-compose.yml
-		compose\ElasticSearchLegacy\docker-compose.yml = compose\ElasticSearchLegacy\docker-compose.yml
 	EndProjectSection
 EndProject
 Global
