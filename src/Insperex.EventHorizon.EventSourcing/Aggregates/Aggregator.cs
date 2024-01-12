@@ -143,7 +143,7 @@ public class Aggregator<TParent, T>
 
     #region Save
 
-    private async Task SaveAllAsync(Dictionary<string, Aggregate<T>> aggregateDict)
+    public async Task SaveAllAsync(Dictionary<string, Aggregate<T>> aggregateDict)
     {
         // Save Snapshots, Events, and Publish Responses for Successful Saves
         await SaveSnapshotsAsync(aggregateDict);
