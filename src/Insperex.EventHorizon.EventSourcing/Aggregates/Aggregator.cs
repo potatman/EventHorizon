@@ -49,7 +49,7 @@ public class Aggregator<TParent, T>
         var minDateTime = await _crudStore.GetLastUpdatedDateAsync(ct);
 
         // NOTE: return with one ms forward because mongodb rounds to one ms
-        minDateTime = minDateTime.AddMilliseconds(1);
+        minDateTime = minDateTime == default? minDateTime : minDateTime.AddMilliseconds(1);
 
         var reader = _streamingClient.CreateReader<Event>().AddStream<T>().StartDateTime(minDateTime).Build();
 
