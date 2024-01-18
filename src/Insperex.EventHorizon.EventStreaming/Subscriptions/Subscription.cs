@@ -143,10 +143,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
             await _config.OnBatch(context);
 
             // Auto-Ack
-            var autoAcks = batch
-                .Where(x => !context.NackList.Contains(x))
-                .Where(x => !context.AckList.Contains(x))
-                .ToArray();
+            var autoAcks = batch.Except(context.NackList).Except(context.AckList).ToArray();
             context.AckList.AddRange(autoAcks);
 
             await _consumer.FinalizeBatchAsync(context.AckList.ToArray(), context.NackList.ToArray());
