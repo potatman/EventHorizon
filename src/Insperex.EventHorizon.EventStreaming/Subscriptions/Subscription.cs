@@ -75,7 +75,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         {
             try
             {
-                var batch = await LoadEvents();
+                var batch = await NextBatch();
                 if (batch?.Any() == true)
                     await OnEvents(batch);
                 else
@@ -93,7 +93,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         _stopped = true;
     }
 
-    private async Task<MessageContext<T>[]> LoadEvents()
+    public async Task<MessageContext<T>[]> NextBatch()
     {
         using var activity = TraceConstants.ActivitySource.StartActivity();
         try
