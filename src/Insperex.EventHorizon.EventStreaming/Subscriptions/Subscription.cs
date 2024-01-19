@@ -75,7 +75,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         {
             try
             {
-                var batch = await NextBatch();
+                var batch = await GetNextBatch();
                 if (batch?.Any() == true)
                     await ProcessBatch(batch);
                 else
