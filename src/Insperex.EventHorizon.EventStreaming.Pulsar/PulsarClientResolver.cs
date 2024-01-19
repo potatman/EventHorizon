@@ -12,25 +12,26 @@ using SharpPulsar.Admin.v2;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar
 {
-    public class PulsarClientResolver
+    public class PulsarClientResolver : IDisposable
     {
         private readonly IOptions<PulsarConfig> _options;
         private PulsarAdminRESTAPIClient _admin;
         private PulsarClient _client;
         private readonly Uri _fileUri;
+        private readonly string _fileName;
 
         public PulsarClientResolver(IOptions<PulsarConfig> options)
         {
             _options = options;
 
             // Create File for pulsar client
-            var fileName = $"{Directory.GetCurrentDirectory()}{Path.DirectorySeparatorChar}oauth2.txt";
+            _fileName = $"{Directory.GetCurrentDirectory()}{Path.DirectorySeparatorChar}oauth2.txt";
             var json = JsonConvert.SerializeObject(_options.Value.OAuth2);
 
-            if(!File.Exists(fileName))
-                File.WriteAllText(fileName, json);
+            if(!File.Exists(_fileName))
+                File.WriteAllText(_fileName, json);
 
-            _fileUri = new Uri(fileName);
+            _fileUri = new Uri(_fileName);
         }
 
         public async Task<PulsarClient> GetPulsarClientAsync()
@@ -106,6 +107,11 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
             var client = new HttpClient();
             var response = await client.RequestTokenAsync(request);
             return response.AccessToken;
+        }
+
+        public void Dispose()
+        {
+            File.Delete(_fileName);
         }
     }
 }
