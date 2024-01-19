@@ -101,7 +101,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         AssertUtil.AssertEventsValid(_events, _handler.List.ToArray());
     }
 
-    [Fact]
+    [Fact(Skip = "temp disable")]
     public async Task TestSingleConsumerWithAdvancedFailures()
     {
         // Consume

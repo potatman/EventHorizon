@@ -75,9 +75,9 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         {
             try
             {
-                var batch = await LoadEvents();
+                var batch = await NextBatch();
                 if (batch?.Any() == true)
-                    await OnEvents(batch);
+                    await ProcessBatch(batch);
                 else
                     await Task.Delay(_config.NoBatchDelay);
             }
@@ -93,7 +93,15 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         _stopped = true;
     }
 
-    private async Task<MessageContext<T>[]> LoadEvents()
+    public async Task<MessageContext<T>[]> NextBatch()
+    {
+            var batch = await GetNextBatch();
+            if (batch?.Any() == true)
+                await ProcessBatch(batch);
+            return batch;
+    }
+
+    public async Task<MessageContext<T>[]> GetNextBatch()
     {
         using var activity = TraceConstants.ActivitySource.StartActivity();
         try
@@ -133,20 +141,18 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         }
     }
 
-    private async Task OnEvents(MessageContext<T>[] batch)
+    private async Task ProcessBatch(MessageContext<T>[] batch)
     {
         var sw = Stopwatch.StartNew();
         using var activity = TraceConstants.ActivitySource.StartActivity();
         var context = new SubscriptionContext<T> { Messages = batch };
         try
         {
-            await _config.OnBatch(context);
+            if(_config.OnBatch != null)
+                await _config.OnBatch.Invoke(context);
 
             // Auto-Ack
-            var autoAcks = batch
-                .Where(x => !context.NackList.Contains(x))
-                .Where(x => !context.AckList.Contains(x))
-                .ToArray();
+            var autoAcks = batch.Except(context.NackList).Except(context.AckList).ToArray();
             context.AckList.AddRange(autoAcks);
 
             await _consumer.FinalizeBatchAsync(context.AckList.ToArray(), context.NackList.ToArray());

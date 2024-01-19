@@ -27,7 +27,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     private readonly ITopicAdmin<T> _admin;
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
     private IConsumer<T> _consumer;
-    private readonly Dictionary<string, Message<T>> _unackedMessages = new();
+    private Dictionary<string, Message<T>> _unackedMessages = new();
 
     public PulsarTopicConsumer(
         PulsarClientResolver clientResolver,
@@ -54,22 +54,19 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             if (!messages.Any())
                 return null;
 
-            var contexts =  messages
-                .Select((x,i) =>
+            _unackedMessages = messages.ToDictionary(x => Guid.NewGuid().ToString());
+
+            var contexts =  _unackedMessages
+                .Select((x) =>
                 {
                     // Note: x.MessageId.TopicName is null, when single tropic
-                    var topic = _config.Topics.Length == 1 ? _config.Topics.First() : x.MessageId.TopicName;
+                    var topic = _config.Topics.Length == 1 ? _config.Topics.First() : x.Value.MessageId.TopicName;
 
-                    var id = Guid.NewGuid().ToString();
-                    var context = new MessageContext<T>
+                    return new MessageContext<T>
                     {
-                        Data = x.GetValue(),
-                        TopicData = PulsarMessageMapper.MapTopicData(id, x, topic)
+                        Data = x.Value.GetValue(),
+                        TopicData = PulsarMessageMapper.MapTopicData(x.Key, x.Value, topic)
                     };
-
-                    _unackedMessages[id] = x;
-
-                    return context;
                 })
                 .ToArray();
 
