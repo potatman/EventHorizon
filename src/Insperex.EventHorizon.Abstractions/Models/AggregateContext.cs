@@ -23,8 +23,8 @@ namespace Insperex.EventHorizon.Abstractions.Models
 
         public void AddEvents(IEvent[] events)
         {
-            if (events == null || events.Length > 0) return;
-            Events.AddRange(events);
+            if (events?.Length > 0)
+                Events.AddRange(events);
         }
     }
 }
