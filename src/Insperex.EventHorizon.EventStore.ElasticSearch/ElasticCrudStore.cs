@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.Core.Search;
 using Elastic.Clients.Elasticsearch.IndexManagement;
+using Elastic.Clients.Elasticsearch.Mapping;
 using Elastic.Clients.Elasticsearch.QueryDsl;
 using Elastic.Transport;
 using Elastic.Transport.Products.Elasticsearch;
@@ -40,6 +41,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
 
         var createReq = await _client.Indices.CreateAsync(_dbName, cfg =>
         {
+            cfg.Mappings(x => x.Dynamic(DynamicMapping.True));
             cfg.Settings(x =>
                 {
                     if (_elasticAttr?.Shards > 0) x.NumberOfShards(_elasticAttr?.Shards);
