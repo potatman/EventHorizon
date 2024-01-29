@@ -13,8 +13,9 @@ public static class SubscriptionServiceCollectionExtensions
         where TH : class, IStreamConsumer<TM>
         where TM : class, ITopicMessage, new()
     {
+        configurator.Collection.AddHostedService<SubscriptionHostedService<TM>>();
         configurator.Collection.AddScoped<TH>();
-        configurator.Collection.AddHostedService(x =>
+        configurator.Collection.AddTransient(x =>
         {
             using var scope = x.CreateScope();
             var handler = scope.ServiceProvider.GetRequiredService<TH>();
@@ -23,25 +24,25 @@ public static class SubscriptionServiceCollectionExtensions
                 .SubscriptionName(typeof(TH).Name);
             action?.Invoke(builder);
 
-            return new SubscriptionHostedService<TH, TM>(builder.OnBatch(handler.OnBatch).Build());
+            return builder.OnBatch(handler.OnBatch).Build();
         });
         return configurator;
     }
 
-    public static EventHorizonConfigurator AddSubscription<T>(this EventHorizonConfigurator configurator,
-        Action<SubscriptionBuilder<T>> action = null)
-        where T : class, ITopicMessage, new()
+    public static EventHorizonConfigurator AddSubscription<TM>(this EventHorizonConfigurator configurator,
+        Action<SubscriptionBuilder<TM>> action = null)
+        where TM : class, ITopicMessage, new()
     {
-        configurator.Collection.AddHostedService(x =>
+        configurator.Collection.AddHostedService<SubscriptionHostedService<TM>>();
+        configurator.Collection.AddTransient(x =>
         {
             using var scope = x.CreateScope();
             var client = scope.ServiceProvider.GetRequiredService<StreamingClient>();
-            var builder = client.CreateSubscription<T>()
-                .SubscriptionName(typeof(T).Name);
+            var builder = client.CreateSubscription<TM>()
+                .SubscriptionName(typeof(TM).Name);
             action?.Invoke(builder);
 
-            //TODO:  This is kludgy AF, but considering none of this work as is this is better than nothing.
-            return new SubscriptionHostedService<T, T>(builder.Build());
+            return builder.Build();
         });
         return configurator;
     }

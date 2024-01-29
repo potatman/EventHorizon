@@ -1,26 +1,30 @@
-﻿using System.Threading;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Microsoft.Extensions.Hosting;
 
 namespace Insperex.EventHorizon.EventStreaming.Subscriptions;
 
-public class SubscriptionHostedService<TH, TM> : IHostedService where TM : class, ITopicMessage, new()
+public class SubscriptionHostedService<TM> : IHostedService where TM : class, ITopicMessage, new()
 {
-    private readonly Subscription<TM> _subscription;
+    private readonly Subscription<TM>[] _subscriptions;
 
-    public SubscriptionHostedService(Subscription<TM> subscription)
+    public SubscriptionHostedService(IEnumerable<Subscription<TM>> subscriptions)
     {
-        _subscription = subscription;
+        _subscriptions = subscriptions.ToArray();
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
-        return _subscription.StartAsync();
+        foreach (var subscription in _subscriptions)
+            await subscription.StartAsync();
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
-        return _subscription.StopAsync();
+        foreach (var subscription in _subscriptions)
+            await subscription.StopAsync();
     }
 }
