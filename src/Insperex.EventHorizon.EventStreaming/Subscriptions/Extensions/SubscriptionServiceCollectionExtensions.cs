@@ -23,7 +23,7 @@ public static class SubscriptionServiceCollectionExtensions
                 .SubscriptionName(typeof(TH).Name);
             action?.Invoke(builder);
 
-            return new SubscriptionHostedService<TM>(builder.OnBatch(handler.OnBatch).Build());
+            return new SubscriptionHostedService<TH, TM>(builder.OnBatch(handler.OnBatch).Build());
         });
         return configurator;
     }
@@ -39,7 +39,9 @@ public static class SubscriptionServiceCollectionExtensions
             var builder = client.CreateSubscription<T>()
                 .SubscriptionName(typeof(T).Name);
             action?.Invoke(builder);
-            return new SubscriptionHostedService<T>(builder.Build());
+
+            //TODO:  This is kludgy AF, but considering none of this work as is this is better than nothing.
+            return new SubscriptionHostedService<T, T>(builder.Build());
         });
         return configurator;
     }

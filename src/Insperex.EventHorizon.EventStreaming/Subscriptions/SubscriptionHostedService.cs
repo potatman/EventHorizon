@@ -5,11 +5,11 @@ using Microsoft.Extensions.Hosting;
 
 namespace Insperex.EventHorizon.EventStreaming.Subscriptions;
 
-public class SubscriptionHostedService<T> : IHostedService where T : class, ITopicMessage, new()
+public class SubscriptionHostedService<TH, TM> : IHostedService where TM : class, ITopicMessage, new()
 {
-    private readonly Subscription<T> _subscription;
+    private readonly Subscription<TM> _subscription;
 
-    public SubscriptionHostedService(Subscription<T> subscription)
+    public SubscriptionHostedService(Subscription<TM> subscription)
     {
         _subscription = subscription;
     }
