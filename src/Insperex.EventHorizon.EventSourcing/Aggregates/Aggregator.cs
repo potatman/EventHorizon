@@ -17,21 +17,21 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventSourcing.Aggregates;
 
-public class Aggregator<TParent, T>
-    where TParent : class, IStateParent<T>, new()
-    where T : class, IState
+public class Aggregator<TParent, TState>
+    where TParent : class, IStateParent<TState>, new()
+    where TState : class, IState
 {
-    private readonly AggregateConfig<T> _config;
+    private readonly AggregateConfig<TState> _config;
     private readonly ICrudStore<TParent> _crudStore;
-    private readonly ILogger<Aggregator<TParent, T>> _logger;
+    private readonly ILogger<Aggregator<TParent, TState>> _logger;
     private readonly StreamingClient _streamingClient;
     private readonly Dictionary<string, object> _publisherDict = new();
 
     public Aggregator(
         ICrudStore<TParent> crudStore,
         StreamingClient streamingClient,
-        AggregateConfig<T> config,
-        ILogger<Aggregator<TParent, T>> logger)
+        AggregateConfig<TState> config,
+        ILogger<Aggregator<TParent, TState>> logger)
     {
         _crudStore = crudStore;
         _streamingClient = streamingClient;
@@ -39,7 +39,7 @@ public class Aggregator<TParent, T>
         _logger = logger;
     }
 
-    internal AggregateConfig<T> GetConfig()
+    internal AggregateConfig<TState> GetConfig()
     {
         return _config;
     }
@@ -51,7 +51,7 @@ public class Aggregator<TParent, T>
         // NOTE: return with one ms forward because mongodb rounds to one ms
         minDateTime = minDateTime == default? minDateTime : minDateTime.AddMilliseconds(1);
 
-        var reader = _streamingClient.CreateReader<Event>().AddStateStream<T>().StartDateTime(minDateTime).Build();
+        var reader = _streamingClient.CreateReader<Event>().AddStateStream<TState>().StartDateTime(minDateTime).Build();
 
         while (!ct.IsCancellationRequested)
         {
@@ -62,12 +62,12 @@ public class Aggregator<TParent, T>
             var streamIds = lookup.Select(x => x.Key).ToArray();
             var models = await _crudStore.GetAllAsync(streamIds, ct);
             var modelsDict = models.ToDictionary(x => x.Id);
-            var dict = new Dictionary<string, Aggregate<T>>();
+            var dict = new Dictionary<string, Aggregate<TState>>();
             foreach (var streamId in streamIds)
             {
                 var agg = modelsDict.ContainsKey(streamId)
-                    ? new Aggregate<T>(modelsDict[streamId])
-                    : new Aggregate<T>(streamId);
+                    ? new Aggregate<TState>(modelsDict[streamId])
+                    : new Aggregate<TState>(streamId);
 
                 foreach (var message in lookup[streamId])
                     agg.Apply(message.Data);
@@ -103,7 +103,7 @@ public class Aggregator<TParent, T>
         return  aggregateDict.Values.SelectMany(x => x.Responses).ToArray();
     }
 
-    private void TriggerHandle<TM>(TM[] messages, Dictionary<string, Aggregate<T>> aggregateDict) where TM : ITopicMessage
+    private void TriggerHandle<TM>(TM[] messages, Dictionary<string, Aggregate<TState>> aggregateDict) where TM : ITopicMessage
     {
         var sw = Stopwatch.StartNew();
         foreach (var message in messages)
@@ -138,12 +138,12 @@ public class Aggregator<TParent, T>
                 agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
         }
         _logger.LogInformation("TriggerHandled {Count} {Type} Aggregate(s) in {Duration}",
-            aggregateDict.Count, typeof(T).Name, sw.ElapsedMilliseconds);
+            aggregateDict.Count, typeof(TState).Name, sw.ElapsedMilliseconds);
     }
 
     #region Save
 
-    public async Task SaveAllAsync(Dictionary<string, Aggregate<T>> aggregateDict)
+    public async Task SaveAllAsync(Dictionary<string, Aggregate<TState>> aggregateDict)
     {
         // Save Snapshots, Events, and Publish Responses for Successful Saves
         await SaveSnapshotsAsync(aggregateDict);
@@ -156,7 +156,7 @@ public class Aggregator<TParent, T>
             if (group.Key == null) continue;
             var first = group.First();
             _logger.LogError("{State} {Count} had {Status} => {Error}",
-                typeof(T).Name, group.Count(), first.StatusCode, first.Error);
+                typeof(TState).Name, group.Count(), first.StatusCode, first.Error);
         }
 
         // OnCompleted Hook
@@ -172,7 +172,7 @@ public class Aggregator<TParent, T>
         }
     }
 
-    private async Task SaveSnapshotsAsync(Dictionary<string, Aggregate<T>> aggregateDict)
+    private async Task SaveSnapshotsAsync(Dictionary<string, Aggregate<TState>> aggregateDict)
     {
         try
         {
@@ -204,7 +204,7 @@ public class Aggregator<TParent, T>
                 aggregateDict[id].SequenceId++;
             }
             _logger.LogInformation("Saved {Count} {Type} Aggregate(s) in {Duration}",
-                aggregateDict.Count, typeof(T).Name, sw.ElapsedMilliseconds);
+                aggregateDict.Count, typeof(TState).Name, sw.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
@@ -213,7 +213,7 @@ public class Aggregator<TParent, T>
         }
     }
 
-    private async Task PublishEventsAsync(Dictionary<string, Aggregate<T>> aggregateDict)
+    private async Task PublishEventsAsync(Dictionary<string, Aggregate<TState>> aggregateDict)
     {
         var events = aggregateDict.Values
             .Where(x => x.Error == null)
@@ -258,12 +258,12 @@ public class Aggregator<TParent, T>
     {
         var key = $"{typeof(TM).Name}-{path}";
         if (!_publisherDict.ContainsKey(key))
-            _publisherDict[key] = _streamingClient.CreatePublisher<TM>().AddStateStream<T>(path).Build();
+            _publisherDict[key] = _streamingClient.CreatePublisher<TM>().AddStateStream<TState>(path).Build();
 
         return _publisherDict[key] as Publisher<TM>;
     }
 
-    private static void ResetAll(Dictionary<string, Aggregate<T>> aggregateDict)
+    private static void ResetAll(Dictionary<string, Aggregate<TState>> aggregateDict)
     {
         foreach (var aggregate in aggregateDict.Values)
         {
@@ -277,13 +277,13 @@ public class Aggregator<TParent, T>
 
     #region load
 
-    public async Task<Aggregate<T>> GetAggregateFromStateAsync(string streamId, CancellationToken ct)
+    public async Task<Aggregate<TState>> GetAggregateFromStateAsync(string streamId, CancellationToken ct)
     {
         var result = await GetAggregatesFromStatesAsync(new[] { streamId }, ct);
         return result.Values.FirstOrDefault();
     }
 
-    public async Task<Dictionary<string, Aggregate<T>>> GetAggregatesFromStatesAsync(string[] streamIds, CancellationToken ct)
+    public async Task<Dictionary<string, Aggregate<TState>>> GetAggregatesFromStatesAsync(string[] streamIds, CancellationToken ct)
     {
         try
         {
@@ -295,7 +295,7 @@ public class Aggregator<TParent, T>
 
             // Build Aggregate Dict
             var aggregateDict = streamIds
-                .Select(x => parentDict.TryGetValue(x, out var value)? new Aggregate<T>(value) : new Aggregate<T>(x))
+                .Select(x => parentDict.TryGetValue(x, out var value)? new Aggregate<TState>(value) : new Aggregate<TState>(x))
                 .ToDictionary(x => x.Id);
 
             // OnCompleted Hook
@@ -310,7 +310,7 @@ public class Aggregator<TParent, T>
                     agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
             }
             _logger.LogInformation("Loaded {Count} {Type} Aggregate(s) in {Duration}",
-                aggregateDict.Count, typeof(T).Name, sw.ElapsedMilliseconds);
+                aggregateDict.Count, typeof(TState).Name, sw.ElapsedMilliseconds);
 
             return aggregateDict;
         }
@@ -320,7 +320,7 @@ public class Aggregator<TParent, T>
             return streamIds
                 .Select(x =>
                 {
-                    var agg = new Aggregate<T>(x);
+                    var agg = new Aggregate<TState>(x);
                     agg.SetStatus(HttpStatusCode.InternalServerError, ex.Message);
                     return agg;
                 })
@@ -328,13 +328,13 @@ public class Aggregator<TParent, T>
         }
     }
 
-    public async Task<Aggregate<T>> GetAggregateFromEventsAsync(string streamId, DateTime? endDateTime = null)
+    public async Task<Aggregate<TState>> GetAggregateFromEventsAsync(string streamId, DateTime? endDateTime = null)
     {
         var results = await GetAggregatesFromEventsAsync(new[] { streamId }, endDateTime);
         return results[streamId];
     }
 
-    public async Task<Dictionary<string, Aggregate<T>>> GetAggregatesFromEventsAsync(string[] streamIds,
+    public async Task<Dictionary<string, Aggregate<TState>>> GetAggregatesFromEventsAsync(string[] streamIds,
         DateTime? endDateTime = null)
     {
         var events = await GetEventsAsync(streamIds, endDateTime);
@@ -343,14 +343,14 @@ public class Aggregator<TParent, T>
             .Select(x =>
             {
                 var e = eventLookup[x].ToArray();
-                return e.Any() ? new Aggregate<T>(e.ToArray()) : new Aggregate<T>(x);
+                return e.Any() ? new Aggregate<TState>(e.ToArray()) : new Aggregate<TState>(x);
             })
             .ToDictionary(x => x.Id);
     }
 
     public Task<MessageContext<Event>[]> GetEventsAsync(string[] streamIds, DateTime? endDateTime = null)
     {
-        var reader = _streamingClient.CreateReader<Event>().AddStateStream<T>().Keys(streamIds).EndDateTime(endDateTime).Build();
+        var reader = _streamingClient.CreateReader<Event>().AddStateStream<TState>().Keys(streamIds).EndDateTime(endDateTime).Build();
         return reader.GetNextAsync(10000);
     }
 

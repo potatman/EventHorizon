@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http.Json;
 using System.Reflection;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
@@ -18,6 +17,7 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
         public readonly Dictionary<string, Type> EventDict;
         public readonly Dictionary<string, Type> RequestDict;
         public readonly Dictionary<string, Type> ResponseDict;
+        public readonly Dictionary<string, Type> ActionDict;
 
         // Handlers
         public readonly Dictionary<string, Dictionary<string, MethodInfo>> CommandHandlersDict;
@@ -42,6 +42,7 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
             CommandDict = GetTypeDictWithGenericArg<ICommand>();
             RequestDict = GetTypeDictWithGenericArg<IRequest>();
             ResponseDict = GetTypeDictWithGenericArg<IResponse>();
+            ActionDict = GetTypeDictWithGenericArg<IAction>();
 
             // Handlers
             CommandHandlersDict = GetHandlers(typeof(IHandleCommand<>), "Handle");

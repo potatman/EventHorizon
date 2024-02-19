@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.Subscriptions;
 
-public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
+public class SubscriptionBuilder<TMessage> where TMessage : class, ITopicMessage, new()
 {
     private readonly IStreamFactory _factory;
     private readonly ILoggerFactory _loggerFactory;
@@ -29,7 +29,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
     private bool _redeliverFailedMessages = true;
     private bool _guaranteeMessageOrderOnFailure;
     private IBackoffStrategy _backoffStrategy = new ConstantBackoffStrategy {Delay = TimeSpan.FromMilliseconds(10)};
-    private Func<SubscriptionContext<T>, Task> _onBatch;
+    private Func<SubscriptionContext<TMessage>, Task> _onBatch;
     private SubscriptionType _subscriptionType = Abstractions.Models.SubscriptionType.KeyShared;
     private bool _isPreload;
 
@@ -41,18 +41,18 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         _topicResolver = _factory.GetTopicResolver();
     }
 
-    public SubscriptionBuilder<T> AddStateStream<TState>(string senderId = null) where TState : IState
+    public SubscriptionBuilder<TMessage> AddStateStream<TState>(string senderId = null) where TState : IState
     {
         var stateType = typeof(TState);
         var stateDetails = ReflectionFactory.GetStateDetail(stateType);
 
         // Add types
-        foreach (var type in stateDetails.GetTypeDictWithGenericArg<T>())
+        foreach (var type in stateDetails.ActionDict)
             _typeDict[type.Key] = type.Value;
 
         // Add Sub Topics (for IState only)
         var topics = stateDetails.AllStateTypes
-            .Select(x => _topicResolver.GetTopic<T>(x, senderId))
+            .Select(x => _topicResolver.GetTopic<TMessage>(x, senderId))
             .Where(x => x != null)
             .ToArray();
 
@@ -60,7 +60,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
 
         return this;
     }
-    public SubscriptionBuilder<T> AddStream<TAction>(string senderId = null) where TAction : IAction
+    public SubscriptionBuilder<TMessage> AddStream<TAction>(string senderId = null) where TAction : IAction
     {
         var stateType = typeof(TAction);
         var types = AssemblyUtil.GetTypes<TAction>();
@@ -69,82 +69,82 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
             _typeDict[type.Name] = type;
 
         // Add Main Topic
-        _topics.Add(_topicResolver.GetTopic<T>(stateType, senderId));
+        _topics.Add(_topicResolver.GetTopic<TMessage>(stateType, senderId));
 
         return this;
     }
 
-    public SubscriptionBuilder<T> SubscriptionName(string name)
+    public SubscriptionBuilder<TMessage> SubscriptionName(string name)
     {
         _subscriptionName = $"{AssemblyUtil.AssemblyName}-{name}";
         return this;
     }
 
-    public SubscriptionBuilder<T> SubscriptionType(SubscriptionType subscriptionType)
+    public SubscriptionBuilder<TMessage> SubscriptionType(SubscriptionType subscriptionType)
     {
         _subscriptionType = subscriptionType;
         return this;
     }
 
-    public SubscriptionBuilder<T> NoBatchDelay(TimeSpan delay)
+    public SubscriptionBuilder<TMessage> NoBatchDelay(TimeSpan delay)
     {
         _noBatchDelay = delay;
         return this;
     }
 
-    public SubscriptionBuilder<T> BatchSize(int size)
+    public SubscriptionBuilder<TMessage> BatchSize(int size)
     {
         _batchSize = size;
         return this;
     }
 
-    public SubscriptionBuilder<T> StartDateTime(DateTime startDateTime)
+    public SubscriptionBuilder<TMessage> StartDateTime(DateTime startDateTime)
     {
         _startDateTime = startDateTime;
         return this;
     }
 
-    public SubscriptionBuilder<T> IsBeginning(bool isBeginning)
+    public SubscriptionBuilder<TMessage> IsBeginning(bool isBeginning)
     {
         _isBeginning = isBeginning;
         return this;
     }
 
-    public SubscriptionBuilder<T> IsPreLoad(bool isPreload)
+    public SubscriptionBuilder<TMessage> IsPreLoad(bool isPreload)
     {
         _isPreload = isPreload;
         return this;
     }
 
-    public SubscriptionBuilder<T> RedeliverFailedMessages(bool redeliver)
+    public SubscriptionBuilder<TMessage> RedeliverFailedMessages(bool redeliver)
     {
         _redeliverFailedMessages = redeliver;
         return this;
     }
 
-    public SubscriptionBuilder<T> GuaranteeMessageOrderOnFailure(bool guarantee)
+    public SubscriptionBuilder<TMessage> GuaranteeMessageOrderOnFailure(bool guarantee)
     {
         _guaranteeMessageOrderOnFailure = guarantee;
         return this;
     }
 
-    public SubscriptionBuilder<T> BackoffStrategy(IBackoffStrategy backoffStrategy)
+    public SubscriptionBuilder<TMessage> BackoffStrategy(IBackoffStrategy backoffStrategy)
     {
         _backoffStrategy = backoffStrategy;
         return this;
     }
 
-    public SubscriptionBuilder<T> OnBatch(Func<SubscriptionContext<T>, Task> onBatch)
+    public SubscriptionBuilder<TMessage> OnBatch(Func<SubscriptionContext<TMessage>, Task> onBatch)
     {
         _onBatch = onBatch;
         return this;
     }
 
-    public Subscription<T> Build()
+    public Subscription<TMessage> Build()
     {
         EnsureValid();
 
-        var config = new SubscriptionConfig<T>
+        var config = new SubscriptionConfig<TMessage>
         {
             Topics = _topics.Distinct().ToArray(),
             TypeDict = _typeDict,
@@ -160,10 +160,10 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
             BackoffStrategy = _backoffStrategy,
             OnBatch = _onBatch,
         };
-        var logger = _loggerFactory.CreateLogger<Subscription<T>>();
+        var logger = _loggerFactory.CreateLogger<Subscription<TMessage>>();
 
         // Return
-        return new Subscription<T>(_factory, config, logger);
+        return new Subscription<TMessage>(_factory, config, logger);
     }
 
     private void EnsureValid()

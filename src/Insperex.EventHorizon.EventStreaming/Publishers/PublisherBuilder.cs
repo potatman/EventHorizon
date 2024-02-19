@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.Publishers;
 
-public class PublisherBuilder<T> where T : class, ITopicMessage, new()
+public class PublisherBuilder<TMessage> where TMessage : class, ITopicMessage, new()
 {
     private readonly IStreamFactory _factory;
     private readonly ILoggerFactory _loggerFactory;
@@ -29,32 +29,32 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
         _loggerFactory = loggerFactory;
     }
 
-    internal PublisherBuilder<T> AddTopic(string topicName = null)
+    internal PublisherBuilder<TMessage> AddTopic(string topicName = null)
     {
-        if (_topic != null) throw new MultiTopicNotSupportedException<PublisherBuilder<T>>();
+        if (_topic != null) throw new MultiTopicNotSupportedException<PublisherBuilder<TMessage>>();
         _topic = topicName;
         return this;
     }
 
-    public PublisherBuilder<T> AddStateStream<TState>(string senderId = null) where TState : IState
+    public PublisherBuilder<TMessage> AddStateStream<TState>(string senderId = null) where TState : IState
     {
-        if (_topic != null) throw new MultiTopicNotSupportedException<PublisherBuilder<T>>();
+        if (_topic != null) throw new MultiTopicNotSupportedException<PublisherBuilder<TMessage>>();
 
         // Add Types
         var stateType = typeof(TState);
         var stateDetails = ReflectionFactory.GetStateDetail(stateType);
-        foreach (var type in stateDetails.GetTypeDictWithGenericArg<T>())
+        foreach (var type in stateDetails.ActionDict)
             _typeDict[type.Key] = type.Value;
 
         // Add Topics
-        _topic = _factory.GetTopicResolver().GetTopic<T>(stateType, senderId);
+        _topic = _factory.GetTopicResolver().GetTopic<TMessage>(stateType, senderId);
 
         return this;
     }
 
-    public PublisherBuilder<T> AddStream<TAction>(string senderId = null) where TAction : IAction
+    public PublisherBuilder<TMessage> AddStream<TAction>(string senderId = null) where TAction : IAction
     {
-        if (_topic != null) throw new MultiTopicNotSupportedException<PublisherBuilder<T>>();
+        if (_topic != null) throw new MultiTopicNotSupportedException<PublisherBuilder<TMessage>>();
 
         // Add Types
         var types = AssemblyUtil.GetTypes<TAction>();
@@ -62,36 +62,36 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
             _typeDict[type.Name] = type;
 
         // Add Topics
-        _topic = _factory.GetTopicResolver().GetTopic<T>(typeof(TAction), senderId);
+        _topic = _factory.GetTopicResolver().GetTopic<TMessage>(typeof(TAction), senderId);
 
         return this;
     }
 
-    public PublisherBuilder<T> IsGuaranteed(bool isGuaranteed)
+    public PublisherBuilder<TMessage> IsGuaranteed(bool isGuaranteed)
     {
         _isGuaranteed = isGuaranteed;
         return this;
     }
 
-    public PublisherBuilder<T> IsOrderGuaranteed(bool isOrderGuaranteed)
+    public PublisherBuilder<TMessage> IsOrderGuaranteed(bool isOrderGuaranteed)
     {
         _isOrderGuaranteed = isOrderGuaranteed;
         return this;
     }
 
-    public PublisherBuilder<T> SendTimeout(TimeSpan sendTimeout)
+    public PublisherBuilder<TMessage> SendTimeout(TimeSpan sendTimeout)
     {
         _sendTimeout = sendTimeout;
         return this;
     }
 
-    public PublisherBuilder<T> BatchSize(int batchSize)
+    public PublisherBuilder<TMessage> BatchSize(int batchSize)
     {
         _batchSize = batchSize;
         return this;
     }
 
-    public Publisher<T> Build()
+    public Publisher<TMessage> Build()
     {
         var config = new PublisherConfig
         {
@@ -102,9 +102,9 @@ public class PublisherBuilder<T> where T : class, ITopicMessage, new()
             SendTimeout = _sendTimeout,
             BatchSize = _batchSize
         };
-        var logger = _loggerFactory.CreateLogger<Publisher<T>>();
+        var logger = _loggerFactory.CreateLogger<Publisher<TMessage>>();
 
         // Create
-        return new Publisher<T>(_factory, config, logger);
+        return new Publisher<TMessage>(_factory, config, logger);
     }
 }
