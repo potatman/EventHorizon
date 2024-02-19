@@ -20,7 +20,7 @@ public class InMemoryTopicProducer<T> : ITopicProducer<T>
 
     public Task SendAsync(params T[] messages)
     {
-        _messageDatabase.AddMessages(_config.Topic, messages);
+        _messageDatabase.AddMessages(_config, messages);
         return Task.CompletedTask;
     }
 

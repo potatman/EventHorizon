@@ -1,17 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming;
-using Insperex.EventHorizon.EventStreaming.Extensions;
 using Insperex.EventHorizon.EventStreaming.Publishers;
 using Microsoft.Extensions.Logging;
 
@@ -110,10 +107,11 @@ public class Sender
     }
 
     private Publisher<TM> GetPublisher<TM, T>(string path) where TM : class, ITopicMessage, new()
+        where T : IState
     {
         var key = $"{typeof(TM).Name}-{path}";
         if (!_publisherDict.ContainsKey(key))
-            _publisherDict[key] = _streamingClient.CreatePublisher<TM>().AddStream<T>(path).Build();
+            _publisherDict[key] = _streamingClient.CreatePublisher<TM>().AddStateStream<T>(path).Build();
 
         return _publisherDict[key] as Publisher<TM>;
     }

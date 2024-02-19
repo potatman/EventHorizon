@@ -19,11 +19,11 @@ public class PriceChangeTracker : IStreamConsumer<Event>
     {
         _logger = logger;
     }
-    
+
     public Task OnBatch(SubscriptionContext<Event> context)
     {
         var changes = context.Messages
-            .Select(x => x.Data.GetPayload())
+            .Select(x => x.GetPayload())
             .ToArray();
         foreach (var change in changes)
         {
@@ -35,7 +35,7 @@ public class PriceChangeTracker : IStreamConsumer<Event>
 
             var priceChange = change as PriceChanged;
             _logger.LogInformation("{Type} {Id} = {Price}", priceChange.GetType().Name, priceChange.Id, priceChange.Price);
-            
+
         }
         return Task.CompletedTask;
     }

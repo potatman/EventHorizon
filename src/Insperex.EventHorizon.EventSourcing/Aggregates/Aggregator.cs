@@ -51,7 +51,7 @@ public class Aggregator<TParent, T>
         // NOTE: return with one ms forward because mongodb rounds to one ms
         minDateTime = minDateTime == default? minDateTime : minDateTime.AddMilliseconds(1);
 
-        var reader = _streamingClient.CreateReader<Event>().AddStream<T>().StartDateTime(minDateTime).Build();
+        var reader = _streamingClient.CreateReader<Event>().AddStateStream<T>().StartDateTime(minDateTime).Build();
 
         while (!ct.IsCancellationRequested)
         {
@@ -258,7 +258,7 @@ public class Aggregator<TParent, T>
     {
         var key = $"{typeof(TM).Name}-{path}";
         if (!_publisherDict.ContainsKey(key))
-            _publisherDict[key] = _streamingClient.CreatePublisher<TM>().AddStream<T>(path).Build();
+            _publisherDict[key] = _streamingClient.CreatePublisher<TM>().AddStateStream<T>(path).Build();
 
         return _publisherDict[key] as Publisher<TM>;
     }
@@ -350,7 +350,7 @@ public class Aggregator<TParent, T>
 
     public Task<MessageContext<Event>[]> GetEventsAsync(string[] streamIds, DateTime? endDateTime = null)
     {
-        var reader = _streamingClient.CreateReader<Event>().AddStream<T>().Keys(streamIds).EndDateTime(endDateTime).Build();
+        var reader = _streamingClient.CreateReader<Event>().AddStateStream<T>().Keys(streamIds).EndDateTime(endDateTime).Build();
         return reader.GetNextAsync(10000);
     }
 

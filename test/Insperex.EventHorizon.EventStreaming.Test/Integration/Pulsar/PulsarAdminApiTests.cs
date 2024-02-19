@@ -82,7 +82,7 @@ public class PulsarAdminApiTests: IAsyncLifetime
         var cts = new CancellationTokenSource();
         cts.CancelAfter(_timeout);
 
-        var topicName = _pulsarTopicResolver.GetTopics<Event>(typeof(Feed1PriceChanged)).First();
+        var topicName = _pulsarTopicResolver.GetTopic<Event>(typeof(Feed1PriceChanged));
         var topic = PulsarTopicParser.Parse(topicName);
 
         var url = $"{topic.ApiRoot}/stats?subscriptionBacklogSize=false";

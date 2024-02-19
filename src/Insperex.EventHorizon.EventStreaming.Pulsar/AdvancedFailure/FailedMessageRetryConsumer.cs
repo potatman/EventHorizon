@@ -30,7 +30,7 @@ public class FailedMessageRetryConsumer<T>: ITopicConsumer<T> where T : class, I
     {
         _batchSize = config.BatchSize ?? 1000;
         _streamFailureState = streamFailureState;
-        _reader = new RetryTopicReader<T>(clientResolver, loggerFactory.CreateLogger<RetryTopicReader<T>>());
+        _reader = new RetryTopicReader<T>(clientResolver, config, loggerFactory.CreateLogger<RetryTopicReader<T>>());
         _logger = loggerFactory.CreateLogger<FailedMessageRetryConsumer<T>>();
     }
 

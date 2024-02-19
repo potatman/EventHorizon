@@ -1,6 +1,7 @@
 ﻿using System;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
+using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;

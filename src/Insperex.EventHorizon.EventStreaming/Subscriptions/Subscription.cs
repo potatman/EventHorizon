@@ -1,12 +1,10 @@
 using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
-using Insperex.EventHorizon.EventStreaming.Extensions;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 using Microsoft.Extensions.Logging;
@@ -116,7 +114,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
             if (batch?.Any() == true)
             {
                 foreach (var item in batch)
-                    item.Data = item.Data.Upgrade();
+                    item.Data = item.Upgrade();
 
                 _logger.LogInformation("Subscription - Loaded {Type}(s) {Count} in {Duration} {Subscription}",
                     typeof(T).Name, batch.Length, sw.ElapsedMilliseconds, _config.SubscriptionName);

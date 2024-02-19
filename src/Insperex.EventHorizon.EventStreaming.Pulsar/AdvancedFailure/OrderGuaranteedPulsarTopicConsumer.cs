@@ -5,11 +5,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
+using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
-using Insperex.EventHorizon.EventStreaming.Util;
 using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
@@ -50,7 +50,7 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
     private readonly object _batchInProgressLock = new object();
     private bool _batchInProgress;
 
-    private readonly string _consumerName = NameUtil.AssemblyNameWithGuid;
+    private readonly string _consumerName = AssemblyUtil.AssemblyNameWithGuid;
     private PulsarKeyHashRanges _keyHashRanges;
 
     private BatchPhase _phase = BatchPhase.Normal;

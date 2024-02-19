@@ -6,8 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
+using Insperex.EventHorizon.Abstractions.Reflection;
+using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
-using Insperex.EventHorizon.EventStreaming.Util;
+using Insperex.EventHorizon.EventStreaming.Readers;
+using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Microsoft.Extensions.Logging;
 using Pulsar.Client.Api;
 using Pulsar.Client.Common;
@@ -35,16 +38,17 @@ public class RetryTopicReader<T>: IAsyncDisposable where T : class, ITopicMessag
 
     private readonly Dictionary<string, IReader<T>> _readers = new();
     private readonly PulsarClientResolver _clientResolver;
+    private readonly SubscriptionConfig<T> _config;
     private readonly ILogger<RetryTopicReader<T>> _logger;
 
-    public RetryTopicReader(PulsarClientResolver clientResolver, ILogger<RetryTopicReader<T>> logger)
+    public RetryTopicReader(PulsarClientResolver clientResolver, SubscriptionConfig<T> config, ILogger<RetryTopicReader<T>> logger)
     {
         _clientResolver = clientResolver;
+        _config = config;
         _logger = logger;
     }
 
-    public async Task<MessageContext<T>[]> GetNextAsync(TopicStreamState[] topicStreams, int batchSize,
-        CancellationToken ct)
+    public async Task<MessageContext<T>[]> GetNextAsync(TopicStreamState[] topicStreams, int batchSize, CancellationToken ct)
     {
         var contexts = await InitReaderContexts(topicStreams);
         var asOf = DateTime.UtcNow;
@@ -66,11 +70,8 @@ public class RetryTopicReader<T>: IAsyncDisposable where T : class, ITopicMessag
                     //_logger.LogInformation("Reader: got msg: {message}", MsgToStr(message, topic));
                     var sequenceId = message.SequenceId.ToString(CultureInfo.InvariantCulture);
 
-                    messages.Add(new MessageContext<T>
-                    {
-                        Data = data,
-                        TopicData = PulsarMessageMapper.MapTopicData(sequenceId, message, topic)
-                    });
+                    var topicData = PulsarMessageMapper.MapTopicData(sequenceId, message, topic);
+                    messages.Add(new MessageContext<T>(data, topicData, _config.TypeDict));
                 }
             }
         } while (messages.Count < batchSize && anyMoreMessages);
@@ -174,7 +175,7 @@ public class RetryTopicReader<T>: IAsyncDisposable where T : class, ITopicMessag
         var newReader = await client
             .NewReader(Schema.JSON<T>())
             .Topic(topic)
-            .ReaderName($"{NameUtil.AssemblyNameWithGuid}_retry_{topic}")
+            .ReaderName($"{AssemblyUtil.AssemblyNameWithGuid}_retry_{topic}")
             .ReceiverQueueSize(BufferSize)
             .StartMessageId(MessageId.Earliest)
             .CreateAsync();

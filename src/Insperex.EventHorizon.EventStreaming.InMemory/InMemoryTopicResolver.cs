@@ -4,7 +4,6 @@ using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
-using Insperex.EventHorizon.EventStreaming.Models;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory;
 
@@ -17,17 +16,10 @@ public class InMemoryTopicResolver : ITopicResolver
         _attributeUtil = attributeUtil;
     }
 
-    public string[] GetTopics<TM>(Type type, string topicName = null) where TM : ITopicMessage
+    public string GetTopic<TM>(Type type, string senderId = null) where TM : ITopicMessage
     {
-        var attributes = _attributeUtil.GetAll<StreamAttribute>(type);
-        var topics = attributes
-            .Select(x =>
-            {
-                var topic = topicName == null ? x.Topic : $"{x.Topic}-{topicName}";
-                return $"in-memory://{typeof(TM).Name}/{topic}";
-            })
-            .ToArray();
-
-        return topics;
+        var attribute = _attributeUtil.GetAll<StreamAttribute>(type).First(x => x.SubType == null);
+        var topic = senderId == null ? attribute.Topic : $"{attribute.Topic}-{senderId}";
+        return $"in-memory://{typeof(TM).Name}/{topic}";
     }
 }

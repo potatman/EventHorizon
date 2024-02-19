@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Bogus;
+using Insperex.EventHorizon.Abstractions.Interfaces;
+using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming.Benchmark.Models;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
@@ -31,7 +33,7 @@ public class PulsarSingleton : IAsyncDisposable
     private readonly Dictionary<Type, Reader<Event>> Readers = new();
     private PulsarTopicAdmin<Event> _topicAdmin;
 
-    public Publisher<Event> GetPublisher<T>()
+    public Publisher<Event> GetPublisher<T>() where T : IAction
     {
         var type = typeof(T);
         if (Publishers.ContainsKey(type))
@@ -43,16 +45,16 @@ public class PulsarSingleton : IAsyncDisposable
 
         return Publishers[type];
     }
-    public ITopicConsumer<Event> GetConsumer<T>()
+    public ITopicConsumer<Event> GetConsumer<T>() where T : IAction
     {
         var type = typeof(T);
         if (Consumers.ContainsKey(type))
             return Consumers[type];
 
-        var topics = Factory.Value.GetTopicResolver().GetTopics<Event>(type);
+        var topic = Factory.Value.GetTopicResolver().GetTopic<Event>(type);
         Consumers[type] = Factory.Value.CreateConsumer(new SubscriptionConfig<Event>
         {
-            Topics = topics,
+            Topics = [topic],
             SubscriptionName = "Test-Benchmark",
             BatchSize = 1000
         });
@@ -60,7 +62,7 @@ public class PulsarSingleton : IAsyncDisposable
         return Consumers[type];
     }
 
-    public Reader<Event> GetReader<T>()
+    public Reader<Event> GetReader<T>() where T : IAction
     {
         var type = typeof(T);
         if (Readers.ContainsKey(type))

@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Interfaces;
+using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
-using Insperex.EventHorizon.Abstractions.Util;
+using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Subscriptions.Backoff;
 using Microsoft.Extensions.Logging;
@@ -18,6 +20,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
     private readonly ILoggerFactory _loggerFactory;
     private readonly ITopicResolver _topicResolver;
     private readonly List<string> _topics;
+    private readonly Dictionary<string, Type> _typeDict = new();
     private int? _batchSize = 1000;
     private bool? _isBeginning = true;
     private TimeSpan _noBatchDelay = TimeSpan.FromMilliseconds(10);
@@ -38,18 +41,38 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         _topicResolver = _factory.GetTopicResolver();
     }
 
-    public SubscriptionBuilder<T> AddStream<TS>(string topic = null)
+    public SubscriptionBuilder<T> AddStateStream<TState>(string senderId = null) where TState : IState
     {
+        var stateType = typeof(TState);
+        var stateDetails = ReflectionFactory.GetStateDetail(stateType);
+
+        // Add types
+        foreach (var type in stateDetails.GetTypeDictWithGenericArg<T>())
+            _typeDict[type.Key] = type.Value;
+
         // Add Main Topic
-        _topics.AddRange(_topicResolver.GetTopics<T>(typeof(TS), topic));
+        _topics.Add(_topicResolver.GetTopic<T>(stateType, senderId));
 
         // Add Sub Topics (for IState only)
-        var topics = AssemblyUtil.SubStateDict.GetValueOrDefault(typeof(TS).Name)?
-            .SelectMany(x => _topicResolver.GetTopics<T>(x, topic))
+        var topics = stateDetails.SubStates?
+            .Select(x => _topicResolver.GetTopic<T>(x, senderId))
             .ToArray();
 
         if(topics != null)
             _topics.AddRange(topics);
+
+        return this;
+    }
+    public SubscriptionBuilder<T> AddStream<TAction>(string senderId = null) where TAction : IAction
+    {
+        var stateType = typeof(TAction);
+        var types = AssemblyUtil.GetTypes<TAction>();
+
+        foreach (var type in types)
+            _typeDict[type.Name] = type;
+
+        // Add Main Topic
+        _topics.Add(_topicResolver.GetTopic<T>(stateType, senderId));
 
         return this;
     }
@@ -127,6 +150,7 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         var config = new SubscriptionConfig<T>
         {
             Topics = _topics.Distinct().ToArray(),
+            TypeDict = _typeDict,
             SubscriptionName = _subscriptionName,
             SubscriptionType = _subscriptionType,
             NoBatchDelay = _noBatchDelay,
