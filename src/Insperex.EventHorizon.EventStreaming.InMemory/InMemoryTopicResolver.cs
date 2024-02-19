@@ -18,7 +18,9 @@ public class InMemoryTopicResolver : ITopicResolver
 
     public string GetTopic<TM>(Type type, string senderId = null) where TM : ITopicMessage
     {
-        var attribute = _attributeUtil.GetAll<StreamAttribute>(type).First(x => x.SubType == null);
+        var attribute = _attributeUtil.GetAll<StreamAttribute>(type).FirstOrDefault(x => x.SubType == null);
+        if (attribute == null) return null;
+
         var topic = senderId == null ? attribute.Topic : $"{attribute.Topic}-{senderId}";
         return $"in-memory://{typeof(TM).Name}/{topic}";
     }

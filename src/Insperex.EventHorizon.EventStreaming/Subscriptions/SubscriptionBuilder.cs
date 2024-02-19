@@ -50,16 +50,13 @@ public class SubscriptionBuilder<T> where T : class, ITopicMessage, new()
         foreach (var type in stateDetails.GetTypeDictWithGenericArg<T>())
             _typeDict[type.Key] = type.Value;
 
-        // Add Main Topic
-        _topics.Add(_topicResolver.GetTopic<T>(stateType, senderId));
-
         // Add Sub Topics (for IState only)
-        var topics = stateDetails.SubStates?
+        var topics = stateDetails.AllStateTypes
             .Select(x => _topicResolver.GetTopic<T>(x, senderId))
+            .Where(x => x != null)
             .ToArray();
 
-        if(topics != null)
-            _topics.AddRange(topics);
+        _topics.AddRange(topics);
 
         return this;
     }

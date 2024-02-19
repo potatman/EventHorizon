@@ -137,7 +137,7 @@ public class Aggregate<T>
         // Initialize Data
         State ??= Activator.CreateInstance<T>();
         State.Id = Id;
-        var properties = ReflectionFactory.GetStateDetail(_type).PropertiesWithStates;
+        var properties = _stateDetail.PropertiesWithStates;
         AllStates = properties
             .ToDictionary(x => x.PropertyType, x =>
             {
