@@ -44,8 +44,10 @@ public class ReaderBuilder<TMessage> where TMessage : class, ITopicMessage, new(
     {
         if (_topic != null) throw new MultiTopicNotSupportedException<ReaderBuilder<TMessage>>();
 
+        var actionType = typeof(TAction);
+
         // Add Types
-        var types = AssemblyUtil.GetTypes<TAction>();
+        var types = ReflectionFactory.GetTypeDetail(actionType).GetTypes<TAction>();
         foreach (var type in types)
             _typeDict[type.Name] = type;
 

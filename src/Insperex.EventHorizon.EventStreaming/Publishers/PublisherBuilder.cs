@@ -56,13 +56,15 @@ public class PublisherBuilder<TMessage> where TMessage : class, ITopicMessage, n
     {
         if (_topic != null) throw new MultiTopicNotSupportedException<PublisherBuilder<TMessage>>();
 
+        var actionType = typeof(TAction);
+
         // Add Types
-        var types = AssemblyUtil.GetTypes<TAction>();
+        var types = ReflectionFactory.GetTypeDetail(actionType).GetTypes<TAction>();
         foreach (var type in types)
             _typeDict[type.Name] = type;
 
         // Add Topics
-        _topic = _factory.GetTopicResolver().GetTopic<TMessage>(typeof(TAction), senderId);
+        _topic = _factory.GetTopicResolver().GetTopic<TMessage>(actionType, senderId);
 
         return this;
     }

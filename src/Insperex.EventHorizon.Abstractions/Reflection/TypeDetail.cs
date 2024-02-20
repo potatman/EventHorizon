@@ -19,5 +19,8 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
             AssemblyName = Assembly.GetName().Name;
             AssemblyTypes = Assembly.GetTypes();
         }
+
+        public Type[] GetTypes<T>() => AssemblyTypes
+            .Where(x => typeof(T).IsAssignableFrom(x) && x.IsClass).ToArray();
     }
 }

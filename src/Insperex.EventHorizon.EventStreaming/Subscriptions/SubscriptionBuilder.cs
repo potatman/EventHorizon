@@ -62,14 +62,15 @@ public class SubscriptionBuilder<TMessage> where TMessage : class, ITopicMessage
     }
     public SubscriptionBuilder<TMessage> AddStream<TAction>(string senderId = null) where TAction : IAction
     {
-        var stateType = typeof(TAction);
-        var types = AssemblyUtil.GetTypes<TAction>();
+        var actionType = typeof(TAction);
 
+        // Add types
+        var types = ReflectionFactory.GetTypeDetail(actionType).GetTypes<TAction>();
         foreach (var type in types)
             _typeDict[type.Name] = type;
 
         // Add Main Topic
-        _topics.Add(_topicResolver.GetTopic<TMessage>(stateType, senderId));
+        _topics.Add(_topicResolver.GetTopic<TMessage>(actionType, senderId));
 
         return this;
     }
