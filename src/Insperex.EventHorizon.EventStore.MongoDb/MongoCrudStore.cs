@@ -42,7 +42,7 @@ public class MongoCrudStore<T> : ICrudStore<T>
         _collection = database.GetCollection<T>(typeName);
     }
 
-    public async Task SetupAsync(CancellationToken ct)
+    public async Task MigrateAsync(CancellationToken ct)
     {
         var mongoAttr = _attributeUtil.GetOne<MongoCollectionAttribute>(typeof(T));
         if (mongoAttr?.ReadConcernLevel != null) _collection.WithReadConcern(new ReadConcern(mongoAttr.ReadConcernLevel));

@@ -34,7 +34,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         _dbName = bucketId + "_" + typeof(TE).Name.Replace("`1", string.Empty).ToLower(CultureInfo.InvariantCulture);
     }
 
-    public async Task SetupAsync(CancellationToken ct)
+    public async Task MigrateAsync(CancellationToken ct)
     {
         var getReq = await _client.Indices.GetAsync(new GetIndexRequest(_dbName), ct);
         if (getReq.IsValidResponse) return;

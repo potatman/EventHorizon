@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.EventStore.Models;
 
 namespace Insperex.EventHorizon.EventStore.Interfaces.Stores;
@@ -8,7 +9,7 @@ namespace Insperex.EventHorizon.EventStore.Interfaces.Stores;
 public interface ICrudStore<T>
     where T : ICrudEntity
 {
-    Task SetupAsync(CancellationToken ct);
+    Task MigrateAsync(CancellationToken ct);
     public Task<T[]> GetAllAsync(string[] ids, CancellationToken ct);
     Task<DateTime> GetLastUpdatedDateAsync(CancellationToken ct);
     public Task<DbResult> InsertAllAsync(T[] objs, CancellationToken ct);
