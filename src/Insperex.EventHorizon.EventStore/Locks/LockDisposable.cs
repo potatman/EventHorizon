@@ -50,7 +50,7 @@ public class LockDisposable : IAsyncDisposable
         try
         {
             var @lock = new Lock { Id = _id, Expiration = DateTime.UtcNow.AddMilliseconds(_timeout.TotalMilliseconds), Owner = _hostname };
-            var result = await _crudStore.InsertAsync(new[] { @lock }, CancellationToken.None);
+            var result = await _crudStore.InsertAllAsync(new[] { @lock }, CancellationToken.None);
             _ownsLock = result.FailedIds?.Any() != true;
         }
         catch (Exception e)
@@ -76,7 +76,7 @@ public class LockDisposable : IAsyncDisposable
             return this;
 
         _isReleased = true;
-        await _crudStore.DeleteAsync(new[] { _id }, CancellationToken.None);
+        await _crudStore.DeleteAllAsync(new[] { _id }, CancellationToken.None);
         _logger.LogInformation("Lock - Released lock {Name} on {Host}", _id, Environment.MachineName);
         return this;
     }

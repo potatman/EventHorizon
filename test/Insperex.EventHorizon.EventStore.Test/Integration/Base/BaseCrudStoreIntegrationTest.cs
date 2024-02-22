@@ -55,7 +55,7 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
         var past = DateTime.UtcNow.AddDays(-1);
         var now = DateTime.UtcNow;
         var expected = new Snapshot<ExampleStoreState>("MultipleSnapshots", 1, _states.First(), past, now);
-        var result = await _snapshotStore.UpsertAsync(new [] {expected}, _cts.Token);
+        var result = await _snapshotStore.UpsertAllAsync(new [] {expected}, _cts.Token);
         var snapshots = await _snapshotStore.GetAllAsync(new [] {expected.Id}, _cts.Token);
 
         // Assert
@@ -74,7 +74,7 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
         var past = DateTime.UtcNow.AddDays(-1);
         var now = DateTime.UtcNow;
         var expected = new Snapshot<ExampleStoreState>("NormalSnapshot", 1, _states.First(), past, now);
-        await _snapshotStore.UpsertAsync(new [] {expected}, _cts.Token);
+        await _snapshotStore.UpsertAllAsync(new [] {expected}, _cts.Token);
         await Task.Delay(TimeSpan.FromSeconds(1), _cts.Token); // NOTE: Delay is for elastic refresh
         var minDateTime = await _snapshotStore.GetLastUpdatedDateAsync(_cts.Token);
 
@@ -89,8 +89,8 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
         var past = DateTime.UtcNow.AddDays(-1);
         var now = DateTime.UtcNow;
         var expected = new Snapshot<ExampleStoreState>("MultipleSnapshots", 1, _states.First(), past, now);
-        var result = await _snapshotStore.UpsertAsync(new [] {expected}, _cts.Token);
-        await _snapshotStore.DeleteAsync(new [] {expected.Id}, _cts.Token);
+        var result = await _snapshotStore.UpsertAllAsync(new [] {expected}, _cts.Token);
+        await _snapshotStore.DeleteAllAsync(new [] {expected.Id}, _cts.Token);
         var snapshots = await _snapshotStore.GetAllAsync(new [] {expected.Id}, _cts.Token);
 
         // Assert

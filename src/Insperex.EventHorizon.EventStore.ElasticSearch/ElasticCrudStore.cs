@@ -94,7 +94,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         return res.Documents.FirstOrDefault()?.UpdatedDate ?? DateTime.MinValue;
     }
 
-    public async Task<DbResult> InsertAsync(TE[] objs, CancellationToken ct)
+    public async Task<DbResult> InsertAllAsync(TE[] objs, CancellationToken ct)
     {
         var res = await _client.BulkAsync(
             b => b.Index(_dbName)
@@ -112,7 +112,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         return result;
     }
 
-    public async Task<DbResult> UpsertAsync(TE[] objs, CancellationToken ct)
+    public async Task<DbResult> UpsertAllAsync(TE[] objs, CancellationToken ct)
     {
         var res = await _client.BulkAsync(
             b => b.Index(_dbName)
@@ -130,7 +130,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         return result;
     }
 
-    public async Task DeleteAsync(string[] ids, CancellationToken ct)
+    public async Task DeleteAllAsync(string[] ids, CancellationToken ct)
     {
         var res = await _client.DeleteByQueryAsync<TE>(_dbName, q => q
             .Query(rq => rq

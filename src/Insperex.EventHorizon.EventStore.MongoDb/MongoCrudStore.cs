@@ -85,7 +85,7 @@ public class MongoCrudStore<T> : ICrudStore<T>
         return result;
     }
 
-    public async Task<DbResult> InsertAsync(T[] objs, CancellationToken ct)
+    public async Task<DbResult> InsertAllAsync(T[] objs, CancellationToken ct)
     {
         var result = new DbResult();
         try
@@ -117,7 +117,7 @@ public class MongoCrudStore<T> : ICrudStore<T>
         return result;
     }
 
-    public async Task<DbResult> UpsertAsync(T[] objs, CancellationToken ct)
+    public async Task<DbResult> UpsertAllAsync(T[] objs, CancellationToken ct)
     {
         var result = new DbResult();
         try
@@ -156,7 +156,7 @@ public class MongoCrudStore<T> : ICrudStore<T>
         return result;
     }
 
-    public async Task DeleteAsync(string[] ids, CancellationToken ct)
+    public async Task DeleteAllAsync(string[] ids, CancellationToken ct)
     {
         await _collection.DeleteManyAsync(x => ids.Contains(x.Id), ct);
     }

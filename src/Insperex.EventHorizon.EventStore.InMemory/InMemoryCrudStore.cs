@@ -51,7 +51,7 @@ public class InMemoryCrudStore<T> : ICrudStore<T>
         return Task.FromResult(result);
     }
 
-    public Task<DbResult> InsertAsync(T[] objs, CancellationToken ct)
+    public Task<DbResult> InsertAllAsync(T[] objs, CancellationToken ct)
     {
         var failed = objs.Where(obj => _table.ContainsKey(obj.Id)).ToArray();
         var passed = objs.Where(x => !failed.Contains(x)).ToArray();
@@ -66,7 +66,7 @@ public class InMemoryCrudStore<T> : ICrudStore<T>
         });
     }
 
-    public Task<DbResult> UpsertAsync(T[] objs, CancellationToken ct)
+    public Task<DbResult> UpsertAllAsync(T[] objs, CancellationToken ct)
     {
         try
         {
@@ -89,7 +89,7 @@ public class InMemoryCrudStore<T> : ICrudStore<T>
         }
     }
 
-    public Task DeleteAsync(string[] ids, CancellationToken ct)
+    public Task DeleteAllAsync(string[] ids, CancellationToken ct)
     {
         foreach (var id in ids)
             _table.Remove(id);

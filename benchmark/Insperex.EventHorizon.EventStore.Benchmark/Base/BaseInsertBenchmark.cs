@@ -45,7 +45,7 @@ public abstract class BaseInsertBenchmark
     [CounterThroughputAssertion("TestCounter", MustBe.GreaterThan, 0.5d)]
     public async Task BenchmarkBulkSave()
     {
-        await _snapshotStore.UpsertAsync(_snapshots, CancellationToken.None);
+        await _snapshotStore.UpsertAllAsync(_snapshots, CancellationToken.None);
         _counter.Increment();
     }
 
@@ -54,7 +54,7 @@ public abstract class BaseInsertBenchmark
     [CounterThroughputAssertion("TestCounter", MustBe.GreaterThan, 0.5d)]
     public async Task BenchmarkBulkInsert()
     {
-        await _snapshotStore.InsertAsync(_snapshots, CancellationToken.None);
+        await _snapshotStore.InsertAllAsync(_snapshots, CancellationToken.None);
         _counter.Increment();
     }
 }

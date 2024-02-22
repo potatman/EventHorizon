@@ -41,7 +41,7 @@ public class IgniteCrudStore<T> : ICrudStore<T>
         throw new NotImplementedException();
     }
 
-    public async Task<DbResult> InsertAsync(T[] objs, CancellationToken ct)
+    public async Task<DbResult> InsertAllAsync(T[] objs, CancellationToken ct)
     {
         var result = new DbResult();
 
@@ -83,7 +83,7 @@ public class IgniteCrudStore<T> : ICrudStore<T>
         return result;
     }
 
-    public async Task<DbResult> UpsertAsync(T[] objs, CancellationToken ct)
+    public async Task<DbResult> UpsertAllAsync(T[] objs, CancellationToken ct)
     {
         var result = new DbResult();
         var req = objs.ToDictionary(x => x.Id);
@@ -109,7 +109,7 @@ public class IgniteCrudStore<T> : ICrudStore<T>
         return result;
     }
 
-    public Task DeleteAsync(string[] ids, CancellationToken ct)
+    public Task DeleteAllAsync(string[] ids, CancellationToken ct)
     {
         var keys = ids.Select(x => x).ToArray();
         return _cache.RemoveAllAsync(keys);

@@ -194,7 +194,7 @@ public class Aggregator<TParent, TState>
             if (parents.Any() != true)
                 return;
 
-            var results = await _crudStore.UpsertAsync(parents, CancellationToken.None);
+            var results = await _crudStore.UpsertAllAsync(parents, CancellationToken.None);
             foreach (var id in results.FailedIds)
                 aggregateDict[id].SetStatus(HttpStatusCode.InternalServerError, "Snapshot Failed to Save");
             foreach (var id in results.PassedIds)
