@@ -1,19 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Net;
-using System.Text.Json;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
-using Insperex.EventHorizon.Abstractions.Util;
-using Insperex.EventHorizon.EventSourcing.Util;
+using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming.Extensions;
-using OpenTelemetry.Trace;
 
 namespace Insperex.EventHorizon.EventSourcing.Aggregates;
 
@@ -23,7 +19,8 @@ public class Aggregate<T>
     internal readonly List<Event> Events = new();
     internal readonly List<Response> Responses = new();
     private readonly Type _type = typeof(T);
-    private Dictionary<string, object> AllStates { get; set; }
+    private readonly StateDetail _stateDetail = new StateDetail(typeof(T));
+    private Dictionary<Type, object> AllStates { get; set; }
     public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
     public string Error { get; private set; }
     public bool IsDirty { get; private set; }
@@ -68,11 +65,11 @@ public class Aggregate<T>
     public void Handle(Command command)
     {
         // Try Self
-        var payload = command.GetPayload();
+        var payload = command.GetPayload(_stateDetail.CommandDict);
         foreach (var state in AllStates)
         {
             var context = new AggregateContext(Exists());
-            var method = AggregateAssemblyUtil.StateToCommandHandlersDict.GetValueOrDefault(state.Key)?.GetValueOrDefault(command.Type);
+            var method = ReflectionFactory.GetStateDetail(state.Key).CommandHandlersDict[state.Key.Name].GetValueOrDefault(command.Type);
             method?.Invoke(state.Value, parameters: new [] { payload, context } );
             foreach(var item in context.Events)
                 Apply(new Event(Id, SequenceId, item));
@@ -82,11 +79,11 @@ public class Aggregate<T>
     public void Handle(Request request)
     {
         // Try Self
-        var payload = request.GetPayload();
+        var payload = request.GetPayload(_stateDetail.RequestDict);
         foreach (var state in AllStates)
         {
             var context = new AggregateContext(Exists());
-            var method = AggregateAssemblyUtil.StateToRequestHandlersDict.GetValueOrDefault(state.Key)?.GetValueOrDefault(request.Type);
+            var method = ReflectionFactory.GetStateDetail(state.Key).RequestHandlersDict[state.Key.Name].GetValueOrDefault(request.Type);
             var result = method?.Invoke(state.Value, parameters: new [] { payload, context } );
             Responses.Add(new Response(request.Id, request.SenderId, Id, result, Error, (int)StatusCode));
             foreach(var item in context.Events)
@@ -102,10 +99,10 @@ public class Aggregate<T>
     public void Apply(Event @event, bool isFirstTime = true)
     {
         // Try Self
-        var payload = @event.GetPayload();
+        var payload = @event.GetPayload(_stateDetail.EventDict);
         foreach (var state in AllStates)
         {
-            var method = AggregateAssemblyUtil.StateToEventHandlersDict.GetValueOrDefault(state.Key)?.GetValueOrDefault(@event.Type);
+            var method = ReflectionFactory.GetStateDetail(state.Key).EventAppliersDict[state.Key.Name].GetValueOrDefault(@event.Type);
             method?.Invoke(state.Value, parameters: new [] { payload } );
         }
 
@@ -140,16 +137,16 @@ public class Aggregate<T>
         // Initialize Data
         State ??= Activator.CreateInstance<T>();
         State.Id = Id;
-        var properties = AssemblyUtil.PropertyDictOfStates[_type.Name];
+        var properties = _stateDetail.PropertiesWithStates;
         AllStates = properties
-            .ToDictionary(x => x.Name, x =>
+            .ToDictionary(x => x.PropertyType, x =>
             {
                 var state = Activator.CreateInstance(x.PropertyType);
                 ((dynamic)state)!.Id = Id;
                 x.SetValue(State, state);
                 return state;
             });
-        AllStates[_type.Name] = State;
+        AllStates[_type] = State;
     }
 
     public bool Exists() => SequenceId > 0;

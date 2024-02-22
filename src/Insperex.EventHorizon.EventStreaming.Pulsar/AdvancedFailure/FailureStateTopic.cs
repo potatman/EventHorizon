@@ -4,11 +4,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
+using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Insperex.EventHorizon.EventStreaming.Tracing;
-using Insperex.EventHorizon.EventStreaming.Util;
 using Microsoft.Extensions.Logging;
 using Pulsar.Client.Api;
 using Pulsar.Client.Common;
@@ -39,7 +39,7 @@ public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
         _admin = admin;
         _logger = logger;
         _topic = Topic(subscriptionConfig.Topics.First(), subscriptionConfig.SubscriptionName);
-        _publisherName = NameUtil.AssemblyNameWithGuid;
+        _publisherName = AssemblyUtil.AssemblyNameWithGuid;
         _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<TopicStreamState>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
     }

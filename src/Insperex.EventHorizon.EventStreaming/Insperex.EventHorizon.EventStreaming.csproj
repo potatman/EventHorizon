@@ -19,7 +19,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="Insperex.EventHorizon.Tool.LegacyMigration" />
+      <InternalsVisibleTo Include="Insperex.EventHorizon.Tool.LegacyMigration" />
+      <InternalsVisibleTo Include="Insperex.EventHorizon.EventStreaming.Pulsar" />
+      <InternalsVisibleTo Include="Insperex.EventHorizon.EventStreaming.InMemory" />
     </ItemGroup>
 
 </Project>

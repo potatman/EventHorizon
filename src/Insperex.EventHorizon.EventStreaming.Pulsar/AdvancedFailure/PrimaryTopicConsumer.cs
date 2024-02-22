@@ -91,13 +91,10 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
 
             var contexts = messagesToRelay
                 .Select(x =>
-                    new MessageContext<T>
-                    {
-                        Data = x.Data,
-                        TopicData = PulsarMessageMapper.MapTopicData(
-                            x.OriginalMessage.SequenceId.ToString(CultureInfo.InvariantCulture),
-                            x.OriginalMessage, x.Topic)
-                    })
+                    new MessageContext<T>(x.Data, PulsarMessageMapper.MapTopicData(
+                        x.OriginalMessage.SequenceId.ToString(CultureInfo.InvariantCulture),
+                        x.OriginalMessage, x.Topic), _config.TypeDict)
+                )
                 .ToArray();
 
             return contexts;

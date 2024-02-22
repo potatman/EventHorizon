@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Destructurama.Attributed;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
@@ -10,6 +11,7 @@ namespace Insperex.EventHorizon.EventStreaming.Subscriptions;
 public class SubscriptionConfig<T> where T : ITopicMessage
 {
     public string[] Topics { get; set; }
+    public Dictionary<string, Type> TypeDict { get; set; }
     public string SubscriptionName { get; set; }
     public SubscriptionType SubscriptionType { get; set; }
     public int? BatchSize { get; set; }

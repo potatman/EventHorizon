@@ -26,7 +26,7 @@ public class StreamingClient
 
     public ReaderBuilder<T> CreateReader<T>() where T : class, ITopicMessage, new()
     {
-        return new ReaderBuilder<T>(_streamFactory, _loggerFactory);
+        return new ReaderBuilder<T>(_streamFactory);
     }
 
     public SubscriptionBuilder<T> CreateSubscription<T>() where T : class, ITopicMessage, new()

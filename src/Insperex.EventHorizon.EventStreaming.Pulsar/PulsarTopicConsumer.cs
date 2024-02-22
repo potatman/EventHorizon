@@ -5,18 +5,17 @@ using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
+using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Insperex.EventHorizon.EventStreaming.Subscriptions.Backoff;
 using Insperex.EventHorizon.EventStreaming.Tracing;
-using Insperex.EventHorizon.EventStreaming.Util;
 using Pulsar.Client.Api;
 using Pulsar.Client.Common;
 using Pulsar.Client.Otel;
 using NotSupportedException = System.NotSupportedException;
-using SubscriptionType = Pulsar.Client.Common.SubscriptionType;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
@@ -62,11 +61,8 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                     // Note: x.MessageId.TopicName is null, when single tropic
                     var topic = _config.Topics.Length == 1 ? _config.Topics.First() : x.Value.MessageId.TopicName;
 
-                    return new MessageContext<T>
-                    {
-                        Data = x.Value.GetValue(),
-                        TopicData = PulsarMessageMapper.MapTopicData(x.Key, x.Value, topic)
-                    };
+                    var topicData = PulsarMessageMapper.MapTopicData(x.Key, x.Value, topic);
+                    return new MessageContext<T>(x.Value.GetValue(), topicData, _config.TypeDict);
                 })
                 .ToArray();
 
@@ -169,7 +165,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
         var client = await _clientResolver.GetPulsarClientAsync();
         var builder = client.NewConsumer(Schema.JSON<T>())
-            .ConsumerName(NameUtil.AssemblyNameWithGuid)
+            .ConsumerName(AssemblyUtil.AssemblyNameWithGuid)
             .SubscriptionType(_config.SubscriptionType.ToPulsarSubscriptionType())
             .SubscriptionName(_config.SubscriptionName)
             .ReceiverQueueSize(1000000000) // Allows non-persistent queues to not lose messages

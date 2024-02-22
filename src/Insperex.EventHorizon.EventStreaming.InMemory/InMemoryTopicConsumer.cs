@@ -6,11 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
+using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.EventStreaming.InMemory.Databases;
 using Insperex.EventHorizon.EventStreaming.InMemory.Failure;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
-using Insperex.EventHorizon.EventStreaming.Util;
 using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory;
@@ -48,7 +48,7 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
 
         foreach (var topic in _config.Topics)
         {
-            _consumers[topic] = consumerDatabase.Register(topic, _config.SubscriptionName, NameUtil.AssemblyNameWithGuid);
+            _consumers[topic] = consumerDatabase.Register(topic, _config.SubscriptionName, AssemblyUtil.AssemblyNameWithGuid);
             _indexDatabase.Setup(topic, _config.SubscriptionName, _consumers[topic], _config.IsBeginning != false);
         }
 

@@ -6,11 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
+using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Insperex.EventHorizon.EventStreaming.Readers;
-using Insperex.EventHorizon.EventStreaming.Util;
 using Pulsar.Client.Api;
 using Pulsar.Client.Common;
 using Range = Pulsar.Client.Api.Range;
@@ -66,11 +66,8 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
                 && PulsarMessageMapper.PublishDateFromTimestamp(message.PublishTime) > _config.EndDateTime)
                 break;
 
-            list.Add(new MessageContext<T>
-            {
-                Data = message.GetValue(),
-                TopicData = PulsarMessageMapper.MapTopicData(list.Count.ToString(CultureInfo.InvariantCulture), message, _config.Topic)
-            });
+            var topicData = PulsarMessageMapper.MapTopicData(list.Count.ToString(CultureInfo.InvariantCulture), message, _config.Topic);
+            list.Add(new MessageContext<T>(message.GetValue(), topicData, _config.TypeDict));
         } while (message != null && list.Count < batchSize && await reader.HasMessageAvailableAsync());
 
         return list.ToArray();
@@ -87,7 +84,7 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
         var client = await _clientResolver.GetPulsarClientAsync();
         var builder = client.NewReader(Schema.JSON<T>())
             .Topic(_config.Topic)
-            .ReaderName(NameUtil.AssemblyNameWithGuid)
+            .ReaderName(AssemblyUtil.AssemblyNameWithGuid)
             .ReceiverQueueSize(1000);
 
         if (_config.IsBeginning != null)

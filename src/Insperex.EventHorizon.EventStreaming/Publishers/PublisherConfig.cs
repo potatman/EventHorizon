@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 
 namespace Insperex.EventHorizon.EventStreaming.Publishers;
 
 public class PublisherConfig
 {
     public string Topic { get; set; }
+    public Dictionary<string, Type> TypeDict { get; set; }
     public bool IsOrderGuaranteed { get; set; }
     public bool IsGuaranteed { get; set; }
     public TimeSpan SendTimeout { get; set; }

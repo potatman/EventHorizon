@@ -1,11 +1,8 @@
-using System.Linq;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Util;
-using Insperex.EventHorizon.EventStreaming.Extensions;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
-using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Insperex.EventHorizon.EventStreaming.Readers;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Microsoft.Extensions.Logging;
@@ -30,16 +27,13 @@ public class PulsarStreamFactory : IStreamFactory
 
     public ITopicProducer<T> CreateProducer<T>(PublisherConfig config) where T : class, ITopicMessage, new()
     {
-        return new PulsarTopicProducer<T>(_clientResolver, config, _attributeUtil, CreateAdmin<T>());
+        return new PulsarTopicProducer<T>(_clientResolver, config,  CreateAdmin<T>());
     }
 
     public ITopicConsumer<T> CreateConsumer<T>(SubscriptionConfig<T> config) where T : class, ITopicMessage, new()
     {
         if (config.IsMessageOrderGuaranteedOnFailure)
-        {
-            return new OrderGuaranteedPulsarTopicConsumer<T>(_clientResolver, config,
-                this, _loggerFactory);
-        }
+            return new OrderGuaranteedPulsarTopicConsumer<T>(_clientResolver, config, this, _loggerFactory);
         return new PulsarTopicConsumer<T>(_clientResolver, config, CreateAdmin<T>());
     }
 

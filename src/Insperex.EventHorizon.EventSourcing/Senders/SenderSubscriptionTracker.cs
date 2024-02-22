@@ -1,15 +1,14 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
+using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
-using Insperex.EventHorizon.EventStreaming.Util;
 
 namespace Insperex.EventHorizon.EventSourcing.Senders;
 
@@ -24,7 +23,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
     public SenderSubscriptionTracker(StreamingClient streamingClient)
     {
         _streamingClient = streamingClient;
-        _senderId = NameUtil.AssemblyNameWithGuid;
+        _senderId = AssemblyUtil.AssemblyNameWithGuid;
         // Used for when process is stopped mid way
         AppDomain.CurrentDomain.ProcessExit += OnExit;
     }
@@ -46,7 +45,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
                     _responseDict[response.Data.Id] = response;
             })
             .BatchSize(100000)
-            .AddStream<T>(_senderId)
+            .AddStateStream<T>(_senderId)
             .IsBeginning(true)
             .Build();
 

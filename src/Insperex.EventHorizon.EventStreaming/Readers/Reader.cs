@@ -5,7 +5,6 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Tracing;
-using Insperex.EventHorizon.EventStreaming.Extensions;
 
 namespace Insperex.EventHorizon.EventStreaming.Readers;
 
@@ -30,7 +29,7 @@ public class Reader<T> : IAsyncDisposable where T : class, ITopicMessage
 
             // Upgrade Actions
             foreach (var item in items)
-                item.Data = item.Data.Upgrade();
+                item.Data = item.Upgrade();
 
             return items;
         }

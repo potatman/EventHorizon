@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
+using Insperex.EventHorizon.EventStreaming.Publishers;
 using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory.Databases;
@@ -13,24 +14,17 @@ public class MessageDatabase
 {
     private readonly ConcurrentDictionary<string, List<object>> _messages = new();
 
-    public void AddMessages<T>(string topic, params T[] messages) where T : class, ITopicMessage
+    public void AddMessages<T>(PublisherConfig config, params T[] messages) where T : class, ITopicMessage
     {
-        if (!_messages.ContainsKey(topic))
-            _messages[topic] = new List<object>();
+        if (!_messages.ContainsKey(config.Topic))
+            _messages[config.Topic] = new List<object>();
 
         foreach (var message in messages)
         {
-            var context = new MessageContext<T>
-            {
-                Data = message,
-                TopicData = new TopicData(
-                    // Expose message's own index in topic.
-                    _messages[topic].Count.ToString(CultureInfo.InvariantCulture),
-                    topic,
-                    DateTime.UtcNow)
-            };
+            var topicData = new TopicData(_messages[config.Topic].Count.ToString(CultureInfo.InvariantCulture), config.Topic, DateTime.UtcNow);
+            var context = new MessageContext<T>(message, topicData, config.TypeDict);
 
-            _messages[topic].Add(context);
+            _messages[config.Topic].Add(context);
         }
     }
 

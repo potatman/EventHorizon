@@ -4,6 +4,7 @@ using System.Net;
 using System.Text.Json;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
+using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.EventSourcing.Aggregates;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Actions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
@@ -29,8 +30,9 @@ public class AggregateUnitTests
     {
         var events = Enumerable.Range(0, 5).Select(x => new AccountCredited(100)).ToArray();
         var eventWrappers = events.Select((x,i) => new Event(_streamId, i, x)).ToArray();
-        var messages = eventWrappers.Select(x => new MessageContext<Event>
-            { Data = x, TopicData = new TopicData(Guid.NewGuid().ToString(), "topic", DateTime.UtcNow) }).ToArray();
+
+        var typeDict = ReflectionFactory.GetStateDetail(typeof(Account)).EventDict;
+        var messages = eventWrappers.Select(x => new MessageContext<Event>(x, new TopicData(Guid.NewGuid().ToString(), "topic", DateTime.UtcNow), typeDict)).ToArray();
         var aggregate = new Aggregate<Account>(messages);
 
         Assert.Equal(eventWrappers.Last().StreamId, aggregate.Id);
@@ -109,7 +111,7 @@ public class AggregateUnitTests
     public void TestHandleCommand()
     {
         // Create Aggregate and Apply
-        var command = new Command(_streamId, new ChangeUserName("Bob")).Upgrade();
+        var command = new Command(_streamId, new ChangeUserName("Bob"));
         var agg = new Aggregate<User>(_streamId);
         agg.Handle(command);
 

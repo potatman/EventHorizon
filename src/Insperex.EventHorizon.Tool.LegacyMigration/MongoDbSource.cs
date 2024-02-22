@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
+using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.Tool.LegacyMigration.Models;
 using Microsoft.Extensions.Logging;
