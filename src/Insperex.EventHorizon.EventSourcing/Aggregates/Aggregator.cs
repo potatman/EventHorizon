@@ -46,12 +46,8 @@ public class Aggregator<TParent, TState>
 
     public async Task RebuildAllAsync(CancellationToken ct)
     {
-        var minDateTime = await _crudStore.GetLastUpdatedDateAsync(ct);
-
-        // NOTE: return with one ms forward because mongodb rounds to one ms
-        minDateTime = minDateTime == default? minDateTime : minDateTime.AddMilliseconds(1);
-
-        var reader = _streamingClient.CreateReader<Event>().AddStateStream<TState>().StartDateTime(minDateTime).Build();
+        // TODO: need to move
+        var reader = _streamingClient.CreateReader<Event>().AddStateStream<TState>().Build();
 
         while (!ct.IsCancellationRequested)
         {

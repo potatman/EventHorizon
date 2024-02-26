@@ -10,7 +10,6 @@ public interface ICrudStore<T>
 {
     Task MigrateAsync(CancellationToken ct);
     public Task<T[]> GetAllAsync(string[] ids, CancellationToken ct);
-    Task<DateTime> GetLastUpdatedDateAsync(CancellationToken ct);
     public Task<DbResult> InsertAllAsync(T[] objs, CancellationToken ct);
     public Task<DbResult> UpsertAllAsync(T[] objs, CancellationToken ct);
     public Task DeleteAllAsync(string[] ids, CancellationToken ct);
