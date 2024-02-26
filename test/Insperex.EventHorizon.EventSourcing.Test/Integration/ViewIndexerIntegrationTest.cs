@@ -12,9 +12,7 @@ using Insperex.EventHorizon.EventSourcing.Extensions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Actions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
-using Insperex.EventHorizon.EventStore.ElasticSearch.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
-using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming;
@@ -70,8 +68,8 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
             .AddTestBucketIds();
 
         _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
-        _accountStore = _host.Services.GetRequiredService<IViewStoreFactory<AccountView>>().GetViewStore();
-        _userAccountStore = _host.Services.GetRequiredService<IViewStoreFactory<SearchAccountView>>().GetViewStore();
+        _accountStore = _host.Services.GetRequiredService<IViewStore<AccountView>>();
+        _userAccountStore = _host.Services.GetRequiredService<IViewStore<SearchAccountView>>();
     }
 
     public async Task InitializeAsync()

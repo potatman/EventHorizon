@@ -15,7 +15,6 @@ using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 using Insperex.EventHorizon.EventSourcing.Test.Fakers;
 using Insperex.EventHorizon.EventStore.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
-using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming;
@@ -78,7 +77,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
 
 
         _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
-        _snapshotStore = _host.Services.GetRequiredService<ISnapshotStoreFactory<Account>>().GetSnapshotStore();
+        _snapshotStore = _host.Services.GetRequiredService<ISnapshotStore<Account>>();
     }
 
     public async Task InitializeAsync()

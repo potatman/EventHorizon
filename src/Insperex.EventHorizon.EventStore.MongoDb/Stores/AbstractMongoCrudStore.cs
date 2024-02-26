@@ -4,7 +4,6 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
@@ -13,9 +12,9 @@ using Insperex.EventHorizon.EventStore.MongoDb.Models;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
-namespace Insperex.EventHorizon.EventStore.MongoDb;
+namespace Insperex.EventHorizon.EventStore.MongoDb.Stores;
 
-public class MongoCrudStore<T> : ICrudStore<T>
+public abstract class AbstractMongoCrudStore<T> : ICrudStore<T>
     where T : ICrudEntity
 {
     private const string Id = "_id";
@@ -26,30 +25,29 @@ public class MongoCrudStore<T> : ICrudStore<T>
     private const string Tilda1 = "`1";
     private const string ErrorPrefix = "_id: \"";
     private const string ErrorPostfix = "\" }";
-    private readonly string _bucketId;
+    private readonly string _database;
     private readonly IMongoClient _client;
-    private readonly AttributeUtil _attributeUtil;
+    private readonly MongoCollectionAttribute _mongoAttr;
     private readonly IMongoCollection<T> _collection;
 
-    public MongoCrudStore(IMongoClient client, AttributeUtil attributeUtil, string bucketId)
+    public AbstractMongoCrudStore(IMongoClient client, MongoCollectionAttribute mongoAttr, string database)
     {
         _client = client;
-        _attributeUtil = attributeUtil;
-        _bucketId = bucketId;
+        _mongoAttr = mongoAttr;
+        _database = database;
         var type = typeof(T);
-        var database = client.GetDatabase(bucketId);
+        var db = client.GetDatabase(database);
         var typeName = type.Name.Replace(Tilda1, string.Empty);
-        _collection = database.GetCollection<T>(typeName);
+        _collection = db.GetCollection<T>(typeName);
     }
 
     public async Task MigrateAsync(CancellationToken ct)
     {
-        var mongoAttr = _attributeUtil.GetOne<MongoCollectionAttribute>(typeof(T));
-        if (mongoAttr?.ReadConcernLevel != null) _collection.WithReadConcern(new ReadConcern(mongoAttr.ReadConcernLevel));
-        if (mongoAttr?.ReadPreferenceMode != null) _collection.WithReadPreference(new ReadPreference(mongoAttr.ReadPreferenceMode));
-        if (mongoAttr?.WriteConcernLevel != null)
+        if (_mongoAttr?.ReadConcernLevel != null) _collection.WithReadConcern(new ReadConcern(_mongoAttr.ReadConcernLevel));
+        if (_mongoAttr?.ReadPreferenceMode != null) _collection.WithReadPreference(new ReadPreference(_mongoAttr.ReadPreferenceMode));
+        if (_mongoAttr?.WriteConcernLevel != null)
         {
-            switch (mongoAttr.WriteConcernLevel)
+            switch (_mongoAttr.WriteConcernLevel)
             {
                 case WriteConcernLevel.Acknowledged: _collection.WithWriteConcern(WriteConcern.Acknowledged); break;
                 case WriteConcernLevel.Unacknowledged: _collection.WithWriteConcern(WriteConcern.Unacknowledged); break;
@@ -60,8 +58,8 @@ public class MongoCrudStore<T> : ICrudStore<T>
             }
         }
 
-        if (mongoAttr?.TimeToLiveMs != null)
-            await AddIndex(CreatedDate1, Builders<T>.IndexKeys.Ascending(x => x.CreatedDate), TimeSpan.FromMilliseconds(mongoAttr.TimeToLiveMs));
+        if (_mongoAttr?.TimeToLiveMs != null)
+            await AddIndex(CreatedDate1, Builders<T>.IndexKeys.Ascending(x => x.CreatedDate), TimeSpan.FromMilliseconds(_mongoAttr.TimeToLiveMs));
 
         await AddIndex(UpdatedDate1, Builders<T>.IndexKeys.Ascending(x => x.UpdatedDate));
     }
@@ -163,7 +161,7 @@ public class MongoCrudStore<T> : ICrudStore<T>
 
     public Task DropDatabaseAsync(CancellationToken ct)
     {
-        return _client.DropDatabaseAsync(_bucketId, ct);
+        return _client.DropDatabaseAsync(_database, ct);
     }
 
     private async Task AddIndex(string name, IndexKeysDefinition<T> definition, TimeSpan? timeSpan = null)

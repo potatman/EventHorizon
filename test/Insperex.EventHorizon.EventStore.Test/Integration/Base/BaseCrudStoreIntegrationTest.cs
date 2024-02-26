@@ -4,9 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Insperex.EventHorizon.Abstractions.Attributes;
-using Insperex.EventHorizon.Abstractions.Util;
-using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStore.Test.Fakers;
@@ -30,7 +27,7 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
     {
         _outputHelper = outputHelper;
 
-        _snapshotStore = provider.GetRequiredService<ISnapshotStoreFactory<ExampleStoreState>>().GetSnapshotStore();
+        _snapshotStore = provider.GetRequiredService<ISnapshotStore<ExampleStoreState>>();
         _stopwatch = Stopwatch.StartNew();
         _states = EventStoreFakers.StateFaker.Generate(1000);
     }

@@ -1,6 +1,7 @@
 ﻿using Insperex.EventHorizon.Abstractions;
-using Insperex.EventHorizon.Abstractions.Util;
-using Insperex.EventHorizon.EventStore.Interfaces.Factory;
+using Insperex.EventHorizon.EventStore.InMemory.Databases;
+using Insperex.EventHorizon.EventStore.InMemory.Stores;
+using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Locks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -13,12 +14,12 @@ public static class EventHorizonConfiguratorExtensions
     {
         AddInMemoryStore(configurator);
         configurator.Collection.Replace(ServiceDescriptor.Describe(
-            typeof(ISnapshotStoreFactory<>),
-            typeof(InMemoryEventStoreFactory<>),
+            typeof(ISnapshotStore<>),
+            typeof(InMemorySnapshotStore<>),
             ServiceLifetime.Singleton));
         configurator.Collection.Replace(ServiceDescriptor.Describe(
-            typeof(ILockStoreFactory<>),
-            typeof(InMemoryEventStoreFactory<>),
+            typeof(ILockStore),
+            typeof(InMemoryLockStore<>),
             ServiceLifetime.Singleton));
         return configurator;
     }
@@ -27,8 +28,8 @@ public static class EventHorizonConfiguratorExtensions
     {
         AddInMemoryStore(configurator);
         configurator.Collection.Replace(ServiceDescriptor.Describe(
-            typeof(IViewStoreFactory<>),
-            typeof(InMemoryEventStoreFactory<>),
+            typeof(IViewStore<>),
+            typeof(InMemoryViewStore<>),
             ServiceLifetime.Singleton));
         return configurator;
     }
@@ -36,6 +37,6 @@ public static class EventHorizonConfiguratorExtensions
     private static void AddInMemoryStore(EventHorizonConfigurator configurator)
     {
         configurator.Collection.AddSingleton(typeof(LockFactory<>));
-        configurator.Collection.AddSingleton<AttributeUtil>();
+        configurator.Collection.AddSingleton(typeof(CrudDatabase));
     }
 }
