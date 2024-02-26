@@ -5,7 +5,6 @@ using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStore.MongoDb.Attributes;
-using MongoDB.Driver;
 
 namespace Insperex.EventHorizon.EventStore.MongoDb.Stores
 {
