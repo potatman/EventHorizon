@@ -19,7 +19,7 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
 {
     private readonly ITestOutputHelper _outputHelper;
     private Stopwatch _stopwatch;
-    private readonly ICrudStore<Snapshot<ExampleStoreState>> _snapshotStore;
+    private readonly ISnapshotStore<ExampleStoreState> _snapshotStore;
     private readonly List<ExampleStoreState> _states;
     private CancellationTokenSource _cts;
 

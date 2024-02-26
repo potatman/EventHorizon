@@ -21,7 +21,7 @@ public class LockStoreUnitTest : IAsyncLifetime
     private readonly ITestOutputHelper _outputHelper;
     private Stopwatch _stopwatch;
     private readonly Faker _faker;
-    private readonly ICrudStore<Lock> _lockStore;
+    private readonly ILockStore<ExampleStoreState> _lockStore;
 
     public LockStoreUnitTest(ITestOutputHelper outputHelper)
     {

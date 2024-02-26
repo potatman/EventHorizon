@@ -15,7 +15,7 @@ public abstract class BaseInsertBenchmark
 {
     private readonly IServiceProvider _provider;
     private Counter _counter;
-    private ICrudStore<Snapshot<ExampleStoreState>> _snapshotStore;
+    private ISnapshotStore<ExampleStoreState> _snapshotStore;
     private ExampleStoreState[] _states;
     private Snapshot<ExampleStoreState>[] _snapshots;
 
