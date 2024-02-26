@@ -34,8 +34,8 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
     private readonly IHost _host;
     private readonly StreamingClient _streamingClient;
     private Stopwatch _stopwatch;
-    private readonly Aggregator<Snapshot<AccountView>, AccountView> _accountAggregate;
-    private readonly Aggregator<Snapshot<SearchAccountView>, SearchAccountView> _userAccountStore;
+    private readonly Aggregator<View<AccountView>, AccountView> _accountAggregate;
+    private readonly Aggregator<View<SearchAccountView>, SearchAccountView> _userAccountStore;
 
     public ViewIndexerIntegrationTest(ITestOutputHelper output)
     {
@@ -69,8 +69,8 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
             .AddTestBucketIds();
 
         _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
-        _accountAggregate = _host.Services.GetRequiredService<EventSourcingClient<AccountView>>().Aggregator().Build();
-        _userAccountStore = _host.Services.GetRequiredService<EventSourcingClient<SearchAccountView>>().Aggregator().Build();
+        _accountAggregate = _host.Services.GetRequiredService<EventSourcingClient<AccountView>>().ViewAggregator().Build();
+        _userAccountStore = _host.Services.GetRequiredService<EventSourcingClient<SearchAccountView>>().ViewAggregator().Build();
     }
 
     public async Task InitializeAsync()

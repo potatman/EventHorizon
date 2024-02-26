@@ -67,6 +67,7 @@ public class MessageDatabase
 
     public void DeleteTopic(string topic)
     {
-        _messages.Remove(topic, out var value);
+        if(_messages.ContainsKey(topic))
+            _messages.Remove(topic, out var value);
     }
 }

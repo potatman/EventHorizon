@@ -22,6 +22,6 @@ public class InMemoryTopicResolver : ITopicResolver
         if (attribute == null) return null;
 
         var topic = senderId == null ? attribute.Topic : $"{attribute.Topic}-{senderId}";
-        return $"in-memory://{typeof(TM).Name}/{topic}";
+        return $"in-memory://{typeof(TM).Name}/{topic}".Replace("$type", typeof(TM).Name);
     }
 }
