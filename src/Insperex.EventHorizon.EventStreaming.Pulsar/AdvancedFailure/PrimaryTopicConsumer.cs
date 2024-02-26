@@ -26,7 +26,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopicMessage, new()
 {
     private readonly StreamFailureState<T> _streamFailureState;
-    private readonly PulsarClientResolver _clientResolver;
+    private readonly PulsarClient _pulsarClient;
     private readonly ILogger<PrimaryTopicConsumer<T>> _logger;
     private readonly SubscriptionConfig<T> _config;
     private readonly ITopicAdmin<T> _admin;
@@ -38,14 +38,14 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
 
     public PrimaryTopicConsumer(
         StreamFailureState<T> streamFailureState,
-        PulsarClientResolver clientResolver,
+        PulsarClient pulsarClient,
         ILogger<PrimaryTopicConsumer<T>> logger,
         SubscriptionConfig<T> config,
         ITopicAdmin<T> admin,
         string consumerName)
     {
         _streamFailureState = streamFailureState;
-        _clientResolver = clientResolver;
+        _pulsarClient = pulsarClient;
         _logger = logger;
         _config = config;
         _admin = admin;
@@ -219,8 +219,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         foreach (var topic in _config.Topics)
             await _admin.RequireTopicAsync(topic, cts.Token);
 
-        var client = await _clientResolver.GetPulsarClientAsync();
-        var builder = client.NewConsumer(Schema.JSON<T>())
+        var builder = _pulsarClient.NewConsumer(Schema.JSON<T>())
             .ConsumerName(_consumerName)
             .SubscriptionType(_config.SubscriptionType.ToPulsarSubscriptionType())
             .SubscriptionName(_config.SubscriptionName)

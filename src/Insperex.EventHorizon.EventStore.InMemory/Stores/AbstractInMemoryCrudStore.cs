@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Insperex.EventHorizon.EventStore.InMemory.Databases;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
@@ -15,14 +14,14 @@ namespace Insperex.EventHorizon.EventStore.InMemory.Stores
     {
         private readonly Dictionary<string, ICrudEntity> _table;
 
-        public AbstractInMemoryCrudStore(CrudDatabase crudDb)
+        public AbstractInMemoryCrudStore(InMemoryStoreClient crudDb)
         {
             var typeArgs = typeof(T).GetGenericArguments();
             var typeName = typeArgs.Any()?  typeArgs.First().Name : typeof(T).Name;
-            if (!crudDb.CrudEntities.ContainsKey(typeName))
-                crudDb.CrudEntities[typeName] = new Dictionary<string, ICrudEntity>();
+            if (!crudDb.Entities.ContainsKey(typeName))
+                crudDb.Entities[typeName] = new Dictionary<string, ICrudEntity>();
 
-            _table = crudDb.CrudEntities[typeName];
+            _table = crudDb.Entities[typeName];
         }
 
         public Task MigrateAsync(CancellationToken ct)

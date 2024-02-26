@@ -17,7 +17,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 public class PulsarTopicProducer<T> : ITopicProducer<T>
     where T : class, ITopicMessage
 {
-    private readonly PulsarClientResolver _clientResolver;
+    private readonly PulsarClient _pulsarClient;
     private readonly PublisherConfig _config;
     private readonly ITopicAdmin<T> _admin;
     private readonly OTelProducerInterceptor.OTelProducerInterceptor<T> _intercept;
@@ -26,11 +26,11 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     private readonly SemaphoreSlim _semaphoreSlim;
 
     public PulsarTopicProducer(
-        PulsarClientResolver clientResolver,
+        PulsarClient pulsarClient,
         PublisherConfig config,
         ITopicAdmin<T> admin)
     {
-        _clientResolver = clientResolver;
+        _pulsarClient = pulsarClient;
         _config = config;
         _admin = admin;
         _publisherName = AssemblyUtil.AssemblyNameWithGuid;
@@ -107,8 +107,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         await _admin.RequireTopicAsync(_config.Topic, cts.Token);
 
-        var client = await _clientResolver.GetPulsarClientAsync();
-        var builder = client.NewProducer(Schema.JSON<T>())
+        var builder = _pulsarClient.NewProducer(Schema.JSON<T>())
             .ProducerName(_publisherName)
             .BlockIfQueueFull(true)
             .BatchBuilder(BatchBuilder.KeyBased)

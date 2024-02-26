@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using IdentityModel.Client;
+using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -12,7 +13,7 @@ using SharpPulsar.Admin.v2;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar
 {
-    public class PulsarClientResolver : IDisposable
+    public class PulsarClientResolver : IClientResolver<PulsarClient>, IDisposable
     {
         private readonly IOptions<PulsarConfig> _options;
         private PulsarAdminRESTAPIClient _admin;
@@ -34,11 +35,8 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
             _fileUri = new Uri(_fileName);
         }
 
-        public async Task<PulsarClient> GetPulsarClientAsync()
+        public PulsarClient GetClient()
         {
-            if (_client != null)
-                return _client;
-
             var builder = new PulsarClientBuilder()
                 .ServiceUrl(_options.Value.ServiceUrl)
                 .EnableTransaction(true);
@@ -49,7 +47,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
                 builder = builder.Authentication(AuthenticationFactoryOAuth2.ClientCredentials(new Uri(_options.Value.OAuth2.IssuerUrl), audience, _fileUri));
             }
 
-            return await builder.BuildAsync();
+            return builder.BuildAsync().GetAwaiter().GetResult();
         }
 
         public async Task<IPulsarAdminRESTAPIClient> GetAdminClientAsync()

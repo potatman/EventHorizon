@@ -23,7 +23,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 /// <typeparam name="T">Type of message from the primary topic.</typeparam>
 public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
 {
-    private readonly PulsarClientResolver _clientResolver;
+    private readonly PulsarClient _pulsarClient;
     private readonly PulsarTopicAdmin<T> _admin;
     private readonly ILogger<FailureStateTopic<T>> _logger;
     private readonly PulsarTopic _topic;
@@ -32,10 +32,10 @@ public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
     private ITableView<TopicStreamState> _tableView;
     private readonly OTelProducerInterceptor.OTelProducerInterceptor<TopicStreamState> _intercept;
 
-    public FailureStateTopic(SubscriptionConfig<T> subscriptionConfig, PulsarClientResolver clientResolver,
+    public FailureStateTopic(SubscriptionConfig<T> subscriptionConfig, PulsarClient pulsarClient,
         PulsarTopicAdmin<T> admin, ILogger<FailureStateTopic<T>> logger)
     {
-        _clientResolver = clientResolver;
+        _pulsarClient = pulsarClient;
         _admin = admin;
         _logger = logger;
         _topic = Topic(subscriptionConfig.Topics.First(), subscriptionConfig.SubscriptionName);
@@ -75,8 +75,7 @@ public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
     {
         if (_producer != null) return _producer;
 
-        var client = await _clientResolver.GetPulsarClientAsync();
-        var builder = client.NewProducer(Schema.JSON<TopicStreamState>())
+        var builder = _pulsarClient.NewProducer(Schema.JSON<TopicStreamState>())
             .ProducerName(_publisherName)
             .BlockIfQueueFull(true)
             .BatchBuilder(BatchBuilder.KeyBased)
@@ -129,8 +128,7 @@ public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
 
     private async Task<ITableView<TopicStreamState>> GetTableViewAsync()
     {
-        var client = await _clientResolver.GetPulsarClientAsync();
-        return await client.NewTableViewBuilder(Schema.JSON<TopicStreamState>())
+        return await _pulsarClient.NewTableViewBuilder(Schema.JSON<TopicStreamState>())
             .Topic(_topic.ToString())
             .CreateAsync();
     }
