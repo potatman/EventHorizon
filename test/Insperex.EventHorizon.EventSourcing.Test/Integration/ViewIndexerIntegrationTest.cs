@@ -8,6 +8,7 @@ using Destructurama;
 using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Testing;
+using Insperex.EventHorizon.EventSourcing.Aggregates;
 using Insperex.EventHorizon.EventSourcing.Extensions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Actions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
@@ -33,8 +34,8 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
     private readonly IHost _host;
     private readonly StreamingClient _streamingClient;
     private Stopwatch _stopwatch;
-    private readonly ICrudStore<View<AccountView>> _accountStore;
-    private readonly ICrudStore<View<SearchAccountView>> _userAccountStore;
+    private readonly Aggregator<Snapshot<AccountView>, AccountView> _accountAggregate;
+    private readonly Aggregator<Snapshot<SearchAccountView>, SearchAccountView> _userAccountStore;
 
     public ViewIndexerIntegrationTest(ITestOutputHelper output)
     {
@@ -68,8 +69,8 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
             .AddTestBucketIds();
 
         _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
-        _accountStore = _host.Services.GetRequiredService<IViewStore<AccountView>>();
-        _userAccountStore = _host.Services.GetRequiredService<IViewStore<SearchAccountView>>();
+        _accountAggregate = _host.Services.GetRequiredService<EventSourcingClient<AccountView>>().Aggregator().Build();
+        _userAccountStore = _host.Services.GetRequiredService<EventSourcingClient<SearchAccountView>>().Aggregator().Build();
     }
 
     public async Task InitializeAsync()
@@ -81,12 +82,8 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _output.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        await _accountStore.DropDatabaseAsync(CancellationToken.None);
-        await _userAccountStore.DropDatabaseAsync(CancellationToken.None);
-
-        // Delete Event Dbs
-        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Account));
-        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(User));
+        await _accountAggregate.DropAllAsync(CancellationToken.None);
+        await _userAccountStore.DropAllAsync(CancellationToken.None);
 
         await _host.StopAsync();
         _host.Dispose();
@@ -105,8 +102,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
         await Task.Delay(TimeSpan.FromSeconds(3));
 
         // Assert Account
-        var views = await _accountStore.GetAllAsync(new [] { streamId }, CancellationToken.None);
-        var view = views.FirstOrDefault();
+        var view = await _accountAggregate.GetAggregateFromStateAsync(streamId, CancellationToken.None);
         Assert.Equal(streamId, view.State.Id);
         Assert.Equal(streamId, view.Id);
         Assert.NotEqual(DateTime.MinValue, view.CreatedDate);
@@ -114,8 +110,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
         Assert.Equal(100, view.State.Amount);
 
         // Assert UserAccount
-        var views2 = await _userAccountStore.GetAllAsync(new [] { streamId }, CancellationToken.None);
-        var view2 = views2.FirstOrDefault();
+        var view2 = await _userAccountStore.GetAggregateFromStateAsync(streamId, CancellationToken.None);
         Assert.Equal(streamId, view2.State.Id);
         Assert.Equal(streamId, view2.Id);
         Assert.NotEqual(DateTime.MinValue, view2.CreatedDate);
