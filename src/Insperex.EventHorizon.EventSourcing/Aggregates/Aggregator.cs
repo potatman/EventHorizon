@@ -22,6 +22,7 @@ public class Aggregator<TParent, TState>
     where TState : class, IState
 {
     private readonly Type TStateType = typeof(TState);
+    private readonly string TStateTypeName = typeof(TState).Name;
     private readonly AggregateConfig<TState> _config;
     private readonly ICrudStore<TParent> _crudStore;
     private readonly ILogger<Aggregator<TParent, TState>> _logger;
@@ -135,7 +136,7 @@ public class Aggregator<TParent, TState>
                 agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
         }
         _logger.LogInformation("TriggerHandled {Count} {Type} Aggregate(s) in {Duration}",
-            aggregateDict.Count, TStateType.Name, sw.ElapsedMilliseconds);
+            aggregateDict.Count, TStateTypeName, sw.ElapsedMilliseconds);
     }
 
     #region Save
@@ -153,7 +154,7 @@ public class Aggregator<TParent, TState>
             if (group.Key == null) continue;
             var first = group.First();
             _logger.LogError("{State} {Count} had {Status} => {Error}",
-                TStateType.Name, group.Count(), first.StatusCode, first.Error);
+                TStateTypeName, group.Count(), first.StatusCode, first.Error);
         }
 
         // OnCompleted Hook
@@ -201,7 +202,7 @@ public class Aggregator<TParent, TState>
                 aggregateDict[id].SequenceId++;
             }
             _logger.LogInformation("Saved {Count} {Type} Aggregate(s) in {Duration}",
-                aggregateDict.Count, TStateType.Name, sw.ElapsedMilliseconds);
+                aggregateDict.Count, TStateTypeName, sw.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
@@ -307,7 +308,7 @@ public class Aggregator<TParent, TState>
                     agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
             }
             _logger.LogInformation("Loaded {Count} {Type} Aggregate(s) in {Duration}",
-                aggregateDict.Count, TStateType.Name, sw.ElapsedMilliseconds);
+                aggregateDict.Count, TStateTypeName, sw.ElapsedMilliseconds);
 
             return aggregateDict;
         }

@@ -54,7 +54,6 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
                         // Stores
                         .AddInMemorySnapshotStore()
                         .AddInMemoryViewStore()
-                        // .AddElasticViewStore()
                         .AddInMemoryEventStream();
                 });
             })
@@ -82,10 +81,9 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _output.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
+        await _host.StopAsync();
         await _accountAggregate.DropAllAsync(CancellationToken.None);
         await _userAccountStore.DropAllAsync(CancellationToken.None);
-
-        await _host.StopAsync();
         _host.Dispose();
     }
 
