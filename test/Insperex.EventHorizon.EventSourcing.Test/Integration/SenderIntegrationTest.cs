@@ -118,9 +118,7 @@ public class SenderIntegrationTest : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _output.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        await _eventSourcingClient.GetSnapshotStore().DropDatabaseAsync(CancellationToken.None);
-        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Account));
-        await _streamingClient.GetAdmin<Request>().DeleteTopicAsync(typeof(Account));
+        await _eventSourcingClient.Aggregator().Build().DropAllAsync(CancellationToken.None);
         await _senderHost.StopAsync();
         await _consumerHost.StopAsync();
         _senderHost.Dispose();

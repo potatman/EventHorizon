@@ -21,6 +21,7 @@ public class Aggregator<TParent, TState>
     where TParent : class, IStateParent<TState>, new()
     where TState : class, IState
 {
+    private readonly Type TStateType = typeof(TState);
     private readonly AggregateConfig<TState> _config;
     private readonly ICrudStore<TParent> _crudStore;
     private readonly ILogger<Aggregator<TParent, TState>> _logger;
@@ -134,7 +135,7 @@ public class Aggregator<TParent, TState>
                 agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
         }
         _logger.LogInformation("TriggerHandled {Count} {Type} Aggregate(s) in {Duration}",
-            aggregateDict.Count, typeof(TState).Name, sw.ElapsedMilliseconds);
+            aggregateDict.Count, TStateType.Name, sw.ElapsedMilliseconds);
     }
 
     #region Save
@@ -152,7 +153,7 @@ public class Aggregator<TParent, TState>
             if (group.Key == null) continue;
             var first = group.First();
             _logger.LogError("{State} {Count} had {Status} => {Error}",
-                typeof(TState).Name, group.Count(), first.StatusCode, first.Error);
+                TStateType.Name, group.Count(), first.StatusCode, first.Error);
         }
 
         // OnCompleted Hook
@@ -200,7 +201,7 @@ public class Aggregator<TParent, TState>
                 aggregateDict[id].SequenceId++;
             }
             _logger.LogInformation("Saved {Count} {Type} Aggregate(s) in {Duration}",
-                aggregateDict.Count, typeof(TState).Name, sw.ElapsedMilliseconds);
+                aggregateDict.Count, TStateType.Name, sw.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
@@ -306,7 +307,7 @@ public class Aggregator<TParent, TState>
                     agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
             }
             _logger.LogInformation("Loaded {Count} {Type} Aggregate(s) in {Duration}",
-                aggregateDict.Count, typeof(TState).Name, sw.ElapsedMilliseconds);
+                aggregateDict.Count, TStateType.Name, sw.ElapsedMilliseconds);
 
             return aggregateDict;
         }
@@ -348,6 +349,18 @@ public class Aggregator<TParent, TState>
     {
         var reader = _streamingClient.CreateReader<Event>().AddStateStream<TState>().Keys(streamIds).EndDateTime(endDateTime).Build();
         return reader.GetNextAsync(10000);
+    }
+
+    #endregion
+
+    #region Delete
+
+    public async Task DropAllAsync(CancellationToken ct)
+    {
+        await _crudStore.DropDatabaseAsync(ct);
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(TStateType, ct: ct);
+        await _streamingClient.GetAdmin<Request>().DeleteTopicAsync(TStateType, ct: ct);
+        await _streamingClient.GetAdmin<Command>().DeleteTopicAsync(TStateType, ct: ct);
     }
 
     #endregion
