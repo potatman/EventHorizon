@@ -29,6 +29,7 @@ public abstract class AbstractMongoCrudStore<T> : ICrudStore<T>
     private readonly IMongoClient _client;
     private readonly MongoCollectionAttribute _mongoAttr;
     private readonly IMongoCollection<T> _collection;
+    private readonly IMongoDatabase _db;
 
     public AbstractMongoCrudStore(IMongoClient client, MongoCollectionAttribute mongoAttr, string database)
     {
@@ -36,9 +37,9 @@ public abstract class AbstractMongoCrudStore<T> : ICrudStore<T>
         _mongoAttr = mongoAttr;
         _database = database;
         var type = typeof(T);
-        var db = client.GetDatabase(database);
+        _db = client.GetDatabase(database);
         var typeName = type.Name.Replace(Tilda1, string.Empty);
-        _collection = db.GetCollection<T>(typeName);
+        _collection = _db.GetCollection<T>(typeName);
     }
 
     public async Task MigrateAsync(CancellationToken ct)
@@ -164,11 +165,21 @@ public abstract class AbstractMongoCrudStore<T> : ICrudStore<T>
         return _client.DropDatabaseAsync(_database, ct);
     }
 
-    private async Task AddIndex(string name, IndexKeysDefinition<T> definition, TimeSpan? timeSpan = null)
+    protected async Task AddIndex(string name, IndexKeysDefinition<T> definition, TimeSpan? timeSpan = null)
     {
         var opts = new CreateIndexOptions { Background = true, ExpireAfter = timeSpan };
         var names = (await _collection.Indexes.ListAsync()).ToList().Select(x => x[Name.ToLower(CultureInfo.InvariantCulture)]).ToArray();
         if (!names.Contains(name))
             await _collection.Indexes.CreateOneAsync(new CreateIndexModel<T>(definition,opts));
+    }
+
+    protected async Task AddShard(string key)
+    {
+        var partition = new BsonDocument {
+            {"shardCollection", $"{_db.DatabaseNamespace.DatabaseName}.{_collection.CollectionNamespace.CollectionName}"},
+            {"key", new BsonDocument {{key, "hashed"}}}
+        };
+        var command = new BsonDocumentCommand<BsonDocument>(partition);
+        await _db.RunCommandAsync(command);
     }
 }
