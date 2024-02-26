@@ -74,16 +74,6 @@ public abstract class AbstractMongoCrudStore<T> : ICrudStore<T>
         return objs.ToArray();
     }
 
-    public async Task<DateTime> GetLastUpdatedDateAsync(CancellationToken ct)
-    {
-        var result = await _collection.Find(x => true)
-            .Project(x => x.UpdatedDate)
-            .SortByDescending(x => x.UpdatedDate)
-            .FirstOrDefaultAsync(cancellationToken: ct);
-
-        return result;
-    }
-
     public async Task<DbResult> InsertAllAsync(T[] objs, CancellationToken ct)
     {
         var result = new DbResult();

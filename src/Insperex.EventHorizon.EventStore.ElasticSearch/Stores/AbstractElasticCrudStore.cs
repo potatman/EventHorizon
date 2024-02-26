@@ -71,28 +71,6 @@ public abstract class AbstractElasticCrudStore<TE> : ICrudStore<TE>
         return res.Docs.Select(x => x.Match(y => y.Source, z => null)).Where(x => x != null).ToArray();
     }
 
-    public async Task<DateTime> GetLastUpdatedDateAsync(CancellationToken ct)
-    {
-        var res = await _client.SearchAsync<Snapshot<TE>>(x =>
-                x.Index(_dbName)
-                    .Size(1)
-                    .Source(new SourceConfig(new SourceFilter
-                    {
-                        Includes = new[] { "updatedDate" }
-                    }))
-                    .Query(q =>
-                        q.Bool(b =>
-                            b.Filter(f => f.MatchAll())
-                        )
-                    )
-                    .Sort(s => s.Field(f => f.UpdatedDate).Doc(d => d.Order(SortOrder.Desc)))
-            , ct);
-
-        ThrowErrors(res);
-
-        return res.Documents.FirstOrDefault()?.UpdatedDate ?? DateTime.MinValue;
-    }
-
     public async Task<DbResult> InsertAllAsync(TE[] objs, CancellationToken ct)
     {
         var res = await _client.BulkAsync(

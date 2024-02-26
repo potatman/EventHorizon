@@ -65,21 +65,6 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
     }
 
     [Fact]
-    public async Task TestGetLastUpdatedDateAsync()
-    {
-        // Act
-        var past = DateTime.UtcNow.AddDays(-1);
-        var now = DateTime.UtcNow;
-        var expected = new Snapshot<ExampleStoreState>("NormalSnapshot", 1, _states.First(), past, now);
-        await _snapshotStore.UpsertAllAsync(new [] {expected}, _cts.Token);
-        await Task.Delay(TimeSpan.FromSeconds(1), _cts.Token); // NOTE: Delay is for elastic refresh
-        var minDateTime = await _snapshotStore.GetLastUpdatedDateAsync(_cts.Token);
-
-        // Assert
-        Assert.True(Math.Truncate((expected.UpdatedDate - minDateTime).TotalMilliseconds) == 0, $"expected {expected.UpdatedDate}, actual {minDateTime}");
-    }
-
-    [Fact]
     public async Task TestDeleteAndLoad()
     {
         // Act

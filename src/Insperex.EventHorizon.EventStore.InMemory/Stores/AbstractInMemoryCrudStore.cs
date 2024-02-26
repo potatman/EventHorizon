@@ -41,16 +41,6 @@ namespace Insperex.EventHorizon.EventStore.InMemory.Stores
             return Task.FromResult(objs);
         }
 
-        public Task<DateTime> GetLastUpdatedDateAsync(CancellationToken ct)
-        {
-            var result = _table.Values
-                .Select(x => x.UpdatedDate)
-                .OrderByDescending(x => x)
-                .FirstOrDefault();
-
-            return Task.FromResult(result);
-        }
-
         public Task<DbResult> InsertAllAsync(T[] objs, CancellationToken ct)
         {
             var failed = objs.Where(obj => _table.ContainsKey(obj.Id)).ToArray();
