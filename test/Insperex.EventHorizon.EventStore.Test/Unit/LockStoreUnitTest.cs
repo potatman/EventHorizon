@@ -27,7 +27,7 @@ public class LockStoreUnitTest : IAsyncLifetime
     {
         var provider = HostTestUtil.GetInMemoryHost(outputHelper).Services;
         _outputHelper = outputHelper;
-        _lockStore = provider.GetRequiredService<ILockStore>();
+        _lockStore = provider.GetRequiredService<ILockStore<ExampleStoreState>>();
         _lockFactory = provider.GetRequiredService<LockFactory<ExampleStoreState>>();
         _stopwatch = Stopwatch.StartNew();
         _faker = new Faker();

@@ -18,7 +18,7 @@ public static class EventHorizonConfiguratorExtensions
             typeof(InMemorySnapshotStore<>),
             ServiceLifetime.Singleton));
         configurator.Collection.Replace(ServiceDescriptor.Describe(
-            typeof(ILockStore),
+            typeof(ILockStore<>),
             typeof(InMemoryLockStore<>),
             ServiceLifetime.Singleton));
         return configurator;

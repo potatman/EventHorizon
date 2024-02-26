@@ -8,7 +8,7 @@ using Insperex.EventHorizon.EventStore.MongoDb.Attributes;
 
 namespace Insperex.EventHorizon.EventStore.MongoDb.Stores
 {
-    public class MongoLockStore<T> : AbstractMongoCrudStore<Lock>, ILockStore where T : IState
+    public class MongoLockStore<T> : AbstractMongoCrudStore<Lock>, ILockStore<T> where T : IState
     {
         private static readonly Type Type = typeof(T);
 

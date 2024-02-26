@@ -11,7 +11,7 @@ public class LockFactory<T> where T : class, IState
     private readonly ILoggerFactory _loggerFactory;
     private readonly ICrudStore<Lock> _lockStore;
 
-    public LockFactory(ILockStore lockStore, ILoggerFactory loggerFactory)
+    public LockFactory(ILockStore<T> lockStore, ILoggerFactory loggerFactory)
     {
         _loggerFactory = loggerFactory;
         _lockStore = lockStore;

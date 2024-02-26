@@ -14,7 +14,7 @@ public static class EventHorizonConfiguratorExtensions
     {
         AddElasticStore(configurator, onConfig);
         configurator.Collection.AddSingleton(typeof(ISnapshotStore<>), typeof(ElasticSnapshotStore<>));
-        configurator.Collection.AddSingleton(typeof(ILockStore), typeof(ElasticLockStore<>));
+        configurator.Collection.AddSingleton(typeof(ILockStore<>), typeof(ElasticLockStore<>));
         return configurator;
     }
 

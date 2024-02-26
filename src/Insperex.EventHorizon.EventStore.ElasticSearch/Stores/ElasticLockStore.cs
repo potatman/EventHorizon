@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStore.ElasticSearch.Stores
 {
-    public class ElasticLockStore<T> : AbstractElasticCrudStore<Lock>, ILockStore
+    public class ElasticLockStore<T> : AbstractElasticCrudStore<Lock>, ILockStore<T>
         where T : IState
     {
         private static readonly Type Type = typeof(T);

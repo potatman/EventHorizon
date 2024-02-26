@@ -23,7 +23,7 @@ public static class EventHorizonConfiguratorExtensions
     {
         AddMongoDbStore(configurator, onConfig);
         configurator.Collection.AddSingleton(typeof(ISnapshotStore<>), typeof(MongoSnapshotStore<>));
-        configurator.Collection.AddSingleton(typeof(ILockStore), typeof(MongoLockStore<>));
+        configurator.Collection.AddSingleton(typeof(ILockStore<>), typeof(MongoLockStore<>));
         return configurator;
     }
 

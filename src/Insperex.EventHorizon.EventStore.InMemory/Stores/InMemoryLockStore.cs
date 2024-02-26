@@ -5,7 +5,7 @@ using Insperex.EventHorizon.EventStore.Models;
 
 namespace Insperex.EventHorizon.EventStore.InMemory.Stores
 {
-    public class InMemoryLockStore<T> : AbstractInMemoryCrudStore<Lock>, ILockStore where T : IState
+    public class InMemoryLockStore<T> : AbstractInMemoryCrudStore<Lock>, ILockStore<T> where T : IState
     {
         public InMemoryLockStore(CrudDatabase crudDb) : base(crudDb) { }
     }
