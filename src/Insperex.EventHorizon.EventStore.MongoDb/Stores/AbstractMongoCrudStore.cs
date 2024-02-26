@@ -42,7 +42,7 @@ public abstract class AbstractMongoCrudStore<T> : ICrudStore<T>
         _collection = _db.GetCollection<T>(typeName);
     }
 
-    public async Task MigrateAsync(CancellationToken ct)
+    public virtual async Task MigrateAsync(CancellationToken ct)
     {
         if (_mongoAttr?.ReadConcernLevel != null) _collection.WithReadConcern(new ReadConcern(_mongoAttr.ReadConcernLevel));
         if (_mongoAttr?.ReadPreferenceMode != null) _collection.WithReadPreference(new ReadPreference(_mongoAttr.ReadPreferenceMode));
@@ -165,11 +165,14 @@ public abstract class AbstractMongoCrudStore<T> : ICrudStore<T>
 
     protected async Task AddShard(string key)
     {
+        var shardDbResult = _client.GetDatabase("admin").RunCommand<BsonDocument>(new BsonDocument
+        {
+            { "enableSharding",$"{_database}" }
+        });
         var partition = new BsonDocument {
-            {"shardCollection", $"{_db.DatabaseNamespace.DatabaseName}.{_collection.CollectionNamespace.CollectionName}"},
+            {"shardCollection", $"{_database}.{_collection.CollectionNamespace.CollectionName}"},
             {"key", new BsonDocument {{key, "hashed"}}}
         };
-        var command = new BsonDocumentCommand<BsonDocument>(partition);
-        await _db.RunCommandAsync(command);
+        await _db.RunCommandAsync(new BsonDocumentCommand<BsonDocument>(partition));
     }
 }
