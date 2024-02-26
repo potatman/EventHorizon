@@ -45,7 +45,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compose", "compose", "{FC21CBB4-969E-4767-B2D4-D5B44C21293A}"
 	ProjectSection(SolutionItems) = preProject
 		compose\ElasticSearch\docker-compose.yml = compose\ElasticSearch\docker-compose.yml
-		compose\Ignite\docker-compose.yml = compose\Ignite\docker-compose.yml
 		compose\MongoDb\docker-compose.yml = compose\MongoDb\docker-compose.yml
 		compose\Pulsar\docker-compose.yml = compose\Pulsar\docker-compose.yml
 	EndProjectSection
