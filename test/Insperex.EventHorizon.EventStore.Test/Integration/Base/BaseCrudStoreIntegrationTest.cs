@@ -36,6 +36,7 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
     {
         _stopwatch = Stopwatch.StartNew();
         _cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        _snapshotStore.MigrateAsync(CancellationToken.None);
         return Task.CompletedTask;
     }
 
