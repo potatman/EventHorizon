@@ -1,3 +1,4 @@
+using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.EventStore.MongoDb.Models;
 using Microsoft.Extensions.Options;
@@ -5,7 +6,7 @@ using MongoDB.Driver;
 
 namespace Insperex.EventHorizon.EventStore.MongoDb
 {
-    public class MongoClientResolver
+    public class MongoClientResolver : IClientResolver<MongoClient>
     {
         private readonly IOptions<MongoConfig> _options;
 

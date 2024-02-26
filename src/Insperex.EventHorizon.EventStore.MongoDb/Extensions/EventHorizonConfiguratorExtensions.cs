@@ -1,6 +1,5 @@
 ﻿using System;
 using Insperex.EventHorizon.Abstractions;
-using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Locks;
 using Insperex.EventHorizon.EventStore.MongoDb.Models;
@@ -8,6 +7,7 @@ using Insperex.EventHorizon.EventStore.MongoDb.Stores;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
+using MongoDB.Driver;
 
 namespace Insperex.EventHorizon.EventStore.MongoDb.Extensions;
 
@@ -19,9 +19,17 @@ public static class EventHorizonConfiguratorExtensions
         BsonSerializer.RegisterSerializer(new ObjectSerializer(_ => true));
     }
 
+    public static EventHorizonConfigurator AddMongoDbClient(this EventHorizonConfigurator configurator, Action<MongoConfig> onConfig)
+    {
+        configurator.Collection.Configure(onConfig);
+        configurator.Collection.AddSingleton(typeof(LockFactory<>));
+        configurator.AddClientResolver<MongoClientResolver, MongoClient>();
+        return configurator;
+    }
+
     public static EventHorizonConfigurator AddMongoDbSnapshotStore(this EventHorizonConfigurator configurator, Action<MongoConfig> onConfig)
     {
-        AddMongoDbStore(configurator, onConfig);
+        AddMongoDbClient(configurator, onConfig);
         configurator.Collection.AddSingleton(typeof(ISnapshotStore<>), typeof(MongoSnapshotStore<>));
         configurator.Collection.AddSingleton(typeof(ILockStore<>), typeof(MongoLockStore<>));
         return configurator;
@@ -29,15 +37,8 @@ public static class EventHorizonConfiguratorExtensions
 
     public static EventHorizonConfigurator AddMongoDbViewStore(this EventHorizonConfigurator configurator, Action<MongoConfig> onConfig)
     {
-        AddMongoDbStore(configurator, onConfig);
+        AddMongoDbClient(configurator, onConfig);
         configurator.Collection.AddSingleton(typeof(IViewStore<>), typeof(MongoViewStore<>));
         return configurator;
-    }
-
-    private static void AddMongoDbStore(this EventHorizonConfigurator configurator, Action<MongoConfig> onConfig)
-    {
-        configurator.Collection.Configure(onConfig);
-        configurator.Collection.AddSingleton(typeof(LockFactory<>));
-        configurator.Collection.AddSingleton<MongoClientResolver>();
     }
 }

@@ -2,12 +2,13 @@ using System;
 using System.Linq;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Transport;
+using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.EventStore.ElasticSearch.Models;
 using Microsoft.Extensions.Options;
 
 namespace Insperex.EventHorizon.EventStore.ElasticSearch
 {
-    public class ElasticClientResolver
+    public class ElasticClientResolver : IClientResolver<ElasticsearchClient>
     {
         private readonly IOptions<ElasticConfig> _options;
 

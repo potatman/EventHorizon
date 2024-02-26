@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+using Insperex.EventHorizon.Abstractions.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Insperex.EventHorizon.Abstractions
@@ -9,6 +9,14 @@ namespace Insperex.EventHorizon.Abstractions
         public EventHorizonConfigurator(IServiceCollection collection)
         {
             Collection = collection;
+        }
+
+        public void AddClientResolver<T, TClient>()
+            where T : class, IClientResolver<TClient>
+            where TClient : class
+        {
+            Collection.AddSingleton<T>();
+            Collection.AddSingleton(x => x.GetRequiredService<T>().GetClient());
         }
     }
 }
