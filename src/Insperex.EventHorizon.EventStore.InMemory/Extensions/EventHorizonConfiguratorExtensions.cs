@@ -10,10 +10,11 @@ namespace Insperex.EventHorizon.EventStore.InMemory.Extensions;
 public static class EventHorizonConfiguratorExtensions
 {
 
-    public static void AddInMemoryStoreClient(EventHorizonConfigurator configurator)
+    public static EventHorizonConfigurator AddInMemoryStoreClient(this EventHorizonConfigurator configurator)
     {
         configurator.Collection.AddSingleton(typeof(LockFactory<>));
         configurator.Collection.AddSingleton(typeof(InMemoryStoreClient));
+        return configurator;
     }
 
     public static EventHorizonConfigurator AddInMemorySnapshotStore(this EventHorizonConfigurator configurator)
