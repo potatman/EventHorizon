@@ -16,14 +16,14 @@ namespace Insperex.EventHorizon.EventStreaming.Admins
             _topicAdmin = topicAdmin;
         }
 
-        public async Task RequireTopicAsync(Type type, string name = default, CancellationToken ct = default)
+        public async Task RequireTopicAsync(Type type, string senderId = default, CancellationToken ct = default)
         {
-            await _topicAdmin.RequireTopicAsync(_topicAdmin.GetTopic(type, name), ct);
+            await _topicAdmin.RequireTopicAsync(_topicAdmin.GetTopic(type, senderId), ct);
         }
 
-        public async Task DeleteTopicAsync(Type type, string name = default, CancellationToken ct = default)
+        public async Task DeleteTopicAsync(Type type, string senderId = default, CancellationToken ct = default)
         {
-            var topic = _topicAdmin.GetTopic(type, name);
+            var topic = _topicAdmin.GetTopic(type, senderId);
             if(topic == null) return;
 
             await _topicAdmin.DeleteTopicAsync(topic, ct);
