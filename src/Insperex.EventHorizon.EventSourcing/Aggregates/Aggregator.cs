@@ -80,13 +80,13 @@ public class Aggregator<TParent, TState>
         }
     }
 
-    public async Task<Response> HandleAsync<TM>(TM message, CancellationToken ct) where TM : ITopicMessage
+    public async Task<Response> HandleAsync<TMessage>(TMessage message, CancellationToken ct) where TMessage : ITopicMessage
     {
         var responses = await HandleAsync(new[] { message }, ct);
         return responses.FirstOrDefault();
     }
 
-    public async Task<Response[]> HandleAsync<TM>(TM[] messages, CancellationToken ct) where TM : ITopicMessage
+    public async Task<Response[]> HandleAsync<TMessage>(TMessage[] messages, CancellationToken ct) where TMessage : ITopicMessage
     {
         // Load Aggregate
         var streamIds = messages.Select(x => x.StreamId).Distinct().ToArray();
@@ -101,7 +101,7 @@ public class Aggregator<TParent, TState>
         return  aggregateDict.Values.SelectMany(x => x.Responses).ToArray();
     }
 
-    private void TriggerHandle<TM>(TM[] messages, Dictionary<string, Aggregate<TState>> aggregateDict) where TM : ITopicMessage
+    private void TriggerHandle<TMesssage>(TMesssage[] messages, Dictionary<string, Aggregate<TState>> aggregateDict) where TMesssage : ITopicMessage
     {
         var sw = Stopwatch.StartNew();
         foreach (var message in messages)
