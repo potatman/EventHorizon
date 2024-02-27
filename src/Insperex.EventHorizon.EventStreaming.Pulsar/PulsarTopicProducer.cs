@@ -14,32 +14,32 @@ using Pulsar.Client.Otel;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
-public class PulsarTopicProducer<T> : ITopicProducer<T>
-    where T : class, ITopicMessage
+public class PulsarTopicProducer<TMessage> : ITopicProducer<TMessage>
+    where TMessage : ITopicMessage
 {
     private readonly PulsarClient _pulsarClient;
     private readonly PublisherConfig _config;
-    private readonly ITopicAdmin<T> _admin;
-    private readonly OTelProducerInterceptor.OTelProducerInterceptor<T> _intercept;
+    private readonly ITopicAdmin<TMessage> _admin;
+    private readonly OTelProducerInterceptor.OTelProducerInterceptor<TMessage> _intercept;
     private readonly string _publisherName;
-    private IProducer<T> _producer;
+    private IProducer<TMessage> _producer;
     private readonly SemaphoreSlim _semaphoreSlim;
 
     public PulsarTopicProducer(
         PulsarClient pulsarClient,
         PublisherConfig config,
-        ITopicAdmin<T> admin)
+        ITopicAdmin<TMessage> admin)
     {
         _pulsarClient = pulsarClient;
         _config = config;
         _admin = admin;
         _publisherName = AssemblyUtil.AssemblyNameWithGuid;
-        _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<T>(
+        _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<TMessage>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
         _semaphoreSlim = new SemaphoreSlim(1, 1);
     }
 
-    public async Task SendAsync(params T[] messages)
+    public async Task SendAsync(params TMessage[] messages)
     {
         var producer = await GetProducerAsync();
 
@@ -92,7 +92,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
 
     }
 
-    private async Task<IProducer<T>> GetProducerAsync()
+    private async Task<IProducer<TMessage>> GetProducerAsync()
     {
         // Defensive
         if (_producer != null) return _producer;
@@ -107,7 +107,7 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         await _admin.RequireTopicAsync(_config.Topic, cts.Token);
 
-        var builder = _pulsarClient.NewProducer(Schema.JSON<T>())
+        var builder = _pulsarClient.NewProducer(Schema.JSON<TMessage>())
             .ProducerName(_publisherName)
             .BlockIfQueueFull(true)
             .BatchBuilder(BatchBuilder.KeyBased)

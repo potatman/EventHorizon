@@ -17,29 +17,30 @@ using Range = Pulsar.Client.Api.Range;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
-public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new()
+public class PulsarTopicReader<TMessage> : ITopicReader<TMessage>
+    where TMessage : ITopicMessage
 {
     private readonly PulsarClient _pulsarClient;
     private readonly ReaderConfig _config;
-    private readonly ITopicAdmin<T> _admin;
-    private IReader<T> _reader;
+    private readonly ITopicAdmin<TMessage> _admin;
+    private IReader<TMessage> _reader;
 
     public PulsarTopicReader(
         PulsarClient pulsarClient,
         ReaderConfig config,
-        ITopicAdmin<T> admin)
+        ITopicAdmin<TMessage> admin)
     {
         _pulsarClient = pulsarClient;
         _config = config;
         _admin = admin;
     }
 
-    public async Task<MessageContext<T>[]> GetNextAsync(int batchSize, TimeSpan timeout)
+    public async Task<MessageContext<TMessage>[]> GetNextAsync(int batchSize, TimeSpan timeout)
     {
-        var list = new List<MessageContext<T>>();
+        var list = new List<MessageContext<TMessage>>();
         var reader = await GetReaderAsync();
 
-        Message<T> message;
+        Message<TMessage> message;
         do
         {
             try
@@ -67,13 +68,13 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
                 break;
 
             var topicData = PulsarMessageMapper.MapTopicData(list.Count.ToString(CultureInfo.InvariantCulture), message, _config.Topic);
-            list.Add(new MessageContext<T>(message.GetValue(), topicData, _config.TypeDict));
+            list.Add(new MessageContext<TMessage>(message.GetValue(), topicData, _config.TypeDict));
         } while (message != null && list.Count < batchSize && await reader.HasMessageAvailableAsync());
 
         return list.ToArray();
     }
 
-    private async Task<IReader<T>> GetReaderAsync()
+    private async Task<IReader<TMessage>> GetReaderAsync()
     {
         if (_reader != null)
             return _reader;
@@ -81,7 +82,7 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         await _admin.RequireTopicAsync(_config.Topic, cts.Token);
 
-        var builder = _pulsarClient.NewReader(Schema.JSON<T>())
+        var builder = _pulsarClient.NewReader(Schema.JSON<TMessage>())
             .Topic(_config.Topic)
             .ReaderName(AssemblyUtil.AssemblyNameWithGuid)
             .ReceiverQueueSize(1000);
