@@ -21,38 +21,39 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 /// Reads from the subscription topics (all of them) and merges
 /// messages from all topics into one reader stream for the output.
 /// </summary>
-/// <typeparam name="T">Topic message type.</typeparam>
-public class RetryTopicReader<T>: IAsyncDisposable where T : class, ITopicMessage, new()
+/// <typeparam name="TMessage">Topic message type.</typeparam>
+public class RetryTopicReader<TMessage>: IAsyncDisposable
+    where TMessage : ITopicMessage
 {
     private const int BufferSize = 1000;
 
     private sealed class TopicReaderContext
     {
         public string Topic { get; set; }
-        public IReader<T> Reader { get; set; }
+        public IReader<TMessage> Reader { get; set; }
         public DateTime ReaderStartTime { get; set; }
         public Dictionary<string, TopicStreamState> Streams;
-        public Queue<Message<T>> MessageQueue { get; set; }
+        public Queue<Message<TMessage>> MessageQueue { get; set; }
         public bool ContinueReading { get; set; }
     }
 
-    private readonly Dictionary<string, IReader<T>> _readers = new();
+    private readonly Dictionary<string, IReader<TMessage>> _readers = new();
     private readonly PulsarClient _pulsarClient;
-    private readonly SubscriptionConfig<T> _config;
-    private readonly ILogger<RetryTopicReader<T>> _logger;
+    private readonly SubscriptionConfig<TMessage> _config;
+    private readonly ILogger<RetryTopicReader<TMessage>> _logger;
 
-    public RetryTopicReader(PulsarClient pulsarClient, SubscriptionConfig<T> config, ILogger<RetryTopicReader<T>> logger)
+    public RetryTopicReader(PulsarClient pulsarClient, SubscriptionConfig<TMessage> config, ILogger<RetryTopicReader<TMessage>> logger)
     {
         _pulsarClient = pulsarClient;
         _config = config;
         _logger = logger;
     }
 
-    public async Task<MessageContext<T>[]> GetNextAsync(TopicStreamState[] topicStreams, int batchSize, CancellationToken ct)
+    public async Task<MessageContext<TMessage>[]> GetNextAsync(TopicStreamState[] topicStreams, int batchSize, CancellationToken ct)
     {
         var contexts = await InitReaderContexts(topicStreams);
         var asOf = DateTime.UtcNow;
-        var messages = new List<MessageContext<T>>();
+        var messages = new List<MessageContext<TMessage>>();
         bool anyMoreMessages;
 
         do
@@ -71,7 +72,7 @@ public class RetryTopicReader<T>: IAsyncDisposable where T : class, ITopicMessag
                     var sequenceId = message.SequenceId.ToString(CultureInfo.InvariantCulture);
 
                     var topicData = PulsarMessageMapper.MapTopicData(sequenceId, message, topic);
-                    messages.Add(new MessageContext<T>(data, topicData, _config.TypeDict));
+                    messages.Add(new MessageContext<TMessage>(data, topicData, _config.TypeDict));
                 }
             }
         } while (messages.Count < batchSize && anyMoreMessages);
@@ -105,7 +106,7 @@ public class RetryTopicReader<T>: IAsyncDisposable where T : class, ITopicMessag
         return contexts;
     }
 
-    private static async Task<(string Topic, Message<T> Message)> GetNextMessage(
+    private static async Task<(string Topic, Message<TMessage> Message)> GetNextMessage(
         Dictionary<string, TopicReaderContext> contexts,
         CancellationToken ct)
     {
@@ -149,7 +150,7 @@ public class RetryTopicReader<T>: IAsyncDisposable where T : class, ITopicMessag
         }
     }
 
-    private static bool IsMessageEligible(Message<T> message, string streamId, TopicReaderContext context,
+    private static bool IsMessageEligible(Message<TMessage> message, string streamId, TopicReaderContext context,
         DateTime asOf)
     {
         var topicStream = context.Streams.GetValueOrDefault(streamId);
@@ -166,12 +167,12 @@ public class RetryTopicReader<T>: IAsyncDisposable where T : class, ITopicMessag
         return false;
     }
 
-    private async Task<IReader<T>> GetReader(string topic)
+    private async Task<IReader<TMessage>> GetReader(string topic)
     {
         if (_readers.TryGetValue(topic, out var reader)) return reader;
 
         var newReader = await _pulsarClient
-            .NewReader(Schema.JSON<T>())
+            .NewReader(Schema.JSON<TMessage>())
             .Topic(topic)
             .ReaderName($"{AssemblyUtil.AssemblyNameWithGuid}_retry_{topic}")
             .ReceiverQueueSize(BufferSize)
@@ -195,7 +196,7 @@ public class RetryTopicReader<T>: IAsyncDisposable where T : class, ITopicMessag
         }
     }
 
-    private static string MsgToStr(Message<T> message, string topic)
+    private static string MsgToStr(Message<TMessage> message, string topic)
     {
         var data = message.GetValue();
         return ($"{topic}=>{data.StreamId}=>{message.SequenceId}");

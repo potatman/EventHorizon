@@ -22,26 +22,27 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 /// Part of the advanced failure handling logic orchestrated by <see cref="OrderGuaranteedPulsarTopicConsumer{T}"/>.
 /// Handles consuming messages from the primary topic, during the normal batch phase.
 /// </summary>
-/// <typeparam name="T">Type of message from the primary topic.</typeparam>
-internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopicMessage, new()
+/// <typeparam name="TMessage">Type of message from the primary topic.</typeparam>
+internal sealed class PrimaryTopicConsumer<TMessage>: ITopicConsumer<TMessage>
+    where TMessage : ITopicMessage
 {
-    private readonly StreamFailureState<T> _streamFailureState;
+    private readonly StreamFailureState<TMessage> _streamFailureState;
     private readonly PulsarClient _pulsarClient;
-    private readonly ILogger<PrimaryTopicConsumer<T>> _logger;
-    private readonly SubscriptionConfig<T> _config;
-    private readonly ITopicAdmin<T> _admin;
+    private readonly ILogger<PrimaryTopicConsumer<TMessage>> _logger;
+    private readonly SubscriptionConfig<TMessage> _config;
+    private readonly ITopicAdmin<TMessage> _admin;
     private readonly string _consumerName;
-    private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
+    private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<TMessage> _intercept;
     private PulsarKeyHashRanges _keyHashRanges;
     private MessageId[] _messageIds;
-    private IConsumer<T> _consumer;
+    private IConsumer<TMessage> _consumer;
 
     public PrimaryTopicConsumer(
-        StreamFailureState<T> streamFailureState,
+        StreamFailureState<TMessage> streamFailureState,
         PulsarClient pulsarClient,
-        ILogger<PrimaryTopicConsumer<T>> logger,
-        SubscriptionConfig<T> config,
-        ITopicAdmin<T> admin,
+        ILogger<PrimaryTopicConsumer<TMessage>> logger,
+        SubscriptionConfig<TMessage> config,
+        ITopicAdmin<TMessage> admin,
         string consumerName)
     {
         _streamFailureState = streamFailureState;
@@ -50,7 +51,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         _config = config;
         _admin = admin;
         _consumerName = consumerName;
-        _intercept = new OtelConsumerInterceptor.OTelConsumerInterceptor<T>(
+        _intercept = new OtelConsumerInterceptor.OTelConsumerInterceptor<TMessage>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
         this.KeyHashRangeOutlierFound = false;
     }
@@ -71,7 +72,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         await GetConsumerAsync();
     }
 
-    public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
+    public async Task<MessageContext<TMessage>[]> NextBatchAsync(CancellationToken ct)
     {
         try
         {
@@ -82,7 +83,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
             if (!messagesToRelay.Any())
             {
                 await Task.Delay(_config.NoBatchDelay, ct);
-                return Array.Empty<MessageContext<T>>();
+                return Array.Empty<MessageContext<TMessage>>();
             }
 
             _messageIds = messagesToRelay
@@ -91,7 +92,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
 
             var contexts = messagesToRelay
                 .Select(x =>
-                    new MessageContext<T>(x.Data, PulsarMessageMapper.MapTopicData(
+                    new MessageContext<TMessage>(x.Data, PulsarMessageMapper.MapTopicData(
                         x.OriginalMessage.SequenceId.ToString(CultureInfo.InvariantCulture),
                         x.OriginalMessage, x.Topic), _config.TypeDict)
                 )
@@ -106,7 +107,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         }
     }
 
-    private async Task<(T Data, Message<T> OriginalMessage, string Topic)[]> NextNormalBatch(CancellationToken ct)
+    private async Task<(TMessage Data, Message<TMessage> OriginalMessage, string Topic)[]> NextNormalBatch(CancellationToken ct)
     {
         var consumer = await GetConsumerAsync();
         var messages = await consumer.BatchReceiveAsync(ct);
@@ -154,7 +155,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         return messagesToRelay;
     }
 
-    private void CheckForStreamIdsOutsideKeyHashRange((T Data, Message<T> OriginalMessage, string Topic)[] messagesToRelay)
+    private void CheckForStreamIdsOutsideKeyHashRange((TMessage Data, Message<TMessage> OriginalMessage, string Topic)[] messagesToRelay)
     {
         if (!KeyHashRangeOutlierFound && _keyHashRanges != null)
         {
@@ -173,7 +174,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         }
     }
 
-    public async Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
+    public async Task FinalizeBatchAsync(MessageContext<TMessage>[] acks, MessageContext<TMessage>[] nacks)
     {
         var results = acks.Select(a => (IsSuccess: true, Message: a))
             .Concat(nacks.Select(n => (IsSuccess: false, Message: n)));
@@ -209,7 +210,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         _consumer = null;
     }
 
-    private async Task<IConsumer<T>> GetConsumerAsync()
+    private async Task<IConsumer<TMessage>> GetConsumerAsync()
     {
         if (_consumer != null)
             return _consumer;
@@ -219,7 +220,7 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         foreach (var topic in _config.Topics)
             await _admin.RequireTopicAsync(topic, cts.Token);
 
-        var builder = _pulsarClient.NewConsumer(Schema.JSON<T>())
+        var builder = _pulsarClient.NewConsumer(Schema.JSON<TMessage>())
             .ConsumerName(_consumerName)
             .SubscriptionType(_config.SubscriptionType.ToPulsarSubscriptionType())
             .SubscriptionName(_config.SubscriptionName)

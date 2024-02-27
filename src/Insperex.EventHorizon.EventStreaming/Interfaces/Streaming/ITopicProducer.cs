@@ -4,8 +4,8 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 
 namespace Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 
-public interface ITopicProducer<in T> : IAsyncDisposable
-    where T : ITopicMessage
+public interface ITopicProducer<in TMessage> : IAsyncDisposable
+    where TMessage : ITopicMessage
 {
-    Task SendAsync(params T[] messages);
+    Task SendAsync(params TMessage[] messages);
 }

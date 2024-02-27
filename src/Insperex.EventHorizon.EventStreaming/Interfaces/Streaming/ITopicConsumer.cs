@@ -6,10 +6,10 @@ using Insperex.EventHorizon.Abstractions.Models;
 
 namespace Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 
-public interface ITopicConsumer<T> : IAsyncDisposable
-    where T : ITopicMessage
+public interface ITopicConsumer<TMessage> : IAsyncDisposable
+    where TMessage : ITopicMessage
 {
     Task InitAsync();
-    Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct);
-    Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks);
+    Task<MessageContext<TMessage>[]> NextBatchAsync(CancellationToken ct);
+    Task FinalizeBatchAsync(MessageContext<TMessage>[] acks, MessageContext<TMessage>[] nacks);
 }

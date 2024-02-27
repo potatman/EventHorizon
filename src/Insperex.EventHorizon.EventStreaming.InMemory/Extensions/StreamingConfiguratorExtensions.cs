@@ -1,5 +1,4 @@
 using Insperex.EventHorizon.Abstractions;
-using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Admins;
 using Insperex.EventHorizon.EventStreaming.InMemory.Databases;
 using Insperex.EventHorizon.EventStreaming.InMemory.Failure;

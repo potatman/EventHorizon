@@ -5,8 +5,8 @@ using Insperex.EventHorizon.Abstractions.Models;
 
 namespace Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 
-public interface ITopicReader<T> : IAsyncDisposable
-    where T : ITopicMessage
+public interface ITopicReader<TMessage> : IAsyncDisposable
+    where TMessage : ITopicMessage
 {
-    public Task<MessageContext<T>[]> GetNextAsync(int batchSize, TimeSpan timeout);
+    public Task<MessageContext<TMessage>[]> GetNextAsync(int batchSize, TimeSpan timeout);
 }

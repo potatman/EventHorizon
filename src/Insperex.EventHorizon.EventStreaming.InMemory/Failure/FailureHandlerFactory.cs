@@ -16,15 +16,16 @@ public class FailureHandlerFactory
         _loggerFactory = loggerFactory;
     }
 
-    public IFailureHandler<T> Create<T>(SubscriptionConfig<T> config) where T: class, ITopicMessage, new()
+    public IFailureHandler<TMessage> Create<TMessage>(SubscriptionConfig<TMessage> config)
+        where TMessage : ITopicMessage
     {
         if (!config.RedeliverFailedMessages)
-            return new OptOutFailureHandler<T>();
+            return new OptOutFailureHandler<TMessage>();
 
         if (config.IsMessageOrderGuaranteedOnFailure)
-            return new OrderGuaranteedFailureHandler<T>(config, _messageDatabase,
-                _loggerFactory.CreateLogger<OrderGuaranteedFailureHandler<T>>());
+            return new OrderGuaranteedFailureHandler<TMessage>(config, _messageDatabase,
+                _loggerFactory.CreateLogger<OrderGuaranteedFailureHandler<TMessage>>());
 
-        return new BasicFailureHandler<T>(config);
+        return new BasicFailureHandler<TMessage>(config);
     }
 }

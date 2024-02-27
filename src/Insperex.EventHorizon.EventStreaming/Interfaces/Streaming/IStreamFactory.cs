@@ -7,8 +7,8 @@ namespace Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 
 public interface IStreamFactory
 {
-    ITopicProducer<T> CreateProducer<T>(PublisherConfig config) where T : class, ITopicMessage, new();
-    ITopicConsumer<T> CreateConsumer<T>(SubscriptionConfig<T> config) where T : class, ITopicMessage, new();
-    ITopicReader<T> CreateReader<T>(ReaderConfig config) where T : class, ITopicMessage, new();
-    ITopicAdmin<T> CreateAdmin<T>() where T : ITopicMessage;
+    ITopicProducer<TMessage> CreateProducer<TMessage>(PublisherConfig config) where TMessage : ITopicMessage;
+    ITopicConsumer<TMessage> CreateConsumer<TMessage>(SubscriptionConfig<TMessage> config) where TMessage : ITopicMessage;
+    ITopicReader<TMessage> CreateReader<TMessage>(ReaderConfig config) where TMessage : ITopicMessage;
+    ITopicAdmin<TMessage> CreateAdmin<TMessage>() where TMessage : ITopicMessage;
 }

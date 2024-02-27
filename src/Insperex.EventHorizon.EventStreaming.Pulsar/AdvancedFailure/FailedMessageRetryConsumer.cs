@@ -16,23 +16,24 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 /// Handles the "failure retry" phase of the main cycle in <see cref="OrderGuaranteedPulsarTopicConsumer{T}"/>,
 /// in which we retry any failed messages in an attempt to get the message's stream out of failure state.
 /// </summary>
-/// <typeparam name="T">Type of message from the primary topic.</typeparam>
-public class FailedMessageRetryConsumer<T>: ITopicConsumer<T> where T : class, ITopicMessage, new()
+/// <typeparam name="TMessage">Type of message from the primary topic.</typeparam>
+public class FailedMessageRetryConsumer<TMessage>: ITopicConsumer<TMessage>
+    where TMessage : ITopicMessage
 {
     private const int MaxStreams = 300;
 
-    private readonly StreamFailureState<T> _streamFailureState;
-    private readonly RetryTopicReader<T> _reader;
-    private readonly ILogger<FailedMessageRetryConsumer<T>> _logger;
+    private readonly StreamFailureState<TMessage> _streamFailureState;
+    private readonly RetryTopicReader<TMessage> _reader;
+    private readonly ILogger<FailedMessageRetryConsumer<TMessage>> _logger;
     private readonly int _batchSize;
 
-    public FailedMessageRetryConsumer(SubscriptionConfig<T> config, StreamFailureState<T> streamFailureState,
+    public FailedMessageRetryConsumer(SubscriptionConfig<TMessage> config, StreamFailureState<TMessage> streamFailureState,
         PulsarClient pulsarClient, ILoggerFactory loggerFactory)
     {
         _batchSize = config.BatchSize ?? 1000;
         _streamFailureState = streamFailureState;
-        _reader = new RetryTopicReader<T>(pulsarClient, config, loggerFactory.CreateLogger<RetryTopicReader<T>>());
-        _logger = loggerFactory.CreateLogger<FailedMessageRetryConsumer<T>>();
+        _reader = new RetryTopicReader<TMessage>(pulsarClient, config, loggerFactory.CreateLogger<RetryTopicReader<TMessage>>());
+        _logger = loggerFactory.CreateLogger<FailedMessageRetryConsumer<TMessage>>();
     }
 
     public Task InitAsync()
@@ -40,13 +41,13 @@ public class FailedMessageRetryConsumer<T>: ITopicConsumer<T> where T : class, I
         return Task.CompletedTask;
     }
 
-    public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
+    public async Task<MessageContext<TMessage>[]> NextBatchAsync(CancellationToken ct)
     {
         var topicStreamsForRetry =
             _streamFailureState.TopicStreamsForRetry(DateTime.UtcNow, MaxStreams);
 
         //_logger.LogInformation($"Topic/streams for retry: {topicStreamsForRetry.Length}");
-        if (topicStreamsForRetry.Length == 0) return Array.Empty<MessageContext<T>>();
+        if (topicStreamsForRetry.Length == 0) return Array.Empty<MessageContext<TMessage>>();
 
         try
         {
@@ -70,7 +71,7 @@ public class FailedMessageRetryConsumer<T>: ITopicConsumer<T> where T : class, I
         }
     }
 
-    private async Task MarkQuietTopicStreamsUpToDate(MessageContext<T>[] messages, TopicStreamState[] topicStreamsForRetry)
+    private async Task MarkQuietTopicStreamsUpToDate(MessageContext<TMessage>[] messages, TopicStreamState[] topicStreamsForRetry)
     {
         var messageTopicStreams = messages
             .Select(m => (m.TopicData.Topic, m.Data.StreamId))
@@ -88,7 +89,7 @@ public class FailedMessageRetryConsumer<T>: ITopicConsumer<T> where T : class, I
         }
     }
 
-    public async Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
+    public async Task FinalizeBatchAsync(MessageContext<TMessage>[] acks, MessageContext<TMessage>[] nacks)
     {
         var results = acks.Select(a => (IsSuccess: true, Message: a))
             .Concat(nacks.Select(n => (IsSuccess: false, Message: n)));

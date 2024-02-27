@@ -11,11 +11,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory.Failure;
 
-public class OrderGuaranteedFailureHandler<T>: IFailureHandler<T> where T: class, ITopicMessage, new()
+public class OrderGuaranteedFailureHandler<TMessage>: IFailureHandler<TMessage>
+    where TMessage : ITopicMessage
 {
-    private readonly SubscriptionConfig<T> _config;
+    private readonly SubscriptionConfig<TMessage> _config;
     private readonly MessageDatabase _messageDatabase;
-    private readonly ILogger<OrderGuaranteedFailureHandler<T>> _logger;
+    private readonly ILogger<OrderGuaranteedFailureHandler<TMessage>> _logger;
     private readonly IBackoffStrategy _backoffStrategy;
 
     private sealed class TopicStreamState
@@ -32,8 +33,8 @@ public class OrderGuaranteedFailureHandler<T>: IFailureHandler<T> where T: class
 
     private readonly Dictionary<string, long> _maxIndexByTopic;
 
-    public OrderGuaranteedFailureHandler(SubscriptionConfig<T> config, MessageDatabase messageDatabase,
-        ILogger<OrderGuaranteedFailureHandler<T>> logger)
+    public OrderGuaranteedFailureHandler(SubscriptionConfig<TMessage> config, MessageDatabase messageDatabase,
+        ILogger<OrderGuaranteedFailureHandler<TMessage>> logger)
     {
         _config = config;
         _messageDatabase = messageDatabase;
@@ -47,7 +48,7 @@ public class OrderGuaranteedFailureHandler<T>: IFailureHandler<T> where T: class
 
     public bool InNormalMode(string topic, string streamId) => !_topicStreams.ContainsKey((topic, streamId));
 
-    public MessageContext<T>[] GetMessagesForRetry(int capacity)
+    public MessageContext<TMessage>[] GetMessagesForRetry(int capacity)
     {
         var asOf = DateTime.UtcNow;
 
@@ -68,7 +69,7 @@ public class OrderGuaranteedFailureHandler<T>: IFailureHandler<T> where T: class
         return messages.ToArray();
     }
 
-    public void FinalizeBatch(MessageContext<T>[] acks, MessageContext<T>[] nacks,
+    public void FinalizeBatch(MessageContext<TMessage>[] acks, MessageContext<TMessage>[] nacks,
         Dictionary<string, long> maxIndexByTopic)
     {
         // Update local store of max index reached by topic. This info is used to prevent
@@ -103,7 +104,7 @@ public class OrderGuaranteedFailureHandler<T>: IFailureHandler<T> where T: class
         }
     }
 
-    private void MessageFailed(MessageContext<T> message)
+    private void MessageFailed(MessageContext<TMessage> message)
     {
         var topic = message.TopicData.Topic;
         var streamId = message.Data.StreamId;
@@ -125,7 +126,7 @@ public class OrderGuaranteedFailureHandler<T>: IFailureHandler<T> where T: class
         state.NextRetry = DateTime.UtcNow.Add(nextRetryInterval);
     }
 
-    private void MessageSucceeded(MessageContext<T> message)
+    private void MessageSucceeded(MessageContext<TMessage> message)
     {
         var topic = message.TopicData.Topic;
         var streamId = message.Data.StreamId;
@@ -139,9 +140,9 @@ public class OrderGuaranteedFailureHandler<T>: IFailureHandler<T> where T: class
         }
     }
 
-    private List<MessageContext<T>> PullNextMessages(int capacity, KeyValuePair<(string Topic, string StreamId), TopicStreamState>[] eligibleTopicStreams)
+    private List<MessageContext<TMessage>> PullNextMessages(int capacity, KeyValuePair<(string Topic, string StreamId), TopicStreamState>[] eligibleTopicStreams)
     {
-        List<MessageContext<T>> list = new();
+        List<MessageContext<TMessage>> list = new();
 
         foreach (var topic in _config.Topics)
         {
@@ -158,7 +159,7 @@ public class OrderGuaranteedFailureHandler<T>: IFailureHandler<T> where T: class
                 var startIndex = streams.Min(s => s.NextIndex);
 
                 var messages = _messageDatabase
-                    .GetMessages<T>(topic, streamIds, (int) startIndex)
+                    .GetMessages<TMessage>(topic, streamIds, (int) startIndex)
                     .Select(m => new
                     {
                         Message = m,
@@ -184,7 +185,7 @@ public class OrderGuaranteedFailureHandler<T>: IFailureHandler<T> where T: class
     /// </summary>
     /// <param name="extractedMessages">Messages we've extracted from database.</param>
     /// <param name="topicStreamsInScope">Topic/streams in scope for this extractions.</param>
-    private void ClearTopicStreams(List<MessageContext<T>> extractedMessages,
+    private void ClearTopicStreams(List<MessageContext<TMessage>> extractedMessages,
         KeyValuePair<(string Topic, string StreamId), TopicStreamState>[] topicStreamsInScope)
     {
         var messageTopicStreams = extractedMessages

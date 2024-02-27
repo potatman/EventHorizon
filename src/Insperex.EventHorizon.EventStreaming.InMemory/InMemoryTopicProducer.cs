@@ -6,8 +6,8 @@ using Insperex.EventHorizon.EventStreaming.Publishers;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory;
 
-public class InMemoryTopicProducer<T> : ITopicProducer<T>
-    where T : class, ITopicMessage
+public class InMemoryTopicProducer<TMessage> : ITopicProducer<TMessage>
+    where TMessage : ITopicMessage
 {
     private readonly PublisherConfig _config;
     private readonly MessageDatabase _messageDatabase;
@@ -18,7 +18,7 @@ public class InMemoryTopicProducer<T> : ITopicProducer<T>
         _messageDatabase = messageDatabase;
     }
 
-    public Task SendAsync(params T[] messages)
+    public Task SendAsync(params TMessage[] messages)
     {
         _messageDatabase.AddMessages(_config, messages);
         return Task.CompletedTask;

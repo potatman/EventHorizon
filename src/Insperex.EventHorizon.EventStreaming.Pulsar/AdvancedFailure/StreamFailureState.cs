@@ -14,7 +14,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 /// <summary>
 /// Data structure to keep track of which streams have entered a non-normal (failure/recovery) state.
 /// </summary>
-/// <typeparam name="T">Type of message from the primary topic.</typeparam>
+/// <typeparam name="TMessage">Type of message from the primary topic.</typeparam>
 /// <remarks>
 /// The data structure acts as a write-behind cache as well, persisting any state change events in the
 /// failure state topic.
@@ -22,15 +22,16 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 /// It is not strictly read-behind, though, since it requires explicit call to update itself from the
 /// failure state topic.
 /// </remarks>
-public class StreamFailureState<T> where T : ITopicMessage, new()
+public class StreamFailureState<TMessage>
+    where TMessage : ITopicMessage
 {
-    private readonly ILogger<StreamFailureState<T>> _logger;
-    private readonly FailureStateTopic<T> _failureStateTopic;
+    private readonly ILogger<StreamFailureState<TMessage>> _logger;
+    private readonly FailureStateTopic<TMessage> _failureStateTopic;
     private readonly IBackoffStrategy _backoffStrategy;
     private PulsarKeyHashRanges _keyHashRanges;
 
-    public StreamFailureState(SubscriptionConfig<T> config, ILogger<StreamFailureState<T>> logger,
-        FailureStateTopic<T> failureStateTopic)
+    public StreamFailureState(SubscriptionConfig<TMessage> config, ILogger<StreamFailureState<TMessage>> logger,
+        FailureStateTopic<TMessage> failureStateTopic)
     {
         _backoffStrategy = config.BackoffStrategy
                            ?? new ExponentialBackoffStrategy() {BaseMs = 10, MaxMs = 10_000,};
@@ -129,7 +130,7 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
         }
     }
 
-    public async Task MessageFailed(MessageContext<T> message)
+    public async Task MessageFailed(MessageContext<TMessage> message)
     {
         //_logger.LogInformation("Msg FAIL: {topic} => {streamId} => {id}", message.TopicData.Topic, message.Data.StreamId, message.TopicData.Id);
 
@@ -145,7 +146,7 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
         await _failureStateTopic.Publish(state);
     }
 
-    public async Task MessageSucceeded(MessageContext<T> message)
+    public async Task MessageSucceeded(MessageContext<TMessage> message)
     {
         //_logger.LogInformation("Msg SUCCEED: {topic} => {streamId} => {id}", message.TopicData.Topic, message.Data.StreamId, message.TopicData.Id);
 
@@ -158,7 +159,7 @@ public class StreamFailureState<T> where T : ITopicMessage, new()
         await _failureStateTopic.Publish(state);
     }
 
-    private TopicStreamState EnsureTopicForStream(MessageContext<T> message)
+    private TopicStreamState EnsureTopicForStream(MessageContext<TMessage> message)
     {
         var streamId = message.Data.StreamId;
         var topic = message.TopicData.Topic;

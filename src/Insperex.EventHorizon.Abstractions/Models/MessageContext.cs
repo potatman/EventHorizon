@@ -7,13 +7,13 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 
 namespace Insperex.EventHorizon.Abstractions.Models;
 
-public class MessageContext<T> where T : ITopicMessage
+public class MessageContext<TMessage> where TMessage : ITopicMessage
 {
-    public T Data { get; set; }
+    public TMessage Data { get; set; }
     public TopicData TopicData { get; set; }
     public Dictionary<string, Type> TypeDict { get; set; }
 
-    public MessageContext(T data, TopicData topicData, Dictionary<string, Type> typeDict)
+    public MessageContext(TMessage data, TopicData topicData, Dictionary<string, Type> typeDict)
     {
         Data = data;
         TopicData = topicData;
@@ -22,7 +22,7 @@ public class MessageContext<T> where T : ITopicMessage
 
     public object GetPayload() => JsonSerializer.Deserialize(Data.Payload, TypeDict[Data.Type]);
 
-    public T Upgrade()
+    public TMessage Upgrade()
     {
         var payload = GetPayload();
         var upgrade = TypeDict[Data.Type]
@@ -33,7 +33,7 @@ public class MessageContext<T> where T : ITopicMessage
         if (upgrade == null) return Data;
 
         upgrade?.Invoke(payload, null);
-        return (T)Activator.CreateInstance(typeof(T), Data.StreamId, payload);
+        return (TMessage)Activator.CreateInstance(typeof(TMessage), Data.StreamId, payload);
 
     }
 }

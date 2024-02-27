@@ -31,24 +31,24 @@ public class InMemoryStreamFactory : IStreamFactory
         _loggerFactory = loggerFactory;
     }
 
-    public ITopicProducer<T> CreateProducer<T>(PublisherConfig config) where T : class, ITopicMessage, new()
+    public ITopicProducer<TMessage> CreateProducer<TMessage>(PublisherConfig config) where TMessage : ITopicMessage
     {
-        return new InMemoryTopicProducer<T>(config, _messageDatabase);
+        return new InMemoryTopicProducer<TMessage>(config, _messageDatabase);
     }
 
-    public ITopicConsumer<T> CreateConsumer<T>(SubscriptionConfig<T> config) where T : class, ITopicMessage, new()
+    public ITopicConsumer<TMessage> CreateConsumer<TMessage>(SubscriptionConfig<TMessage> config) where TMessage : ITopicMessage
     {
-        return new InMemoryTopicConsumer<T>(config, _messageDatabase, _indexDatabase, _consumerDatabase,
+        return new InMemoryTopicConsumer<TMessage>(config, _messageDatabase, _indexDatabase, _consumerDatabase,
             _failureHandlerFactory, _loggerFactory);
     }
 
-    public ITopicReader<T> CreateReader<T>(ReaderConfig config) where T : class, ITopicMessage, new()
+    public ITopicReader<TMessage> CreateReader<TMessage>(ReaderConfig config) where TMessage : ITopicMessage
     {
-        return new InMemoryTopicReader<T>(config, _messageDatabase);
+        return new InMemoryTopicReader<TMessage>(config, _messageDatabase);
     }
 
-    public ITopicAdmin<T> CreateAdmin<T>() where T : ITopicMessage
+    public ITopicAdmin<TMessage> CreateAdmin<TMessage>() where TMessage : ITopicMessage
     {
-        return new InMemoryTopicAdmin<T>(_attributeUtil, _messageDatabase, _indexDatabase, _consumerDatabase);
+        return new InMemoryTopicAdmin<TMessage>(_attributeUtil, _messageDatabase, _indexDatabase, _consumerDatabase);
     }
 }

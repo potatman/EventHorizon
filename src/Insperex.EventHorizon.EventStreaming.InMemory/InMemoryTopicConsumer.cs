@@ -15,16 +15,17 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory;
 
-public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopicMessage, new()
+public class InMemoryTopicConsumer<TMessage> : ITopicConsumer<TMessage>
+    where TMessage : ITopicMessage
 {
-    private readonly Dictionary<string, Queue<MessageContext<T>>> _backlogs = new();
-    private readonly SubscriptionConfig<T> _config;
+    private readonly Dictionary<string, Queue<MessageContext<TMessage>>> _backlogs = new();
+    private readonly SubscriptionConfig<TMessage> _config;
     private readonly IndexDatabase _indexDatabase;
     private readonly MessageDatabase _messageDatabase;
     private readonly Dictionary<string, int> _consumers = new();
     private readonly ConsumerDatabase _consumerDatabase;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly IFailureHandler<T> _failureHandler;
+    private readonly IFailureHandler<TMessage> _failureHandler;
     private readonly object _batchInProgressLock = new object();
     private bool _batchInProgress;
 
@@ -32,7 +33,7 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
     private Dictionary<string, long> _maxIndexByTopic = new();
 
     public InMemoryTopicConsumer(
-        SubscriptionConfig<T> config,
+        SubscriptionConfig<TMessage> config,
         MessageDatabase messageDatabase,
         IndexDatabase indexDatabase,
         ConsumerDatabase consumerDatabase,
@@ -61,16 +62,16 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
         return Task.CompletedTask;
     }
 
-    public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
+    public async Task<MessageContext<TMessage>[]> NextBatchAsync(CancellationToken ct)
     {
         lock (_batchInProgressLock)
         {
             if (_batchInProgress)
-                return Array.Empty<MessageContext<T>>();
+                return Array.Empty<MessageContext<TMessage>>();
             _batchInProgress = true;
         }
 
-        var list = new List<MessageContext<T>>();
+        var list = new List<MessageContext<TMessage>>();
         _maxIndexByTopic.Clear();
         var batchSize = _config.BatchSize ?? 1000;
 
@@ -90,7 +91,7 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
             var count = remainingBatchCapacity - list.Count;
             var consumerCount = _consumerDatabase.Count(topic, _config.SubscriptionName);
             var messages = _messageDatabase
-                .GetMessages<T>(topic, _consumers[topic], consumerCount, index, count)
+                .GetMessages<TMessage>(topic, _consumers[topic], consumerCount, index, count)
                 .Where(m => _failureHandler.InNormalMode(topic, m.Data.StreamId));
 
             list.AddRange(messages);
@@ -119,7 +120,7 @@ public class InMemoryTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopi
         return list.ToArray();
     }
 
-    public Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
+    public Task FinalizeBatchAsync(MessageContext<TMessage>[] acks, MessageContext<TMessage>[] nacks)
     {
         _failureHandler.FinalizeBatch(acks, nacks, _maxIndexByTopic);
 

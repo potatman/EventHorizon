@@ -29,25 +29,26 @@ public class PulsarStreamFactory : IStreamFactory
         _loggerFactory = loggerFactory;
     }
 
-    public ITopicProducer<T> CreateProducer<T>(PublisherConfig config) where T : class, ITopicMessage, new()
+    public ITopicProducer<TMessage> CreateProducer<TMessage>(PublisherConfig config) where TMessage : ITopicMessage
     {
-        return new PulsarTopicProducer<T>(_pulsarClient, config,  CreateAdmin<T>());
+        return new PulsarTopicProducer<TMessage>(_pulsarClient, config,  CreateAdmin<TMessage>());
     }
 
-    public ITopicConsumer<T> CreateConsumer<T>(SubscriptionConfig<T> config) where T : class, ITopicMessage, new()
+    public ITopicConsumer<TMessage> CreateConsumer<TMessage>(SubscriptionConfig<TMessage> config)
+        where TMessage : ITopicMessage
     {
         if (config.IsMessageOrderGuaranteedOnFailure)
-            return new OrderGuaranteedPulsarTopicConsumer<T>(_pulsarClient, config, this, _loggerFactory);
-        return new PulsarTopicConsumer<T>(_pulsarClient, config, CreateAdmin<T>());
+            return new OrderGuaranteedPulsarTopicConsumer<TMessage>(_pulsarClient, config, this, _loggerFactory);
+        return new PulsarTopicConsumer<TMessage>(_pulsarClient, config, CreateAdmin<TMessage>());
     }
 
-    public ITopicReader<T> CreateReader<T>(ReaderConfig config) where T : class, ITopicMessage, new()
+    public ITopicReader<TMessage> CreateReader<TMessage>(ReaderConfig config) where TMessage : ITopicMessage
     {
-        return new PulsarTopicReader<T>(_pulsarClient, config, CreateAdmin<T>());
+        return new PulsarTopicReader<TMessage>(_pulsarClient, config, CreateAdmin<TMessage>());
     }
 
-    public ITopicAdmin<T> CreateAdmin<T>() where T : ITopicMessage
+    public ITopicAdmin<TTMessage> CreateAdmin<TTMessage>() where TTMessage : ITopicMessage
     {
-        return new PulsarTopicAdmin<T>(_pulsarClientResolver, _attributeUtil, _loggerFactory.CreateLogger<PulsarTopicAdmin<T>>());
+        return new PulsarTopicAdmin<TTMessage>(_pulsarClientResolver, _attributeUtil, _loggerFactory.CreateLogger<PulsarTopicAdmin<TTMessage>>());
     }
 }

@@ -10,7 +10,8 @@ using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory;
 
-public class InMemoryTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
+public class InMemoryTopicAdmin<TMessage> : ITopicAdmin<TMessage>
+    where TMessage : ITopicMessage
 {
     private readonly IndexDatabase _indexDatabase;
     private readonly AttributeUtil _attributeUtil;
@@ -32,7 +33,7 @@ public class InMemoryTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         if (attribute == null) return null;
 
         var topic = senderId == null ? attribute.Topic : $"{attribute.Topic}-{senderId}";
-        return $"in-memory://{typeof(T).Name}/{topic}".Replace("$type", typeof(T).Name);
+        return $"in-memory://{typeof(TMessage).Name}/{topic}".Replace("$type", typeof(TMessage).Name);
     }
 
     public Task RequireTopicAsync(string str, CancellationToken ct)

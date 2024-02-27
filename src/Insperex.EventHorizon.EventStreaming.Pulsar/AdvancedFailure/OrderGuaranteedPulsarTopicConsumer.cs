@@ -20,8 +20,9 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 /// if some messages are nacked. Pulsar has no such order guarantees on nack, so the library must
 /// enforce order outside of the Pulsar brokers.
 /// </summary>
-/// <typeparam name="T">Type of message from the primary topic.</typeparam>
-public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T : class, ITopicMessage, new()
+/// <typeparam name="TMessage">Type of message from the primary topic.</typeparam>
+public class OrderGuaranteedPulsarTopicConsumer<TMessage> : ITopicConsumer<TMessage>
+    where TMessage : ITopicMessage
 {
     /// <summary>
     /// The main algorithm handled by this consumer cycles continuously through
@@ -40,13 +41,13 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         Normal
     }
 
-    private readonly SubscriptionConfig<T> _config;
-    private readonly ILogger<OrderGuaranteedPulsarTopicConsumer<T>> _logger;
-    private readonly PulsarTopicAdmin<T> _topicAdmin;
-    private readonly StreamFailureState<T> _streamFailureState;
-    private readonly FailedMessageRetryConsumer<T> _failedMessageRetryConsumer;
-    private readonly PrimaryTopicConsumer<T> _primaryTopicConsumer;
-    private readonly Dictionary<BatchPhase, ITopicConsumer<T>> _phaseHandlers;
+    private readonly SubscriptionConfig<TMessage> _config;
+    private readonly ILogger<OrderGuaranteedPulsarTopicConsumer<TMessage>> _logger;
+    private readonly PulsarTopicAdmin<TMessage> _topicAdmin;
+    private readonly StreamFailureState<TMessage> _streamFailureState;
+    private readonly FailedMessageRetryConsumer<TMessage> _failedMessageRetryConsumer;
+    private readonly PrimaryTopicConsumer<TMessage> _primaryTopicConsumer;
+    private readonly Dictionary<BatchPhase, ITopicConsumer<TMessage>> _phaseHandlers;
     private readonly OnCheckTimer _statsQueryTimer = new(TimeSpan.FromMinutes(30));
     private readonly object _batchInProgressLock = new object();
     private bool _batchInProgress;
@@ -58,21 +59,21 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
 
     public OrderGuaranteedPulsarTopicConsumer(
         PulsarClient pulsarClient,
-        SubscriptionConfig<T> config,
+        SubscriptionConfig<TMessage> config,
         IStreamFactory streamFactory,
         ILoggerFactory loggerFactory)
     {
-        _logger = loggerFactory.CreateLogger<OrderGuaranteedPulsarTopicConsumer<T>>();
+        _logger = loggerFactory.CreateLogger<OrderGuaranteedPulsarTopicConsumer<TMessage>>();
 
-        _topicAdmin = (PulsarTopicAdmin<T>)streamFactory.CreateAdmin<T>();
+        _topicAdmin = (PulsarTopicAdmin<TMessage>)streamFactory.CreateAdmin<TMessage>();
         _config = config;
 
-        FailureStateTopic<T> failureStateTopic = new(_config, pulsarClient, _topicAdmin,
-            loggerFactory.CreateLogger<FailureStateTopic<T>>());
-        _streamFailureState = new(_config, loggerFactory.CreateLogger<StreamFailureState<T>>(),
+        FailureStateTopic<TMessage> failureStateTopic = new(_config, pulsarClient, _topicAdmin,
+            loggerFactory.CreateLogger<FailureStateTopic<TMessage>>());
+        _streamFailureState = new(_config, loggerFactory.CreateLogger<StreamFailureState<TMessage>>(),
             failureStateTopic);
         _primaryTopicConsumer = new(_streamFailureState, pulsarClient,
-            loggerFactory.CreateLogger<PrimaryTopicConsumer<T>>(),
+            loggerFactory.CreateLogger<PrimaryTopicConsumer<TMessage>>(),
             _config, _topicAdmin, _consumerName);
         _failedMessageRetryConsumer = new(_config, _streamFailureState,
             pulsarClient, loggerFactory);
@@ -95,12 +96,12 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         await _streamFailureState.InitializeAsync(CancellationToken.None);
     }
 
-    public async Task<MessageContext<T>[]> NextBatchAsync(CancellationToken ct)
+    public async Task<MessageContext<TMessage>[]> NextBatchAsync(CancellationToken ct)
     {
         lock (_batchInProgressLock)
         {
             if (_batchInProgress)
-                return Array.Empty<MessageContext<T>>();
+                return Array.Empty<MessageContext<TMessage>>();
             _batchInProgress = true;
         }
 
@@ -155,7 +156,7 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         return messages;
     }
 
-    public async Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
+    public async Task FinalizeBatchAsync(MessageContext<TMessage>[] acks, MessageContext<TMessage>[] nacks)
     {
         try
         {
