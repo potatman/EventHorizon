@@ -6,12 +6,12 @@ using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 
 namespace Insperex.EventHorizon.EventStreaming.Admins
 {
-    public class Admin<TM>
-        where TM : ITopicMessage
+    public class Admin<TMessage>
+        where TMessage : ITopicMessage
     {
-        private readonly ITopicAdmin<TM> _topicAdmin;
+        private readonly ITopicAdmin<TMessage> _topicAdmin;
 
-        public Admin(ITopicAdmin<TM> topicAdmin)
+        public Admin(ITopicAdmin<TMessage> topicAdmin)
         {
             _topicAdmin = topicAdmin;
         }
