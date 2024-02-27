@@ -34,7 +34,6 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Extensions
             configurator.Collection.AddSingleton(typeof(ReaderBuilder<>));
             configurator.Collection.AddSingleton(typeof(SubscriptionBuilder<>));
             configurator.Collection.AddSingleton(typeof(Admin<>));
-            configurator.Collection.AddSingleton<AttributeUtil>();
 
             return configurator;
         }
