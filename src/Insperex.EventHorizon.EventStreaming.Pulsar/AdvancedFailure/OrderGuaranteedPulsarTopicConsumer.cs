@@ -60,12 +60,12 @@ public class OrderGuaranteedPulsarTopicConsumer<TMessage> : ITopicConsumer<TMess
     public OrderGuaranteedPulsarTopicConsumer(
         PulsarClient pulsarClient,
         SubscriptionConfig<TMessage> config,
-        IStreamFactory streamFactory,
+        IStreamFactory<TMessage> streamFactory,
         ILoggerFactory loggerFactory)
     {
         _logger = loggerFactory.CreateLogger<OrderGuaranteedPulsarTopicConsumer<TMessage>>();
 
-        _topicAdmin = (PulsarTopicAdmin<TMessage>)streamFactory.CreateAdmin<TMessage>();
+        _topicAdmin = (PulsarTopicAdmin<TMessage>)streamFactory.CreateAdmin();
         _config = config;
 
         FailureStateTopic<TMessage> failureStateTopic = new(_config, pulsarClient, _topicAdmin,

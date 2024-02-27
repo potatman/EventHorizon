@@ -7,7 +7,8 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 
 namespace Insperex.EventHorizon.Abstractions.Models;
 
-public class MessageContext<TMessage> where TMessage : ITopicMessage
+public class MessageContext<TMessage>
+    where TMessage : ITopicMessage
 {
     public TMessage Data { get; set; }
     public TopicData TopicData { get; set; }

@@ -10,9 +10,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.Publishers;
 
-public class PublisherBuilder<TMessage> where TMessage : class, ITopicMessage, new()
+public class PublisherBuilder<TMessage>
+    where TMessage : class, ITopicMessage
 {
-    private readonly IStreamFactory _factory;
+    private readonly IStreamFactory<TMessage> _factory;
     private readonly ILoggerFactory _loggerFactory;
     private string _topic;
     private readonly Dictionary<string, Type> _typeDict = new();
@@ -21,7 +22,7 @@ public class PublisherBuilder<TMessage> where TMessage : class, ITopicMessage, n
     private int _batchSize = 100;
     private bool _isOrderGuaranteed = true;
 
-    public PublisherBuilder(IStreamFactory factory, ILoggerFactory loggerFactory)
+    public PublisherBuilder(IStreamFactory<TMessage> factory, ILoggerFactory loggerFactory)
     {
         _factory = factory;
         _loggerFactory = loggerFactory;
@@ -45,7 +46,7 @@ public class PublisherBuilder<TMessage> where TMessage : class, ITopicMessage, n
             _typeDict[type.Key] = type.Value;
 
         // Add Topics
-        _topic = _factory.CreateAdmin<TMessage>().GetTopic(stateType, senderId);
+        _topic = _factory.CreateAdmin().GetTopic(stateType, senderId);
 
         return this;
     }
@@ -62,7 +63,7 @@ public class PublisherBuilder<TMessage> where TMessage : class, ITopicMessage, n
             _typeDict[type.Name] = type;
 
         // Add Topics
-        _topic = _factory.CreateAdmin<TMessage>().GetTopic(actionType, senderId);
+        _topic = _factory.CreateAdmin().GetTopic(actionType, senderId);
 
         return this;
     }

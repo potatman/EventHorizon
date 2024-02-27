@@ -14,9 +14,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.Subscriptions;
 
-public class SubscriptionBuilder<TMessage> where TMessage : class, ITopicMessage, new()
+public class SubscriptionBuilder<TMessage>
+    where TMessage : ITopicMessage
 {
-    private readonly IStreamFactory _factory;
+    private readonly IStreamFactory<TMessage> _factory;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ITopicAdmin<TMessage> _admin;
     private readonly List<string> _topics;
@@ -33,12 +34,12 @@ public class SubscriptionBuilder<TMessage> where TMessage : class, ITopicMessage
     private SubscriptionType _subscriptionType = Abstractions.Models.SubscriptionType.KeyShared;
     private bool _isPreload;
 
-    public SubscriptionBuilder(IStreamFactory factory, ILoggerFactory loggerFactory)
+    public SubscriptionBuilder(IStreamFactory<TMessage> factory, ILoggerFactory loggerFactory)
     {
         _factory = factory;
         _loggerFactory = loggerFactory;
         _topics = new List<string>();
-        _admin = _factory.CreateAdmin<TMessage>();
+        _admin = _factory.CreateAdmin();
     }
 
     public SubscriptionBuilder<TMessage> AddStateStream<TState>(string senderId = null) where TState : IState

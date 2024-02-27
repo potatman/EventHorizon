@@ -8,17 +8,17 @@ namespace Insperex.EventHorizon.EventStreaming.Samples.HostedServices;
 
 public class Feed1HostedService : IHostedService
 {
-    private readonly StreamingClient _streamingClient;
+    private readonly StreamingClient<Event> _streamingClient;
 
-    public Feed1HostedService(StreamingClient streamingClient)
+    public Feed1HostedService(StreamingClient<Event> streamingClient)
     {
         _streamingClient = streamingClient;
     }
-    
+
     public Task StartAsync(CancellationToken cancellationToken)
     {
         var priceChange = new Feed1PriceChanged("123", 100);
-        using var publisher = _streamingClient.CreatePublisher<Event>()
+        using var publisher = _streamingClient.CreatePublisher()
             .AddStream<Feed1PriceChanged>()
             .Build()
             .PublishAsync(new Event(priceChange.Id, priceChange));

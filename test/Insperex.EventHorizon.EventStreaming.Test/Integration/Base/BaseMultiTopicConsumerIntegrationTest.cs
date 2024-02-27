@@ -22,7 +22,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     protected readonly TimeSpan _timeout;
     private Stopwatch _stopwatch;
     protected Event[] _events;
-    protected readonly StreamingClient _streamingClient;
+    protected readonly StreamingClient<Event> _streamingClient;
     private readonly ListStreamConsumer<Event> _handler;
     private Publisher<Event> _publisher1;
     private Publisher<Event> _publisher2;
@@ -37,7 +37,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
 
         Provider = provider;
         _outputHelper = outputHelper;
-        _streamingClient = provider.GetRequiredService<StreamingClient>();
+        _streamingClient = provider.GetRequiredService<StreamingClient<Event>>();
         _timeout = TimeSpan.FromSeconds(20);
         _handler = new ListStreamConsumer<Event>();
         _partialNackHandler = new(_outputHelper, 0.03, 3, 2,
@@ -55,8 +55,8 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
         _feed1Events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(500).Select(x => new Event(x.Id, sequence++, x)).ToArray();
         _feed2Events = EventStreamingFakers.Feed2PriceChangedFaker.Generate(500).Select(x => new Event(x.Id, sequence++, x)).ToArray();
         _events = _feed1Events.Concat(_feed2Events).ToArray();
-        _publisher1 = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
-        _publisher2 = _streamingClient.CreatePublisher<Event>().AddStream<Feed2PriceChanged>().Build();
+        _publisher1 = _streamingClient.CreatePublisher().AddStream<Feed1PriceChanged>().Build();
+        _publisher2 = _streamingClient.CreatePublisher().AddStream<Feed2PriceChanged>().Build();
         await _publisher1.PublishAsync(_feed1Events);
         await _publisher2.PublishAsync(_feed2Events);
 
@@ -67,8 +67,8 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     public virtual async Task DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged));
-        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed2PriceChanged));
+        await _streamingClient.GetAdmin().DeleteTopicAsync(typeof(Feed1PriceChanged));
+        await _streamingClient.GetAdmin().DeleteTopicAsync(typeof(Feed2PriceChanged));
         await _publisher1.DisposeAsync();
         await _publisher2.DisposeAsync();
     }

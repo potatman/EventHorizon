@@ -11,25 +11,25 @@ using Microsoft.Extensions.Hosting;
 
 namespace Insperex.EventHorizon.EventSourcing.Aggregates;
 
-public class AggregateConsumerHostedService<TParent, TAction, T> : IHostedService
-    where TParent : class, IStateParent<T>, new()
-    where T : class, IState
-    where TAction : class, ITopicMessage, new()
+public class AggregateConsumerHostedService<TParent, TMessage, T> : IHostedService
+    where TParent : IStateParent<T>, new()
+    where T : IState
+    where TMessage : class, ITopicMessage
 {
     private readonly Aggregator<TParent, T> _aggregator;
-    private readonly Subscription<TAction> _subscription;
+    private readonly Subscription<TMessage> _subscription;
 
     public AggregateConsumerHostedService(
-        StreamingClient streamingClient,
+        StreamingClient<TMessage> streamingClient,
         Aggregator<TParent, T> aggregator,
-        Func<SubscriptionBuilder<TAction>, SubscriptionBuilder<TAction>> onBuildSubscription = null)
+        Func<SubscriptionBuilder<TMessage>, SubscriptionBuilder<TMessage>> onBuildSubscription = null)
     {
         _aggregator = aggregator;
 
         var config = _aggregator.GetConfig();
 
-        var builder = streamingClient.CreateSubscription<TAction>()
-            .SubscriptionName($"Apply-{typeof(TAction).Name}-{typeof(T).Name}")
+        var builder = streamingClient.CreateSubscription<TMessage>()
+            .SubscriptionName($"Apply-{typeof(TMessage).Name}-{typeof(T).Name}")
             .AddStateStream<T>()
             .OnBatch(async x =>
             {

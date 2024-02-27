@@ -7,11 +7,12 @@ using Microsoft.Extensions.Hosting;
 
 namespace Insperex.EventHorizon.EventStreaming.Subscriptions;
 
-public class SubscriptionHostedService<TM> : IHostedService where TM : class, ITopicMessage, new()
+public class SubscriptionHostedService<TMessage> : IHostedService
+    where TMessage : ITopicMessage
 {
-    private readonly Subscription<TM>[] _subscriptions;
+    private readonly Subscription<TMessage>[] _subscriptions;
 
-    public SubscriptionHostedService(IEnumerable<Subscription<TM>> subscriptions)
+    public SubscriptionHostedService(IEnumerable<Subscription<TMessage>> subscriptions)
     {
         _subscriptions = subscriptions.ToArray();
     }

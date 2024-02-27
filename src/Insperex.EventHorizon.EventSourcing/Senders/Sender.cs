@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
@@ -10,6 +11,7 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventSourcing.Senders;
@@ -19,13 +21,13 @@ public class Sender
     private readonly SenderConfig _config;
     private readonly ILogger<Sender> _logger;
     private readonly SenderSubscriptionTracker _subscriptionTracker;
-    private readonly StreamingClient _streamingClient;
+    private readonly IServiceProvider _provider;
     private readonly Dictionary<string, object> _publisherDict = new();
 
-    public Sender(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient, SenderConfig config, ILogger<Sender> logger)
+    public Sender(SenderSubscriptionTracker subscriptionTracker, IServiceProvider provider, SenderConfig config, ILogger<Sender> logger)
     {
         _subscriptionTracker = subscriptionTracker;
-        _streamingClient = streamingClient;
+        _provider = provider;
         _config = config;
         _logger = logger;
     }
@@ -106,13 +108,17 @@ public class Sender
         return responseDict.Values.ToArray();
     }
 
-    private Publisher<TM> GetPublisher<TM, T>(string path) where TM : class, ITopicMessage, new()
+    private Publisher<TMessage> GetPublisher<TMessage, T>(string path)
+        where TMessage : class, ITopicMessage
         where T : IState
     {
-        var key = $"{typeof(TM).Name}-{path}";
+        var key = $"{typeof(TMessage).Name}-{path}";
         if (!_publisherDict.ContainsKey(key))
-            _publisherDict[key] = _streamingClient.CreatePublisher<TM>().AddStateStream<T>(path).Build();
+            _publisherDict[key] = _provider.GetRequiredService<StreamingClient<TMessage>>()
+                .CreatePublisher()
+                .AddStateStream<T>(path)
+                .Build();
 
-        return _publisherDict[key] as Publisher<TM>;
+        return _publisherDict[key] as Publisher<TMessage>;
     }
 }

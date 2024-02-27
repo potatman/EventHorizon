@@ -10,7 +10,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory;
 
-public class InMemoryStreamFactory : IStreamFactory
+public class InMemoryStreamFactory<TMessage> : IStreamFactory<TMessage>
+    where TMessage : ITopicMessage
 {
     private readonly AttributeUtil _attributeUtil;
     private readonly IndexDatabase _indexDatabase;
@@ -31,23 +32,23 @@ public class InMemoryStreamFactory : IStreamFactory
         _loggerFactory = loggerFactory;
     }
 
-    public ITopicProducer<TMessage> CreateProducer<TMessage>(PublisherConfig config) where TMessage : ITopicMessage
+    public ITopicProducer<TMessage> CreateProducer(PublisherConfig config)
     {
         return new InMemoryTopicProducer<TMessage>(config, _messageDatabase);
     }
 
-    public ITopicConsumer<TMessage> CreateConsumer<TMessage>(SubscriptionConfig<TMessage> config) where TMessage : ITopicMessage
+    public ITopicConsumer<TMessage> CreateConsumer(SubscriptionConfig<TMessage> config)
     {
         return new InMemoryTopicConsumer<TMessage>(config, _messageDatabase, _indexDatabase, _consumerDatabase,
             _failureHandlerFactory, _loggerFactory);
     }
 
-    public ITopicReader<TMessage> CreateReader<TMessage>(ReaderConfig config) where TMessage : ITopicMessage
+    public ITopicReader<TMessage> CreateReader(ReaderConfig config)
     {
         return new InMemoryTopicReader<TMessage>(config, _messageDatabase);
     }
 
-    public ITopicAdmin<TMessage> CreateAdmin<TMessage>() where TMessage : ITopicMessage
+    public ITopicAdmin<TMessage> CreateAdmin()
     {
         return new InMemoryTopicAdmin<TMessage>(_attributeUtil, _messageDatabase, _indexDatabase, _consumerDatabase);
     }

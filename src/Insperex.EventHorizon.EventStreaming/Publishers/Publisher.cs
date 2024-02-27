@@ -10,29 +10,29 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.Publishers;
 
-public class Publisher<T> : IAsyncDisposable
-    where T : class, ITopicMessage, new()
+public class Publisher<TMessage> : IAsyncDisposable
+    where TMessage : class, ITopicMessage
 {
     private readonly PublisherConfig _config;
-    private readonly ILogger<Publisher<T>> _logger;
+    private readonly ILogger<Publisher<TMessage>> _logger;
     private readonly string _typeName;
-    private readonly ITopicProducer<T> _producer;
+    private readonly ITopicProducer<TMessage> _producer;
 
-    public Publisher(IStreamFactory factory, PublisherConfig config, ILogger<Publisher<T>> logger)
+    public Publisher(IStreamFactory<TMessage> factory, PublisherConfig config, ILogger<Publisher<TMessage>> logger)
     {
         _config = config;
         _logger = logger;
-        _typeName = typeof(T).Name;
-        _producer = factory.CreateProducer<T>(config);
+        _typeName = typeof(TMessage).Name;
+        _producer = factory.CreateProducer(config);
     }
 
     public Task PublishAsync(string streamId, params object[] objs)
     {
-        var wrapped = objs.Select(x => Activator.CreateInstance(typeof(T), streamId, x) as T).ToArray();
+        var wrapped = objs.Select(x => Activator.CreateInstance(typeof(TMessage), streamId, x) as TMessage).ToArray();
         return PublishAsync(wrapped);
     }
 
-    public async Task<Publisher<T>> PublishAsync(params T[] messages)
+    public async Task<Publisher<TMessage>> PublishAsync(params TMessage[] messages)
     {
         // Defensive
         if (!messages.Any()) return this;

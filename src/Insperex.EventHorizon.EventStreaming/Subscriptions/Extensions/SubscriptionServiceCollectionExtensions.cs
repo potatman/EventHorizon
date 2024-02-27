@@ -8,20 +8,20 @@ namespace Insperex.EventHorizon.EventStreaming.Subscriptions.Extensions;
 
 public static class SubscriptionServiceCollectionExtensions
 {
-    public static EventHorizonConfigurator AddSubscription<TH, TM>(this EventHorizonConfigurator configurator,
-        Action<SubscriptionBuilder<TM>> action = null)
-        where TH : class, IStreamConsumer<TM>
-        where TM : class, ITopicMessage, new()
+    public static EventHorizonConfigurator AddSubscription<TConsumer, TMessage>(this EventHorizonConfigurator configurator,
+        Action<SubscriptionBuilder<TMessage>> action = null)
+        where TConsumer : class, IStreamConsumer<TMessage>
+        where TMessage : class, ITopicMessage, new()
     {
-        configurator.Collection.AddHostedService<SubscriptionHostedService<TM>>();
-        configurator.Collection.AddScoped<TH>();
+        configurator.Collection.AddHostedService<SubscriptionHostedService<TMessage>>();
+        configurator.Collection.AddScoped<TConsumer>();
         configurator.Collection.AddTransient(x =>
         {
             using var scope = x.CreateScope();
-            var handler = scope.ServiceProvider.GetRequiredService<TH>();
-            var client = scope.ServiceProvider.GetRequiredService<StreamingClient>();
-            var builder = client.CreateSubscription<TM>()
-                .SubscriptionName(typeof(TH).Name);
+            var handler = scope.ServiceProvider.GetRequiredService<TConsumer>();
+            var client = scope.ServiceProvider.GetRequiredService<StreamingClient<TMessage>>();
+            var builder = client.CreateSubscription<TMessage>()
+                .SubscriptionName(typeof(TConsumer).Name);
             action?.Invoke(builder);
 
             return builder.OnBatch(handler.OnBatch).Build();
@@ -29,17 +29,17 @@ public static class SubscriptionServiceCollectionExtensions
         return configurator;
     }
 
-    public static EventHorizonConfigurator AddSubscription<TM>(this EventHorizonConfigurator configurator,
-        Action<SubscriptionBuilder<TM>> action = null)
-        where TM : class, ITopicMessage, new()
+    public static EventHorizonConfigurator AddSubscription<TMessage>(this EventHorizonConfigurator configurator,
+        Action<SubscriptionBuilder<TMessage>> action = null)
+        where TMessage : class, ITopicMessage
     {
-        configurator.Collection.AddHostedService<SubscriptionHostedService<TM>>();
+        configurator.Collection.AddHostedService<SubscriptionHostedService<TMessage>>();
         configurator.Collection.AddTransient(x =>
         {
             using var scope = x.CreateScope();
-            var client = scope.ServiceProvider.GetRequiredService<StreamingClient>();
-            var builder = client.CreateSubscription<TM>()
-                .SubscriptionName(typeof(TM).Name);
+            var client = scope.ServiceProvider.GetRequiredService<StreamingClient<TMessage>>();
+            var builder = client.CreateSubscription<TMessage>()
+                .SubscriptionName(typeof(TMessage).Name);
             action?.Invoke(builder);
 
             return builder.Build();
