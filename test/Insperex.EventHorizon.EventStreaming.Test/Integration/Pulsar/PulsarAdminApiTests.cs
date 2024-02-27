@@ -23,7 +23,6 @@ public class PulsarAdminApiTests: IAsyncLifetime
 {
     private readonly ITestOutputHelper _outputHelper;
     private readonly PulsarClientResolver _pulsarClientResolver;
-    private readonly IServiceProvider _serviceProvider;
     private readonly StreamingClient _streamingClient;
     private Stopwatch _stopwatch;
     private readonly TimeSpan _timeout;
@@ -33,11 +32,11 @@ public class PulsarAdminApiTests: IAsyncLifetime
     public PulsarAdminApiTests(ITestOutputHelper outputHelper)
     {
         _outputHelper = outputHelper;
-        _serviceProvider = HostTestUtil.GetPulsarHost(_outputHelper).Services;
-        _pulsarClientResolver = _serviceProvider.GetRequiredService<PulsarClientResolver>();
-        _streamingClient = _serviceProvider.GetRequiredService<StreamingClient>();
+        var serviceProvider = HostTestUtil.GetPulsarHost(_outputHelper).Services;
+        _pulsarClientResolver = serviceProvider.GetRequiredService<PulsarClientResolver>();
+        _streamingClient = serviceProvider.GetRequiredService<StreamingClient>();
         _timeout = TimeSpan.FromSeconds(30);
-        var attributeUtil = _serviceProvider.GetRequiredService<AttributeUtil>();
+        var attributeUtil = serviceProvider.GetRequiredService<AttributeUtil>();
         _pulsarTopicResolver = new(attributeUtil);
     }
 
