@@ -167,7 +167,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             .ConsumerName(AssemblyUtil.AssemblyNameWithGuid)
             .SubscriptionType(_config.SubscriptionType.ToPulsarSubscriptionType())
             .SubscriptionName(_config.SubscriptionName)
-            .ReceiverQueueSize(1000000000) // Allows non-persistent queues to not lose messages
+            .ReceiverQueueSize(1000000000)
             .Intercept(_intercept);
 
         if (_config.Topics != null)
