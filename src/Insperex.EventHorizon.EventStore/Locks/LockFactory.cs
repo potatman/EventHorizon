@@ -1,6 +1,5 @@
 ﻿using System;
 using Insperex.EventHorizon.Abstractions.Interfaces;
-using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Microsoft.Extensions.Logging;
@@ -12,10 +11,10 @@ public class LockFactory<T> where T : class, IState
     private readonly ILoggerFactory _loggerFactory;
     private readonly ICrudStore<Lock> _lockStore;
 
-    public LockFactory(ILockStoreFactory<T> lockStore, ILoggerFactory loggerFactory)
+    public LockFactory(ILockStore<T> lockStore, ILoggerFactory loggerFactory)
     {
         _loggerFactory = loggerFactory;
-        _lockStore = lockStore.GetLockStore();
+        _lockStore = lockStore;
     }
 
     public LockDisposable CreateLock(string id, string hostname)

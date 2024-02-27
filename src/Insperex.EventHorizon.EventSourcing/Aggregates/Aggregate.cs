@@ -141,6 +141,9 @@ public class Aggregate<T>
         AllStates = properties
             .ToDictionary(x => x.PropertyType, x =>
             {
+                var value = x.GetValue(State);
+                if (value != null) return value;
+
                 var state = Activator.CreateInstance(x.PropertyType);
                 ((dynamic)state)!.Id = Id;
                 x.SetValue(State, state);

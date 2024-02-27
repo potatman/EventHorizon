@@ -14,7 +14,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\src\Insperex.EventHorizon.EventStore.Ignite\Insperex.EventHorizon.EventStore.Ignite.csproj" />
       <ProjectReference Include="..\..\src\Insperex.EventHorizon.EventStore.InMemory\Insperex.EventHorizon.EventStore.InMemory.csproj" />
       <ProjectReference Include="..\..\src\Insperex.EventHorizon.EventStore.MongoDb\Insperex.EventHorizon.EventStore.MongoDb.csproj" />
       <ProjectReference Include="..\..\test\Insperex.EventHorizon.EventStore.Test\Insperex.EventHorizon.EventStore.Test.csproj" />

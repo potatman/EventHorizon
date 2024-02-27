@@ -21,6 +21,8 @@ public class Aggregator<TParent, TState>
     where TParent : class, IStateParent<TState>, new()
     where TState : class, IState
 {
+    private readonly Type TStateType = typeof(TState);
+    private readonly string TStateTypeName = typeof(TState).Name;
     private readonly AggregateConfig<TState> _config;
     private readonly ICrudStore<TParent> _crudStore;
     private readonly ILogger<Aggregator<TParent, TState>> _logger;
@@ -46,12 +48,8 @@ public class Aggregator<TParent, TState>
 
     public async Task RebuildAllAsync(CancellationToken ct)
     {
-        var minDateTime = await _crudStore.GetLastUpdatedDateAsync(ct);
-
-        // NOTE: return with one ms forward because mongodb rounds to one ms
-        minDateTime = minDateTime == default? minDateTime : minDateTime.AddMilliseconds(1);
-
-        var reader = _streamingClient.CreateReader<Event>().AddStateStream<TState>().StartDateTime(minDateTime).Build();
+        // TODO: need to move
+        var reader = _streamingClient.CreateReader<Event>().AddStateStream<TState>().Build();
 
         while (!ct.IsCancellationRequested)
         {
@@ -92,7 +90,7 @@ public class Aggregator<TParent, TState>
     {
         // Load Aggregate
         var streamIds = messages.Select(x => x.StreamId).Distinct().ToArray();
-        var aggregateDict = await GetAggregatesFromStatesAsync(streamIds, ct);
+        var aggregateDict = await GetAggregatesFromStateAsync(streamIds, ct);
 
         // Map/Apply Changes
         TriggerHandle(messages, aggregateDict);
@@ -138,7 +136,7 @@ public class Aggregator<TParent, TState>
                 agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
         }
         _logger.LogInformation("TriggerHandled {Count} {Type} Aggregate(s) in {Duration}",
-            aggregateDict.Count, typeof(TState).Name, sw.ElapsedMilliseconds);
+            aggregateDict.Count, TStateTypeName, sw.ElapsedMilliseconds);
     }
 
     #region Save
@@ -156,7 +154,7 @@ public class Aggregator<TParent, TState>
             if (group.Key == null) continue;
             var first = group.First();
             _logger.LogError("{State} {Count} had {Status} => {Error}",
-                typeof(TState).Name, group.Count(), first.StatusCode, first.Error);
+                TStateTypeName, group.Count(), first.StatusCode, first.Error);
         }
 
         // OnCompleted Hook
@@ -204,7 +202,7 @@ public class Aggregator<TParent, TState>
                 aggregateDict[id].SequenceId++;
             }
             _logger.LogInformation("Saved {Count} {Type} Aggregate(s) in {Duration}",
-                aggregateDict.Count, typeof(TState).Name, sw.ElapsedMilliseconds);
+                aggregateDict.Count, TStateTypeName, sw.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
@@ -279,11 +277,11 @@ public class Aggregator<TParent, TState>
 
     public async Task<Aggregate<TState>> GetAggregateFromStateAsync(string streamId, CancellationToken ct)
     {
-        var result = await GetAggregatesFromStatesAsync(new[] { streamId }, ct);
+        var result = await GetAggregatesFromStateAsync(new[] { streamId }, ct);
         return result.Values.FirstOrDefault();
     }
 
-    public async Task<Dictionary<string, Aggregate<TState>>> GetAggregatesFromStatesAsync(string[] streamIds, CancellationToken ct)
+    public async Task<Dictionary<string, Aggregate<TState>>> GetAggregatesFromStateAsync(string[] streamIds, CancellationToken ct)
     {
         try
         {
@@ -310,7 +308,7 @@ public class Aggregator<TParent, TState>
                     agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
             }
             _logger.LogInformation("Loaded {Count} {Type} Aggregate(s) in {Duration}",
-                aggregateDict.Count, typeof(TState).Name, sw.ElapsedMilliseconds);
+                aggregateDict.Count, TStateTypeName, sw.ElapsedMilliseconds);
 
             return aggregateDict;
         }
@@ -352,6 +350,18 @@ public class Aggregator<TParent, TState>
     {
         var reader = _streamingClient.CreateReader<Event>().AddStateStream<TState>().Keys(streamIds).EndDateTime(endDateTime).Build();
         return reader.GetNextAsync(10000);
+    }
+
+    #endregion
+
+    #region Delete
+
+    public async Task DropAllAsync(CancellationToken ct)
+    {
+        await _crudStore.DropDatabaseAsync(ct);
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(TStateType, ct: ct);
+        await _streamingClient.GetAdmin<Request>().DeleteTopicAsync(TStateType, ct: ct);
+        await _streamingClient.GetAdmin<Command>().DeleteTopicAsync(TStateType, ct: ct);
     }
 
     #endregion

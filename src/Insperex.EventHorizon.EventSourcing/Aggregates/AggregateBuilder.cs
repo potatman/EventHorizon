@@ -4,7 +4,6 @@ using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.EventSourcing.Interfaces;
 using Insperex.EventHorizon.EventSourcing.Util;
 using Insperex.EventHorizon.EventStore.Interfaces;
-using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Locks;
 using Insperex.EventHorizon.EventStore.Models;
@@ -36,8 +35,8 @@ public class AggregateBuilder<TParent, T>
         ILoggerFactory loggerFactory)
     {
         _crudStore = typeof(TParent).Name == typeof(Snapshot<>).Name?
-            (ICrudStore<TParent>)serviceProvider.GetRequiredService<ISnapshotStoreFactory<T>>().GetSnapshotStore() :
-            (ICrudStore<TParent>)serviceProvider.GetRequiredService<IViewStoreFactory<T>>().GetViewStore();
+            (ICrudStore<TParent>)serviceProvider.GetRequiredService<ISnapshotStore<T>>() :
+            (ICrudStore<TParent>)serviceProvider.GetRequiredService<IViewStore<T>>();
         _lockFactory = serviceProvider.GetRequiredService<LockFactory<T>>();
         _validationUtil = serviceProvider.GetRequiredService<ValidationUtil>();
         _serviceProvider = serviceProvider;

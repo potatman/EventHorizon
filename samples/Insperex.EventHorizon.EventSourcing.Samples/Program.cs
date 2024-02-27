@@ -10,6 +10,7 @@ using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 using Insperex.EventHorizon.EventSourcing.Samples.Subscriptions;
 using Insperex.EventHorizon.EventStore.ElasticSearch.Extensions;
 using Insperex.EventHorizon.EventStore.MongoDb.Extensions;
+using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
 using Insperex.EventHorizon.EventStreaming.Subscriptions.Extensions;
 using Microsoft.AspNetCore.Builder;
@@ -44,7 +45,7 @@ public class Program
                         services.AddEventHorizon(x =>
                         {
                             x.AddEventSourcing()
-
+                                
                                 // Stores
                                 .AddMongoDbSnapshotStore(context.Configuration.GetSection("MongoDb").Bind)
                                 .AddElasticViewStore(context.Configuration.GetSection("ElasticSearch").Bind)

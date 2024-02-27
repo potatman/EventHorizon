@@ -37,13 +37,13 @@ public class RetryTopicReader<T>: IAsyncDisposable where T : class, ITopicMessag
     }
 
     private readonly Dictionary<string, IReader<T>> _readers = new();
-    private readonly PulsarClientResolver _clientResolver;
+    private readonly PulsarClient _pulsarClient;
     private readonly SubscriptionConfig<T> _config;
     private readonly ILogger<RetryTopicReader<T>> _logger;
 
-    public RetryTopicReader(PulsarClientResolver clientResolver, SubscriptionConfig<T> config, ILogger<RetryTopicReader<T>> logger)
+    public RetryTopicReader(PulsarClient pulsarClient, SubscriptionConfig<T> config, ILogger<RetryTopicReader<T>> logger)
     {
-        _clientResolver = clientResolver;
+        _pulsarClient = pulsarClient;
         _config = config;
         _logger = logger;
     }
@@ -170,9 +170,7 @@ public class RetryTopicReader<T>: IAsyncDisposable where T : class, ITopicMessag
     {
         if (_readers.TryGetValue(topic, out var reader)) return reader;
 
-        var client = await _clientResolver.GetPulsarClientAsync();
-
-        var newReader = await client
+        var newReader = await _pulsarClient
             .NewReader(Schema.JSON<T>())
             .Topic(topic)
             .ReaderName($"{AssemblyUtil.AssemblyNameWithGuid}_retry_{topic}")

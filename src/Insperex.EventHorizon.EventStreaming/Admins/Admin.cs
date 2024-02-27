@@ -25,7 +25,10 @@ namespace Insperex.EventHorizon.EventStreaming.Admins
 
         public async Task DeleteTopicAsync(Type type, string name = default, CancellationToken ct = default)
         {
-            await _topicAdmin.DeleteTopicAsync(_topicResolver.GetTopic<TM>(type, name), ct);
+            var topic = _topicResolver.GetTopic<TM>(type, name);
+            if(topic == null) return;
+
+            await _topicAdmin.DeleteTopicAsync(topic, ct);
         }
     }
 }

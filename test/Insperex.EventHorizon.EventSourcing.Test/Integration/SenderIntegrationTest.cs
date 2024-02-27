@@ -9,7 +9,6 @@ using Destructurama;
 using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Testing;
-using Insperex.EventHorizon.EventSourcing.Aggregates;
 using Insperex.EventHorizon.EventSourcing.Extensions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Actions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
@@ -18,13 +17,7 @@ using Insperex.EventHorizon.EventSourcing.Test.Fakers;
 using Insperex.EventHorizon.EventStore.ElasticSearch.Extensions;
 using Insperex.EventHorizon.EventStore.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
-using Insperex.EventHorizon.EventStore.Interfaces.Factory;
-using Insperex.EventHorizon.EventStore.Interfaces.Stores;
-using Insperex.EventHorizon.EventStore.Models;
-using Insperex.EventHorizon.EventStore.MongoDb.Extensions;
 using Insperex.EventHorizon.EventStreaming;
-using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
-using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -125,9 +118,7 @@ public class SenderIntegrationTest : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _output.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        await _eventSourcingClient.GetSnapshotStore().DropDatabaseAsync(CancellationToken.None);
-        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Account));
-        await _streamingClient.GetAdmin<Request>().DeleteTopicAsync(typeof(Account));
+        await _eventSourcingClient.Aggregator().Build().DropAllAsync(CancellationToken.None);
         await _senderHost.StopAsync();
         await _consumerHost.StopAsync();
         _senderHost.Dispose();

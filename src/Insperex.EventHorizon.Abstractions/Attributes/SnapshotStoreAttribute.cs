@@ -5,10 +5,10 @@ namespace Insperex.EventHorizon.Abstractions.Attributes;
 [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
 public sealed class SnapshotStoreAttribute : Attribute
 {
-    public string BucketId { get; set; }
+    public string Database { get; set; }
 
-    public SnapshotStoreAttribute(string bucketId)
+    public SnapshotStoreAttribute(string database)
     {
-        BucketId = bucketId;
+        Database = database;
     }
 }

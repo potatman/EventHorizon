@@ -13,27 +13,28 @@ using Insperex.EventHorizon.EventStreaming.Pulsar.Attributes;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Microsoft.Extensions.Logging;
+using Pulsar.Client.Api;
 using SharpPulsar.Admin.v2;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
 public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
 {
-    private readonly PulsarClientResolver _clientResolver;
-    private readonly IPulsarAdminRESTAPIClient _admin;
+    private readonly IPulsarAdminRESTAPIClient _pulsarAdminClient;
+    private readonly PulsarClientResolver _pulsarClientResolver;
     private readonly ILogger<PulsarTopicAdmin<T>> _logger;
     private readonly PulsarNamespaceAttribute _pulsarAttribute;
 
-    public PulsarTopicAdmin(PulsarClientResolver clientResolver, AttributeUtil attributeUtil, ILogger<PulsarTopicAdmin<T>> logger)
+    public PulsarTopicAdmin(PulsarClientResolver pulsarClientResolver, AttributeUtil attributeUtil, ILogger<PulsarTopicAdmin<T>> logger)
     {
-        _clientResolver = clientResolver;
+        _pulsarAdminClient = pulsarClientResolver.GetAdminClientAsync().GetAwaiter().GetResult();
+        _pulsarClientResolver = pulsarClientResolver;
         _logger = logger;
         _pulsarAttribute = attributeUtil.GetOne<PulsarNamespaceAttribute>(typeof(T));
     }
 
     public async Task RequireTopicAsync(string str, CancellationToken ct)
     {
-        var admin = await GetAdmin();
         var topic = PulsarTopicParser.Parse(str);
         await RequireTenant(topic.Tenant, ct);
         await RequireNamespace(topic, ct);
@@ -41,15 +42,15 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         try
         {
             if (!topic.IsPersisted)
-                await admin.CreateNonPartitionedTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, new Dictionary<string, string>(), ct);
+                await _pulsarAdminClient.CreateNonPartitionedTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, new Dictionary<string, string>(), ct);
             else
-                await admin.CreateNonPartitionedTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, new Dictionary<string, string>(), ct);
+                await _pulsarAdminClient.CreateNonPartitionedTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, new Dictionary<string, string>(), ct);
 
             var sw = Stopwatch.StartNew();
             var duration = TimeSpan.FromSeconds(10).TotalMilliseconds;
             while (sw.ElapsedMilliseconds < duration)
             {
-                var topics = await admin.GetTopicsAsync(topic.Tenant, topic.Namespace, topic.IsPersisted? Mode.PERSISTENT : Mode.NON_PERSISTENT, false, ct);
+                var topics = await _pulsarAdminClient.GetTopicsAsync(topic.Tenant, topic.Namespace, topic.IsPersisted? Mode.PERSISTENT : Mode.NON_PERSISTENT, false, ct);
                 if (topics.Contains(topic.ToString()))
                     break;
 
@@ -66,14 +67,13 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
 
     public async Task DeleteTopicAsync(string str, CancellationToken ct)
     {
-        var admin = await GetAdmin();
         var topic = PulsarTopicParser.Parse(str);
         try
         {
             if (!topic.IsPersisted)
-                await admin.DeleteTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
+                await _pulsarAdminClient.DeleteTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
             else
-                await admin.DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
+                await _pulsarAdminClient.DeleteTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, true, ct);
             _logger.LogInformation("Deleted Topic {Topic}", topic);
         }
         catch (ApiException ex)
@@ -84,18 +84,11 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         }
     }
 
-    private async Task<IPulsarAdminRESTAPIClient> GetAdmin()
-    {
-        if (_admin != null) return _admin;
-
-        return await _clientResolver.GetAdminClientAsync();
-    }
-
     private async Task<JsonElement> GetTopicStatsJson(string str, CancellationToken ct,
         bool authoritative = false, bool getPreciseBacklog = false,
         bool subscriptionBacklogSize = true, bool getEarliestTimeInBacklog = false)
     {
-        using var httpClient = _clientResolver.GetAdminHttpClient();
+        using var httpClient = _pulsarClientResolver.GetAdminHttpClient();
 
         var topic = PulsarTopicParser.Parse(str);
         var parameters = new string[]
@@ -188,10 +181,8 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
 
     private async Task RequireNamespace(PulsarTopic topic, CancellationToken ct)
     {
-        var admin = await GetAdmin();
-
         // Ensure Namespace Exists
-        var namespaces = await admin.GetTenantNamespacesAsync(topic.Tenant, ct);
+        var namespaces = await _pulsarAdminClient.GetTenantNamespacesAsync(topic.Tenant, ct);
         if (!namespaces.Contains($"{topic.Tenant}/{topic.Namespace}"))
         {
             var policies = new Policies();
@@ -216,7 +207,7 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
 
             try
             {
-                await admin.CreateNamespaceAsync(topic.Tenant, topic.Namespace, policies, ct);
+                await _pulsarAdminClient.CreateNamespaceAsync(topic.Tenant, topic.Namespace, policies, ct);
             }
             catch (Exception)
             {
@@ -229,20 +220,18 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
 
     private async Task RequireTenant(string tenant, CancellationToken ct)
     {
-        var admin = await GetAdmin();
-
         // Ensure Tenant Exists
-        var tenants = await admin.GetTenantsAsync(ct);
+        var tenants = await _pulsarAdminClient.GetTenantsAsync(ct);
         if (!tenants.Contains(tenant))
         {
-            var clusters = await admin.GetClustersAsync(ct);
+            var clusters = await _pulsarAdminClient.GetClustersAsync(ct);
             var tenantInfo = new TenantInfo
             {
                 AdminRoles = null, AllowedClusters = clusters
             };
             try
             {
-                await admin.CreateTenantAsync(tenant, tenantInfo, ct);
+                await _pulsarAdminClient.CreateTenantAsync(tenant, tenantInfo, ct);
             }
             catch (Exception)
             {

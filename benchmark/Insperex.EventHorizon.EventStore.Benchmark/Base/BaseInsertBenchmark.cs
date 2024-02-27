@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStore.Test.Fakers;
@@ -16,7 +15,7 @@ public abstract class BaseInsertBenchmark
 {
     private readonly IServiceProvider _provider;
     private Counter _counter;
-    private ICrudStore<Snapshot<ExampleStoreState>> _snapshotStore;
+    private ISnapshotStore<ExampleStoreState> _snapshotStore;
     private ExampleStoreState[] _states;
     private Snapshot<ExampleStoreState>[] _snapshots;
 
@@ -28,7 +27,7 @@ public abstract class BaseInsertBenchmark
     [PerfSetup]
     public void Setup(BenchmarkContext context)
     {
-        _snapshotStore = _provider.GetRequiredService<ISnapshotStoreFactory<ExampleStoreState>>().GetSnapshotStore();
+        _snapshotStore = _provider.GetRequiredService<ISnapshotStore<ExampleStoreState>>();
         _states = EventStoreFakers.StateFaker.Generate(1000).ToArray();
         _snapshots = _states.Select(x => new Snapshot<ExampleStoreState>(x.Id, x)).ToArray();
         _counter = context.GetCounter("TestCounter");

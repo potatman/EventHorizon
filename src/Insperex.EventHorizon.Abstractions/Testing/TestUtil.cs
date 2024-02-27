@@ -16,7 +16,7 @@ public static class TestUtil
             var viewAttr = attributeUtil.GetOne<ViewStoreAttribute>(type);
             var streamAttrs = attributeUtil.GetAll<StreamAttribute>(type);
 
-            if (snapAttr != null) snapAttr.BucketId += postfix;
+            if (snapAttr != null) snapAttr.Database += postfix;
             if (viewAttr != null) viewAttr.Database += postfix;
             foreach (var streamAttr in streamAttrs)
                 streamAttr.Topic += postfix;

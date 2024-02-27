@@ -17,7 +17,6 @@
     <ItemGroup>
         <InternalsVisibleTo Include="Insperex.EventHorizon.EventSourcing" />
         <InternalsVisibleTo Include="Insperex.EventHorizon.EventStore.ElasticSearch" />
-        <InternalsVisibleTo Include="Insperex.EventHorizon.EventStore.Ignite" />
         <InternalsVisibleTo Include="Insperex.EventHorizon.EventStore.InMemory" />
         <InternalsVisibleTo Include="Insperex.EventHorizon.EventStore.MongoDb" />
         <InternalsVisibleTo Include="Insperex.EventHorizon.EventStreaming" />

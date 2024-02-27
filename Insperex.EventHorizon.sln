@@ -24,8 +24,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Insperex.EventHorizon.Event
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Insperex.EventHorizon.EventStore.Test", "test\Insperex.EventHorizon.EventStore.Test\Insperex.EventHorizon.EventStore.Test.csproj", "{C1994476-ED81-49D4-9A64-760EB58BFD09}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Insperex.EventHorizon.EventStore.Ignite", "src\Insperex.EventHorizon.EventStore.Ignite\Insperex.EventHorizon.EventStore.Ignite.csproj", "{DC163149-65F5-4209-8721-697500348332}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Insperex.EventHorizon.EventStore.MongoDb", "src\Insperex.EventHorizon.EventStore.MongoDb\Insperex.EventHorizon.EventStore.MongoDb.csproj", "{EEC3C846-9AFB-49F5-917B-4794D8E9259B}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Insperex.EventHorizon.EventStore.Benchmark", "benchmark\Insperex.EventHorizon.EventStore.Benchmark\Insperex.EventHorizon.EventStore.Benchmark.csproj", "{4E5E437D-406C-4DA5-ACFB-294A5E004BA2}"
@@ -47,7 +45,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "compose", "compose", "{FC21CBB4-969E-4767-B2D4-D5B44C21293A}"
 	ProjectSection(SolutionItems) = preProject
 		compose\ElasticSearch\docker-compose.yml = compose\ElasticSearch\docker-compose.yml
-		compose\Ignite\docker-compose.yml = compose\Ignite\docker-compose.yml
 		compose\MongoDb\docker-compose.yml = compose\MongoDb\docker-compose.yml
 		compose\Pulsar\docker-compose.yml = compose\Pulsar\docker-compose.yml
 	EndProjectSection
@@ -94,10 +91,6 @@ Global
 		{C1994476-ED81-49D4-9A64-760EB58BFD09}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C1994476-ED81-49D4-9A64-760EB58BFD09}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C1994476-ED81-49D4-9A64-760EB58BFD09}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DC163149-65F5-4209-8721-697500348332}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DC163149-65F5-4209-8721-697500348332}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DC163149-65F5-4209-8721-697500348332}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DC163149-65F5-4209-8721-697500348332}.Release|Any CPU.Build.0 = Release|Any CPU
 		{EEC3C846-9AFB-49F5-917B-4794D8E9259B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EEC3C846-9AFB-49F5-917B-4794D8E9259B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EEC3C846-9AFB-49F5-917B-4794D8E9259B}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -141,7 +134,6 @@ Global
 		{CE15F3CA-61DE-41C7-A9FE-F17D809FB7EA} = {8818B7D8-62A2-4ED9-BE26-2979D0194FAE}
 		{7652D903-3CC7-485E-88B2-1FED241180C9} = {8818B7D8-62A2-4ED9-BE26-2979D0194FAE}
 		{C1994476-ED81-49D4-9A64-760EB58BFD09} = {E659EE4E-FE5F-4D60-BF2F-BC4DA6581EB1}
-		{DC163149-65F5-4209-8721-697500348332} = {8818B7D8-62A2-4ED9-BE26-2979D0194FAE}
 		{EEC3C846-9AFB-49F5-917B-4794D8E9259B} = {8818B7D8-62A2-4ED9-BE26-2979D0194FAE}
 		{4E5E437D-406C-4DA5-ACFB-294A5E004BA2} = {E9CCCAF1-5047-4B4A-9C02-1C79E0AFFC2F}
 		{453EB397-3EDA-41A7-8860-DB8FC42866D7} = {E659EE4E-FE5F-4D60-BF2F-BC4DA6581EB1}

@@ -4,9 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Insperex.EventHorizon.Abstractions.Attributes;
-using Insperex.EventHorizon.Abstractions.Util;
-using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStore.Test.Fakers;
@@ -22,7 +19,7 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
 {
     private readonly ITestOutputHelper _outputHelper;
     private Stopwatch _stopwatch;
-    private readonly ICrudStore<Snapshot<ExampleStoreState>> _snapshotStore;
+    private readonly ISnapshotStore<ExampleStoreState> _snapshotStore;
     private readonly List<ExampleStoreState> _states;
     private CancellationTokenSource _cts;
 
@@ -30,7 +27,7 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
     {
         _outputHelper = outputHelper;
 
-        _snapshotStore = provider.GetRequiredService<ISnapshotStoreFactory<ExampleStoreState>>().GetSnapshotStore();
+        _snapshotStore = provider.GetRequiredService<ISnapshotStore<ExampleStoreState>>();
         _stopwatch = Stopwatch.StartNew();
         _states = EventStoreFakers.StateFaker.Generate(1000);
     }
@@ -39,6 +36,7 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
     {
         _stopwatch = Stopwatch.StartNew();
         _cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        _snapshotStore.MigrateAsync(CancellationToken.None);
         return Task.CompletedTask;
     }
 
@@ -65,21 +63,6 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
         Assert.Equal(expected.State.Id, actual.State.Id);
         Assert.Equal(expected.State.Name, actual.State.Name);
         Assert.Single(result.PassedIds);
-    }
-
-    [Fact]
-    public async Task TestGetLastUpdatedDateAsync()
-    {
-        // Act
-        var past = DateTime.UtcNow.AddDays(-1);
-        var now = DateTime.UtcNow;
-        var expected = new Snapshot<ExampleStoreState>("NormalSnapshot", 1, _states.First(), past, now);
-        await _snapshotStore.UpsertAllAsync(new [] {expected}, _cts.Token);
-        await Task.Delay(TimeSpan.FromSeconds(1), _cts.Token); // NOTE: Delay is for elastic refresh
-        var minDateTime = await _snapshotStore.GetLastUpdatedDateAsync(_cts.Token);
-
-        // Assert
-        Assert.True(Math.Truncate((expected.UpdatedDate - minDateTime).TotalMilliseconds) == 0, $"expected {expected.UpdatedDate}, actual {minDateTime}");
     }
 
     [Fact]

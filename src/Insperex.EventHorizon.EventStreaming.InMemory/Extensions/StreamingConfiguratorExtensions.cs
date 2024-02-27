@@ -14,12 +14,17 @@ namespace Insperex.EventHorizon.EventStreaming.InMemory.Extensions
 {
     public static class StreamingConfiguratorExtensions
     {
-        public static EventHorizonConfigurator AddInMemoryEventStream(this EventHorizonConfigurator configurator)
+        public static EventHorizonConfigurator AddInMemoryStreamClient(this EventHorizonConfigurator configurator)
         {
             configurator.Collection.AddSingleton<MessageDatabase>();
             configurator.Collection.AddSingleton<ConsumerDatabase>();
             configurator.Collection.AddSingleton<IndexDatabase>();
+            return configurator;
+        }
 
+        public static EventHorizonConfigurator AddInMemoryEventStream(this EventHorizonConfigurator configurator)
+        {
+            AddInMemoryStreamClient(configurator);
             configurator.Collection.Replace(ServiceDescriptor.Describe(
                 typeof(IStreamFactory),
                 typeof(InMemoryStreamFactory),
@@ -35,7 +40,6 @@ namespace Insperex.EventHorizon.EventStreaming.InMemory.Extensions
             configurator.Collection.AddSingleton(typeof(ReaderBuilder<>));
             configurator.Collection.AddSingleton(typeof(SubscriptionBuilder<>));
             configurator.Collection.AddSingleton(typeof(Admin<>));
-            configurator.Collection.AddSingleton<AttributeUtil>();
             configurator.Collection.AddSingleton<FailureHandlerFactory>();
 
             return configurator;

@@ -1,5 +1,5 @@
 using System;
-using Microsoft.Extensions.Configuration;
+using Insperex.EventHorizon.Abstractions.Util;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Insperex.EventHorizon.Abstractions.Extensions
@@ -9,6 +9,7 @@ namespace Insperex.EventHorizon.Abstractions.Extensions
         public static void AddEventHorizon(this IServiceCollection collection, Action<EventHorizonConfigurator> configure)
         {
             configure(new EventHorizonConfigurator(collection));
+            collection.AddSingleton<AttributeUtil>();
         }
     }
 }

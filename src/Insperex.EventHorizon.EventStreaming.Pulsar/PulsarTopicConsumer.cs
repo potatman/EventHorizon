@@ -21,7 +21,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
 public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage, new()
 {
-    private readonly PulsarClientResolver _clientResolver;
+    private readonly PulsarClient _pulsarClient;
     private readonly SubscriptionConfig<T> _config;
     private readonly ITopicAdmin<T> _admin;
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
@@ -29,11 +29,11 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     private Dictionary<string, Message<T>> _unackedMessages = new();
 
     public PulsarTopicConsumer(
-        PulsarClientResolver clientResolver,
+        PulsarClient pulsarClient,
         SubscriptionConfig<T> config,
         ITopicAdmin<T> admin)
     {
-        _clientResolver = clientResolver;
+        _pulsarClient = pulsarClient;
         _config = config;
         _admin = admin;
         _intercept = new OtelConsumerInterceptor.OTelConsumerInterceptor<T>(
@@ -163,8 +163,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
         foreach (var topic in _config.Topics)
             await _admin.RequireTopicAsync(topic, cts.Token);
 
-        var client = await _clientResolver.GetPulsarClientAsync();
-        var builder = client.NewConsumer(Schema.JSON<T>())
+        var builder = _pulsarClient.NewConsumer(Schema.JSON<T>())
             .ConsumerName(AssemblyUtil.AssemblyNameWithGuid)
             .SubscriptionType(_config.SubscriptionType.ToPulsarSubscriptionType())
             .SubscriptionName(_config.SubscriptionName)

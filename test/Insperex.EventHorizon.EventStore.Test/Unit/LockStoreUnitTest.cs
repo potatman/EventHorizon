@@ -3,8 +3,6 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Bogus;
-using Insperex.EventHorizon.Abstractions.Util;
-using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Locks;
 using Insperex.EventHorizon.EventStore.Models;
@@ -23,13 +21,13 @@ public class LockStoreUnitTest : IAsyncLifetime
     private readonly ITestOutputHelper _outputHelper;
     private Stopwatch _stopwatch;
     private readonly Faker _faker;
-    private readonly ICrudStore<Lock> _lockStore;
+    private readonly ILockStore<ExampleStoreState> _lockStore;
 
     public LockStoreUnitTest(ITestOutputHelper outputHelper)
     {
         var provider = HostTestUtil.GetInMemoryHost(outputHelper).Services;
         _outputHelper = outputHelper;
-        _lockStore = provider.GetRequiredService<ILockStoreFactory<ExampleStoreState>>().GetLockStore();
+        _lockStore = provider.GetRequiredService<ILockStore<ExampleStoreState>>();
         _lockFactory = provider.GetRequiredService<LockFactory<ExampleStoreState>>();
         _stopwatch = Stopwatch.StartNew();
         _faker = new Faker();

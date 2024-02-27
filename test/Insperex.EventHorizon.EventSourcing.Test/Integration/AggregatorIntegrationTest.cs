@@ -15,7 +15,6 @@ using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 using Insperex.EventHorizon.EventSourcing.Test.Fakers;
 using Insperex.EventHorizon.EventStore.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
-using Insperex.EventHorizon.EventStore.Interfaces.Factory;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming;
@@ -36,7 +35,6 @@ public class AggregatorIntegrationTest : IAsyncLifetime
     private readonly IHost _host;
     private readonly StreamingClient _streamingClient;
     private Stopwatch _stopwatch;
-    private readonly ICrudStore<Snapshot<Account>> _snapshotStore;
     private readonly Aggregator<Snapshot<Account>, Account> _accountAggregator;
     private readonly Aggregator<Snapshot<User>, User> _userAggregator;
     private readonly EventSourcingClient<Account> _eventSourcingClient;
@@ -78,7 +76,6 @@ public class AggregatorIntegrationTest : IAsyncLifetime
 
 
         _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
-        _snapshotStore = _host.Services.GetRequiredService<ISnapshotStoreFactory<Account>>().GetSnapshotStore();
     }
 
     public async Task InitializeAsync()
@@ -90,8 +87,8 @@ public class AggregatorIntegrationTest : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _output.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        await _snapshotStore.DropDatabaseAsync(CancellationToken.None);
-        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Account));
+        await _accountAggregator.DropAllAsync(CancellationToken.None);
+        await _userAggregator.DropAllAsync(CancellationToken.None);
         await _host.StopAsync();
         _host.Dispose();
     }

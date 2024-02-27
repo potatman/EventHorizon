@@ -1,12 +1,8 @@
 ﻿using System.Globalization;
-using System.Reflection;
 using Destructurama;
-using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Extensions;
-using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Testing;
 using Insperex.EventHorizon.EventStore.ElasticSearch.Extensions;
-using Insperex.EventHorizon.EventStore.Ignite.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
 using Insperex.EventHorizon.EventStore.MongoDb.Extensions;
 using Microsoft.Extensions.Configuration;
@@ -28,21 +24,6 @@ public static class HostTestUtil
                 {
                     x.AddElasticSnapshotStore(context.Configuration.GetSection("ElasticSearch").Bind)
                         .AddElasticViewStore(context.Configuration.GetSection("ElasticSearch").Bind);
-                });
-            })
-            .Build()
-            .AddTestBucketIds();
-    }
-
-    public static IHost GetIgniteHost(ITestOutputHelper output)
-    {
-        return GetHostBase(output)
-            .ConfigureServices((context, services) =>
-            {
-                services.AddEventHorizon(x =>
-                {
-                    x.AddIgniteSnapshotStore(context.Configuration.GetSection("Ignite").Bind)
-                        .AddIgniteViewStore(context.Configuration.GetSection("Ignite").Bind);
                 });
             })
             .Build()

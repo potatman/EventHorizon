@@ -4,10 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Elastic.Clients.Elasticsearch;
-using Elastic.Clients.Elasticsearch.Core.Search;
 using Elastic.Clients.Elasticsearch.IndexManagement;
 using Elastic.Clients.Elasticsearch.Mapping;
-using Elastic.Clients.Elasticsearch.QueryDsl;
 using Elastic.Transport;
 using Elastic.Transport.Products.Elasticsearch;
 using Insperex.EventHorizon.EventStore.ElasticSearch.Attributes;
@@ -16,22 +14,22 @@ using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Microsoft.Extensions.Logging;
 
-namespace Insperex.EventHorizon.EventStore.ElasticSearch;
+namespace Insperex.EventHorizon.EventStore.ElasticSearch.Stores;
 
-public class ElasticCrudStore<TE> : ICrudStore<TE>
+public abstract class AbstractElasticCrudStore<TE> : ICrudStore<TE>
     where TE : class, ICrudEntity
 {
     private readonly ElasticIndexAttribute _elasticAttr;
     private readonly ElasticsearchClient _client;
-    private readonly ILogger<ElasticCrudStore<TE>> _logger;
+    private readonly ILogger<AbstractElasticCrudStore<TE>> _logger;
     private readonly string _dbName;
 
-    public ElasticCrudStore(ElasticIndexAttribute elasticAttr, ElasticsearchClient client, string bucketId, ILogger<ElasticCrudStore<TE>> logger)
+    protected AbstractElasticCrudStore(ElasticIndexAttribute elasticAttr, ElasticsearchClient client, string database, ILogger<AbstractElasticCrudStore<TE>> logger)
     {
         _elasticAttr = elasticAttr;
         _client = client;
         _logger = logger;
-        _dbName = bucketId + "_" + typeof(TE).Name.Replace("`1", string.Empty).ToLower(CultureInfo.InvariantCulture);
+        _dbName = database + "_" + typeof(TE).Name.Replace("`1", string.Empty).ToLower(CultureInfo.InvariantCulture);
     }
 
     public async Task MigrateAsync(CancellationToken ct)
@@ -70,28 +68,6 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         ThrowErrors(res);
 
         return res.Docs.Select(x => x.Match(y => y.Source, z => null)).Where(x => x != null).ToArray();
-    }
-
-    public async Task<DateTime> GetLastUpdatedDateAsync(CancellationToken ct)
-    {
-        var res = await _client.SearchAsync<Snapshot<TE>>(x =>
-                x.Index(_dbName)
-                    .Size(1)
-                    .Source(new SourceConfig(new SourceFilter
-                    {
-                        Includes = new[] { "updatedDate" }
-                    }))
-                    .Query(q =>
-                        q.Bool(b =>
-                            b.Filter(f => f.MatchAll())
-                        )
-                    )
-                    .Sort(s => s.Field(f => f.UpdatedDate).Doc(d => d.Order(SortOrder.Desc)))
-            , ct);
-
-        ThrowErrors(res);
-
-        return res.Documents.FirstOrDefault()?.UpdatedDate ?? DateTime.MinValue;
     }
 
     public async Task<DbResult> InsertAllAsync(TE[] objs, CancellationToken ct)
