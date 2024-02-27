@@ -10,22 +10,20 @@ namespace Insperex.EventHorizon.EventStreaming.Admins
         where TM : ITopicMessage
     {
         private readonly ITopicAdmin<TM> _topicAdmin;
-        private readonly ITopicResolver _topicResolver;
 
-        public Admin(ITopicAdmin<TM> topicAdmin, ITopicResolver topicResolver)
+        public Admin(ITopicAdmin<TM> topicAdmin)
         {
             _topicAdmin = topicAdmin;
-            _topicResolver = topicResolver;
         }
 
         public async Task RequireTopicAsync(Type type, string name = default, CancellationToken ct = default)
         {
-            await _topicAdmin.RequireTopicAsync(_topicResolver.GetTopic<TM>(type, name), ct);
+            await _topicAdmin.RequireTopicAsync(_topicAdmin.GetTopic(type, name), ct);
         }
 
         public async Task DeleteTopicAsync(Type type, string name = default, CancellationToken ct = default)
         {
-            var topic = _topicResolver.GetTopic<TM>(type, name);
+            var topic = _topicAdmin.GetTopic(type, name);
             if(topic == null) return;
 
             await _topicAdmin.DeleteTopicAsync(topic, ct);

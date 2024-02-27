@@ -18,7 +18,7 @@ public class SubscriptionBuilder<TMessage> where TMessage : class, ITopicMessage
 {
     private readonly IStreamFactory _factory;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly ITopicResolver _topicResolver;
+    private readonly ITopicAdmin<TMessage> _admin;
     private readonly List<string> _topics;
     private readonly Dictionary<string, Type> _typeDict = new();
     private int? _batchSize = 1000;
@@ -38,7 +38,7 @@ public class SubscriptionBuilder<TMessage> where TMessage : class, ITopicMessage
         _factory = factory;
         _loggerFactory = loggerFactory;
         _topics = new List<string>();
-        _topicResolver = _factory.GetTopicResolver();
+        _admin = _factory.CreateAdmin<TMessage>();
     }
 
     public SubscriptionBuilder<TMessage> AddStateStream<TState>(string senderId = null) where TState : IState
@@ -52,7 +52,7 @@ public class SubscriptionBuilder<TMessage> where TMessage : class, ITopicMessage
 
         // Add Sub Topics (for IState only)
         var topics = stateDetails.AllStateTypes
-            .Select(x => _topicResolver.GetTopic<TMessage>(x, senderId))
+            .Select(x => _admin.GetTopic(x, senderId))
             .Where(x => x != null)
             .ToArray();
 
@@ -70,7 +70,7 @@ public class SubscriptionBuilder<TMessage> where TMessage : class, ITopicMessage
             _typeDict[type.Name] = type;
 
         // Add Main Topic
-        _topics.Add(_topicResolver.GetTopic<TMessage>(actionType, senderId));
+        _topics.Add(_admin.GetTopic(actionType, senderId));
 
         return this;
     }

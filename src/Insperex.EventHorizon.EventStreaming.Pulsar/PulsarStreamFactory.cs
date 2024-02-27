@@ -50,9 +50,4 @@ public class PulsarStreamFactory : IStreamFactory
     {
         return new PulsarTopicAdmin<T>(_pulsarClientResolver, _attributeUtil, _loggerFactory.CreateLogger<PulsarTopicAdmin<T>>());
     }
-
-    public ITopicResolver GetTopicResolver()
-    {
-        return new PulsarTopicResolver(_attributeUtil);
-    }
 }

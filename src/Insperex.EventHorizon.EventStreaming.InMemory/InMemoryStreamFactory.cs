@@ -49,11 +49,6 @@ public class InMemoryStreamFactory : IStreamFactory
 
     public ITopicAdmin<T> CreateAdmin<T>() where T : ITopicMessage
     {
-        return new InMemoryTopicAdmin<T>(_messageDatabase, _indexDatabase, _consumerDatabase);
-    }
-
-    public ITopicResolver GetTopicResolver()
-    {
-        return new InMemoryTopicResolver(_attributeUtil);
+        return new InMemoryTopicAdmin<T>(_attributeUtil, _messageDatabase, _indexDatabase, _consumerDatabase);
     }
 }

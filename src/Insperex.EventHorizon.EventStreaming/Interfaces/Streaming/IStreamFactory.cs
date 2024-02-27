@@ -11,5 +11,4 @@ public interface IStreamFactory
     ITopicConsumer<T> CreateConsumer<T>(SubscriptionConfig<T> config) where T : class, ITopicMessage, new();
     ITopicReader<T> CreateReader<T>(ReaderConfig config) where T : class, ITopicMessage, new();
     ITopicAdmin<T> CreateAdmin<T>() where T : ITopicMessage;
-    ITopicResolver GetTopicResolver();
 }

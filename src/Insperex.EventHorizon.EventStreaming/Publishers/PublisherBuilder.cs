@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
 using Insperex.EventHorizon.Abstractions.Exceptions;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
@@ -47,7 +45,7 @@ public class PublisherBuilder<TMessage> where TMessage : class, ITopicMessage, n
             _typeDict[type.Key] = type.Value;
 
         // Add Topics
-        _topic = _factory.GetTopicResolver().GetTopic<TMessage>(stateType, senderId);
+        _topic = _factory.CreateAdmin<TMessage>().GetTopic(stateType, senderId);
 
         return this;
     }
@@ -64,7 +62,7 @@ public class PublisherBuilder<TMessage> where TMessage : class, ITopicMessage, n
             _typeDict[type.Name] = type;
 
         // Add Topics
-        _topic = _factory.GetTopicResolver().GetTopic<TMessage>(actionType, senderId);
+        _topic = _factory.CreateAdmin<TMessage>().GetTopic(actionType, senderId);
 
         return this;
     }

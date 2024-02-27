@@ -35,7 +35,7 @@ public class ReaderBuilder<TMessage> where TMessage : class, ITopicMessage, new(
             _typeDict[type.Key] = type.Value;
 
         // Add Topics
-        _topic = _factory.GetTopicResolver().GetTopic<TMessage>(stateType, senderId);
+        _topic = _factory.CreateAdmin<TMessage>().GetTopic(stateType, senderId);
 
         return this;
     }
@@ -52,7 +52,7 @@ public class ReaderBuilder<TMessage> where TMessage : class, ITopicMessage, new(
             _typeDict[type.Name] = type;
 
         // Add Topics
-        _topic = _factory.GetTopicResolver().GetTopic<TMessage>(typeof(TAction), senderId);
+        _topic = _factory.CreateAdmin<TMessage>().GetTopic(typeof(TAction), senderId);
 
         return this;
     }

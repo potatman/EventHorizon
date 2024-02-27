@@ -51,7 +51,7 @@ public class PulsarSingleton : IAsyncDisposable
         if (Consumers.ContainsKey(type))
             return Consumers[type];
 
-        var topic = Factory.Value.GetTopicResolver().GetTopic<Event>(type);
+        var topic = Factory.Value.CreateAdmin<Event>().GetTopic(type);
         Consumers[type] = Factory.Value.CreateConsumer(new SubscriptionConfig<Event>
         {
             Topics = [topic],
