@@ -17,7 +17,6 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
     {
         private readonly IOptions<PulsarConfig> _options;
         private PulsarAdminRESTAPIClient _admin;
-        private PulsarClient _client;
         private readonly Uri _fileUri;
         private readonly string _fileName;
 
