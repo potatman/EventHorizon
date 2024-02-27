@@ -45,7 +45,7 @@ public class Program
                         services.AddEventHorizon(x =>
                         {
                             x.AddEventSourcing()
-                                .AddInMemoryStreamClient()
+                                
                                 // Stores
                                 .AddMongoDbSnapshotStore(context.Configuration.GetSection("MongoDb").Bind)
                                 .AddElasticViewStore(context.Configuration.GetSection("ElasticSearch").Bind)
