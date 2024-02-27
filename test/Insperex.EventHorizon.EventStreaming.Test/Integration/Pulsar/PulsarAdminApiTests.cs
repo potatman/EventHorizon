@@ -42,7 +42,7 @@ public class PulsarAdminApiTests: IAsyncLifetime
 
     public Task InitializeAsync()
     {
-        int sequenceId = 0;
+        var sequenceId = 0;
         _events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(1000)
             .Select(x => new Event(x.Id, ++sequenceId, x)).ToArray();
         _stopwatch = Stopwatch.StartNew();
