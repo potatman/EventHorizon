@@ -30,7 +30,7 @@ public class StreamingClient<TMessage>
         return new ReaderBuilder<TMessage>(_streamFactory);
     }
 
-    public SubscriptionBuilder<TMessage> CreateSubscription<T>()
+    public SubscriptionBuilder<TMessage> CreateSubscription()
     {
         return new SubscriptionBuilder<TMessage>(_streamFactory, _loggerFactory);
     }

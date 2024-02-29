@@ -21,7 +21,7 @@ namespace Insperex.EventHorizon.EventSourcing.Aggregates
             StreamingClient<Event> streamingClient,
             Func<SubscriptionBuilder<Event>, SubscriptionBuilder<Event>> onBuildSubscription = null)
         {
-            var builder = streamingClient.CreateSubscription<Event>()
+            var builder = streamingClient.CreateSubscription()
                 .AddStateStream<TSource>()
                 .SubscriptionName($"Migrate-{typeof(TSource).Name}-{typeof(TTarget).Name}")
                 .OnBatch(async batch =>

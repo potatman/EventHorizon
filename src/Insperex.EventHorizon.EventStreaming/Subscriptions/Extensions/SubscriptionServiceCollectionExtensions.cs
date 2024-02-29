@@ -20,7 +20,7 @@ public static class SubscriptionServiceCollectionExtensions
             using var scope = x.CreateScope();
             var handler = scope.ServiceProvider.GetRequiredService<TConsumer>();
             var client = scope.ServiceProvider.GetRequiredService<StreamingClient<TMessage>>();
-            var builder = client.CreateSubscription<TMessage>()
+            var builder = client.CreateSubscription()
                 .SubscriptionName(typeof(TConsumer).Name);
             action?.Invoke(builder);
 
@@ -38,7 +38,7 @@ public static class SubscriptionServiceCollectionExtensions
         {
             using var scope = x.CreateScope();
             var client = scope.ServiceProvider.GetRequiredService<StreamingClient<TMessage>>();
-            var builder = client.CreateSubscription<TMessage>()
+            var builder = client.CreateSubscription()
                 .SubscriptionName(typeof(TMessage).Name);
             action?.Invoke(builder);
 

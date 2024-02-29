@@ -28,7 +28,7 @@ public class AggregateConsumerHostedService<TParent, TMessage, T> : IHostedServi
 
         var config = _aggregator.GetConfig();
 
-        var builder = streamingClient.CreateSubscription<TMessage>()
+        var builder = streamingClient.CreateSubscription()
             .SubscriptionName($"Apply-{typeof(TMessage).Name}-{typeof(T).Name}")
             .AddStateStream<T>()
             .OnBatch(async x =>

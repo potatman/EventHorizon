@@ -61,7 +61,7 @@ public class PulsarAdminApiTests: IAsyncLifetime
     {
         const string SubscriptionName = "MyTestSubscription";
 
-        var builder = _streamingClient.CreateSubscription<Event>()
+        var builder = _streamingClient.CreateSubscription()
             .AddStream<Feed1PriceChanged>()
             .SubscriptionName(SubscriptionName)
             .BatchSize(100)

@@ -70,7 +70,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task TestSingleConsumer()
     {
         // Consume
-        await using var subscription = await _streamingClient.CreateSubscription<Event>()
+        await using var subscription = await _streamingClient.CreateSubscription()
             .AddStream<Feed1PriceChanged>()
             .BatchSize(_events.Length / 10)
             .OnBatch(_handler.OnBatch)
@@ -87,7 +87,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     [Fact]
     public async Task TestKeySharedConsumers()
     {
-        var builder = _streamingClient.CreateSubscription<Event>()
+        var builder = _streamingClient.CreateSubscription()
             .AddStream<Feed1PriceChanged>()
             .BatchSize(_events.Length / 10)
             .OnBatch(_handler.OnBatch);
@@ -105,7 +105,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task TestSingleConsumerWithAdvancedFailures()
     {
         // Consume
-        await using var subscription = await _streamingClient.CreateSubscription<Event>()
+        await using var subscription = await _streamingClient.CreateSubscription()
             .SubscriptionName($"Fails_{UniqueTestId}")
             .SubscriptionType(SubscriptionType.KeyShared)
             .AddStream<Feed1PriceChanged>()

@@ -77,7 +77,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task SubscribeToMultipleTopics()
     {
         // Consume
-        await using var subscription = await _streamingClient.CreateSubscription<Event>()
+        await using var subscription = await _streamingClient.CreateSubscription()
             .AddStream<Feed1PriceChanged>()
             .AddStream<Feed2PriceChanged>()
             .BatchSize(_events.Length/10)
@@ -94,7 +94,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task SubscribeToTopicsSeparately()
     {
         // Consume
-        var builder = _streamingClient.CreateSubscription<Event>()
+        var builder = _streamingClient.CreateSubscription()
             .BatchSize(_events.Length / 10);
 
         await using var subscription1 = await builder.AddStream<Feed1PriceChanged>().OnBatch(_handler.OnBatch).Build().StartAsync();
@@ -109,7 +109,7 @@ public abstract class BaseMultiTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task TestSingleConsumerWithAdvancedFailures()
     {
         // Consume
-        await using var subscription = await _streamingClient.CreateSubscription<Event>()
+        await using var subscription = await _streamingClient.CreateSubscription()
             .SubscriptionName($"Fails_{UniqueTestId}")
             .AddStream<Feed1PriceChanged>()
             .AddStream<Feed2PriceChanged>()

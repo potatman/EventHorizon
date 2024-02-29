@@ -36,7 +36,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
         if(_subscriptionDict.ContainsKey(type))
             return;
 
-        var subscription = _streamingClient.CreateSubscription<Response>()
+        var subscription = _streamingClient.CreateSubscription()
             .SubscriptionType(SubscriptionType.Exclusive)
             .OnBatch(async x =>
             {

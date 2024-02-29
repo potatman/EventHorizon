@@ -210,7 +210,7 @@ public class PulsarFailureRecoveryBenchmarks
         bool useAdvancedFailureHandling, Func<bool> endCondition)
     {
         // Consume
-        var builder = _streamingClient.CreateSubscription<Event>()
+        var builder = _streamingClient.CreateSubscription()
             .SubscriptionName($"FailBenchmark_{UniqueTestId}")
             .SubscriptionType(SubscriptionType.KeyShared)
             .AddStream<Feed1PriceChanged>()
