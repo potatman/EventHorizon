@@ -1,5 +1,5 @@
 ﻿namespace Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 
-public interface IAction
+public interface IAction : IPayload
 {
 }
