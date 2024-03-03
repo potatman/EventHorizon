@@ -7,7 +7,7 @@ namespace Insperex.EventHorizon.EventSourcing.Interfaces
     public interface IAggregateMiddleware { }
 
     public interface IAggregateMiddleware<T> : IAggregateMiddleware
-        where T : class, IState
+        where T : IState
     {
         public Task OnLoad(Aggregate<T>[] aggregates);
         public Task BeforeSave(Aggregate<T>[] aggregates);

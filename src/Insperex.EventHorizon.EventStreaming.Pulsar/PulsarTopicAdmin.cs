@@ -6,31 +6,50 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
+using Insperex.EventHorizon.EventStreaming.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Attributes;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Utils;
 using Microsoft.Extensions.Logging;
-using Pulsar.Client.Api;
 using SharpPulsar.Admin.v2;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
-public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
+public class PulsarTopicAdmin<TMessage> : ITopicAdmin<TMessage>
+    where TMessage : ITopicMessage
 {
     private readonly IPulsarAdminRESTAPIClient _pulsarAdminClient;
     private readonly PulsarClientResolver _pulsarClientResolver;
-    private readonly ILogger<PulsarTopicAdmin<T>> _logger;
+    private readonly AttributeUtil _attributeUtil;
+    private readonly ILogger<PulsarTopicAdmin<TMessage>> _logger;
     private readonly PulsarNamespaceAttribute _pulsarAttribute;
 
-    public PulsarTopicAdmin(PulsarClientResolver pulsarClientResolver, AttributeUtil attributeUtil, ILogger<PulsarTopicAdmin<T>> logger)
+    public PulsarTopicAdmin(PulsarClientResolver pulsarClientResolver, AttributeUtil attributeUtil, ILogger<PulsarTopicAdmin<TMessage>> logger)
     {
         _pulsarAdminClient = pulsarClientResolver.GetAdminClientAsync().GetAwaiter().GetResult();
         _pulsarClientResolver = pulsarClientResolver;
+        _attributeUtil = attributeUtil;
         _logger = logger;
-        _pulsarAttribute = attributeUtil.GetOne<PulsarNamespaceAttribute>(typeof(T));
+        _pulsarAttribute = attributeUtil.GetOne<PulsarNamespaceAttribute>(typeof(TMessage));
+    }
+
+    public string GetTopic(Type type, string senderId = null)
+    {
+        var persistent = EventStreamingConstants.Persistent;
+        var pulsarAttr = _attributeUtil.GetOne<PulsarNamespaceAttribute>(type);
+        var attribute = _attributeUtil.GetAll<StreamAttribute>(type).First(x => x.SubType == null);
+
+        var tenant = pulsarAttr?.Tenant ?? PulsarTopicConstants.DefaultTenant;
+        var @namespace = !PulsarTopicConstants.MessageTypes.Contains(typeof(TMessage))
+            ? pulsarAttr?.Namespace ?? PulsarTopicConstants.DefaultNamespace
+            : PulsarTopicConstants.MessageNamespace;
+
+        var topic = senderId == null ? attribute.Topic : $"{attribute.Topic}-{senderId}";
+        return $"{persistent}://{tenant}/{@namespace}/{topic}".Replace(PulsarTopicConstants.TypeKey, typeof(TMessage).Name);
     }
 
     public async Task RequireTopicAsync(string str, CancellationToken ct)

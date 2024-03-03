@@ -10,7 +10,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory;
 
-public class InMemoryStreamFactory : IStreamFactory
+public class InMemoryStreamFactory<TMessage> : IStreamFactory<TMessage>
+    where TMessage : ITopicMessage
 {
     private readonly AttributeUtil _attributeUtil;
     private readonly IndexDatabase _indexDatabase;
@@ -31,29 +32,24 @@ public class InMemoryStreamFactory : IStreamFactory
         _loggerFactory = loggerFactory;
     }
 
-    public ITopicProducer<T> CreateProducer<T>(PublisherConfig config) where T : class, ITopicMessage, new()
+    public ITopicProducer<TMessage> CreateProducer(PublisherConfig config)
     {
-        return new InMemoryTopicProducer<T>(config, _messageDatabase);
+        return new InMemoryTopicProducer<TMessage>(config, _messageDatabase);
     }
 
-    public ITopicConsumer<T> CreateConsumer<T>(SubscriptionConfig<T> config) where T : class, ITopicMessage, new()
+    public ITopicConsumer<TMessage> CreateConsumer(SubscriptionConfig<TMessage> config)
     {
-        return new InMemoryTopicConsumer<T>(config, _messageDatabase, _indexDatabase, _consumerDatabase,
+        return new InMemoryTopicConsumer<TMessage>(config, _messageDatabase, _indexDatabase, _consumerDatabase,
             _failureHandlerFactory, _loggerFactory);
     }
 
-    public ITopicReader<T> CreateReader<T>(ReaderConfig config) where T : class, ITopicMessage, new()
+    public ITopicReader<TMessage> CreateReader(ReaderConfig config)
     {
-        return new InMemoryTopicReader<T>(config, _messageDatabase);
+        return new InMemoryTopicReader<TMessage>(config, _messageDatabase);
     }
 
-    public ITopicAdmin<T> CreateAdmin<T>() where T : ITopicMessage
+    public ITopicAdmin<TMessage> CreateAdmin()
     {
-        return new InMemoryTopicAdmin<T>(_messageDatabase, _indexDatabase, _consumerDatabase);
-    }
-
-    public ITopicResolver GetTopicResolver()
-    {
-        return new InMemoryTopicResolver(_attributeUtil);
+        return new InMemoryTopicAdmin<TMessage>(_attributeUtil, _messageDatabase, _indexDatabase, _consumerDatabase);
     }
 }

@@ -8,7 +8,7 @@ using Insperex.EventHorizon.EventStreaming.Subscriptions.Backoff;
 
 namespace Insperex.EventHorizon.EventStreaming.Subscriptions;
 
-public class SubscriptionConfig<T> where T : ITopicMessage
+public class SubscriptionConfig<TMessage> where TMessage : ITopicMessage
 {
     public string[] Topics { get; set; }
     public Dictionary<string, Type> TypeDict { get; set; }
@@ -28,6 +28,6 @@ public class SubscriptionConfig<T> where T : ITopicMessage
 
     [NotLogged] public IBackoffStrategy BackoffStrategy { get; set; }
 
-    [NotLogged] public Func<SubscriptionContext<T>, Task> OnBatch { get; set; }
+    [NotLogged] public Func<SubscriptionContext<TMessage>, Task> OnBatch { get; set; }
     [NotLogged] public bool IsPreload { get; set; }
 }

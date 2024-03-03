@@ -3,7 +3,7 @@ using Insperex.EventHorizon.EventSourcing.Interfaces;
 
 namespace Insperex.EventHorizon.EventSourcing.Aggregates;
 
-public class AggregateConfig<T> where T : class, IState
+public class AggregateConfig<T> where T : IState
 {
     public bool IsValidationEnabled { get; set; }
     public bool IsRebuildEnabled { get; set; }

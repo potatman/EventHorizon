@@ -4,10 +4,11 @@ using Insperex.EventHorizon.Abstractions.Models;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory.Failure;
 
-public interface IFailureHandler<T> where T: class, ITopicMessage, new()
+public interface IFailureHandler<TMessage>
+    where TMessage : ITopicMessage
 {
     bool InNormalMode(string topic, string streamId);
 
-    MessageContext<T>[] GetMessagesForRetry(int capacity);
-    void FinalizeBatch(MessageContext<T>[] acks, MessageContext<T>[] nacks, Dictionary<string, long> maxIndexByTopic);
+    MessageContext<TMessage>[] GetMessagesForRetry(int capacity);
+    void FinalizeBatch(MessageContext<TMessage>[] acks, MessageContext<TMessage>[] nacks, Dictionary<string, long> maxIndexByTopic);
 }

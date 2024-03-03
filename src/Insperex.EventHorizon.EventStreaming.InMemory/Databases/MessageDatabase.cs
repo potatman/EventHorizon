@@ -14,7 +14,8 @@ public class MessageDatabase
 {
     private readonly ConcurrentDictionary<string, List<object>> _messages = new();
 
-    public void AddMessages<T>(PublisherConfig config, params T[] messages) where T : class, ITopicMessage
+    public void AddMessages<TMessage>(PublisherConfig config, params TMessage[] messages)
+        where TMessage : ITopicMessage
     {
         if (!_messages.ContainsKey(config.Topic))
             _messages[config.Topic] = new List<object>();
@@ -22,13 +23,14 @@ public class MessageDatabase
         foreach (var message in messages)
         {
             var topicData = new TopicData(_messages[config.Topic].Count.ToString(CultureInfo.InvariantCulture), config.Topic, DateTime.UtcNow);
-            var context = new MessageContext<T>(message, topicData, config.TypeDict);
+            var context = new MessageContext<TMessage>(message, topicData, config.TypeDict);
 
             _messages[config.Topic].Add(context);
         }
     }
 
-    public MessageContext<T>[] GetMessages<T>(string topic, string[] streamIds, int startIndex = 0) where T : class, ITopicMessage
+    public MessageContext<TMessage>[] GetMessages<TMessage>(string topic, string[] streamIds, int startIndex = 0)
+        where TMessage : ITopicMessage
     {
         if (!_messages.ContainsKey(topic))
             _messages[topic] = new List<object>();
@@ -36,20 +38,20 @@ public class MessageDatabase
         return _messages[topic]
             .Skip(startIndex)
             .ToArray()
-            .Cast<MessageContext<T>>()
+            .Cast<MessageContext<TMessage>>()
             .Where(x => streamIds == null || streamIds.Contains(x.Data.StreamId))
             .ToArray();
     }
 
-    public MessageContext<T>[] GetMessages<T>(string topic, int shard, int numOfShards, int start, int size)
-        where T : ITopicMessage
+    public MessageContext<TMessage>[] GetMessages<TMessage>(string topic, int shard, int numOfShards, int start, int size)
+        where TMessage : ITopicMessage
     {
         if (!_messages.ContainsKey(topic))
             _messages[topic] = new List<object>();
 
         var messages = _messages[topic]
             .Skip(start)
-            .Cast<MessageContext<T>>()
+            .Cast<MessageContext<TMessage>>()
             .Where(x => x.Data.StreamId.Sum(s => s) % numOfShards == shard)
             .Take(size)
             .ToArray();

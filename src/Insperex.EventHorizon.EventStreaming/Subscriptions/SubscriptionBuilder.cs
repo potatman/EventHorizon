@@ -14,11 +14,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming.Subscriptions;
 
-public class SubscriptionBuilder<TMessage> where TMessage : class, ITopicMessage, new()
+public class SubscriptionBuilder<TMessage>
+    where TMessage : ITopicMessage
 {
-    private readonly IStreamFactory _factory;
+    private readonly IStreamFactory<TMessage> _factory;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly ITopicResolver _topicResolver;
+    private readonly ITopicAdmin<TMessage> _admin;
     private readonly List<string> _topics;
     private readonly Dictionary<string, Type> _typeDict = new();
     private int? _batchSize = 1000;
@@ -33,12 +34,12 @@ public class SubscriptionBuilder<TMessage> where TMessage : class, ITopicMessage
     private SubscriptionType _subscriptionType = Abstractions.Models.SubscriptionType.KeyShared;
     private bool _isPreload;
 
-    public SubscriptionBuilder(IStreamFactory factory, ILoggerFactory loggerFactory)
+    public SubscriptionBuilder(IStreamFactory<TMessage> factory, ILoggerFactory loggerFactory)
     {
         _factory = factory;
         _loggerFactory = loggerFactory;
         _topics = new List<string>();
-        _topicResolver = _factory.GetTopicResolver();
+        _admin = _factory.CreateAdmin();
     }
 
     public SubscriptionBuilder<TMessage> AddStateStream<TState>(string senderId = null) where TState : IState
@@ -52,7 +53,7 @@ public class SubscriptionBuilder<TMessage> where TMessage : class, ITopicMessage
 
         // Add Sub Topics (for IState only)
         var topics = stateDetails.AllStateTypes
-            .Select(x => _topicResolver.GetTopic<TMessage>(x, senderId))
+            .Select(x => _admin.GetTopic(x, senderId))
             .Where(x => x != null)
             .ToArray();
 
@@ -70,7 +71,7 @@ public class SubscriptionBuilder<TMessage> where TMessage : class, ITopicMessage
             _typeDict[type.Name] = type;
 
         // Add Main Topic
-        _topics.Add(_topicResolver.GetTopic<TMessage>(actionType, senderId));
+        _topics.Add(_admin.GetTopic(actionType, senderId));
 
         return this;
     }

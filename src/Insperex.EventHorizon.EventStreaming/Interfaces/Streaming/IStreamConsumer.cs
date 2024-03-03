@@ -4,7 +4,7 @@ using Insperex.EventHorizon.EventStreaming.Subscriptions;
 
 namespace Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 
-public interface IStreamConsumer<T> where T : ITopicMessage
+public interface IStreamConsumer<TMessage> where TMessage : ITopicMessage
 {
-    public Task OnBatch(SubscriptionContext<T> context);
+    public Task OnBatch(SubscriptionContext<TMessage> context);
 }

@@ -9,7 +9,8 @@ using Insperex.EventHorizon.EventStreaming.Readers;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory;
 
-public class InMemoryTopicReader<T> : ITopicReader<T> where T : class, ITopicMessage
+public class InMemoryTopicReader<TMessage> : ITopicReader<TMessage>
+    where TMessage : ITopicMessage
 {
     private readonly ReaderConfig _config;
     private readonly MessageDatabase _messageDatabase;
@@ -22,9 +23,9 @@ public class InMemoryTopicReader<T> : ITopicReader<T> where T : class, ITopicMes
         _index = 0;
     }
 
-    public Task<MessageContext<T>[]> GetNextAsync(int batchSize, TimeSpan timeout)
+    public Task<MessageContext<TMessage>[]> GetNextAsync(int batchSize, TimeSpan timeout)
     {
-        var messages = _messageDatabase.GetMessages<T>(_config.Topic, _config.Keys);
+        var messages = _messageDatabase.GetMessages<TMessage>(_config.Topic, _config.Keys);
         var results = messages.SkipLast(_index).Take(batchSize).ToArray();
         _index += batchSize;
         return Task.FromResult(results);

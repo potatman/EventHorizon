@@ -6,26 +6,24 @@ using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 
 namespace Insperex.EventHorizon.EventStreaming.Admins
 {
-    public class Admin<TM>
-        where TM : ITopicMessage
+    public class Admin<TMessage>
+        where TMessage : ITopicMessage
     {
-        private readonly ITopicAdmin<TM> _topicAdmin;
-        private readonly ITopicResolver _topicResolver;
+        private readonly ITopicAdmin<TMessage> _topicAdmin;
 
-        public Admin(ITopicAdmin<TM> topicAdmin, ITopicResolver topicResolver)
+        public Admin(ITopicAdmin<TMessage> topicAdmin)
         {
             _topicAdmin = topicAdmin;
-            _topicResolver = topicResolver;
         }
 
-        public async Task RequireTopicAsync(Type type, string name = default, CancellationToken ct = default)
+        public async Task RequireTopicAsync(Type type, string senderId = default, CancellationToken ct = default)
         {
-            await _topicAdmin.RequireTopicAsync(_topicResolver.GetTopic<TM>(type, name), ct);
+            await _topicAdmin.RequireTopicAsync(_topicAdmin.GetTopic(type, senderId), ct);
         }
 
-        public async Task DeleteTopicAsync(Type type, string name = default, CancellationToken ct = default)
+        public async Task DeleteTopicAsync(Type type, string senderId = default, CancellationToken ct = default)
         {
-            var topic = _topicResolver.GetTopic<TM>(type, name);
+            var topic = _topicAdmin.GetTopic(type, senderId);
             if(topic == null) return;
 
             await _topicAdmin.DeleteTopicAsync(topic, ct);

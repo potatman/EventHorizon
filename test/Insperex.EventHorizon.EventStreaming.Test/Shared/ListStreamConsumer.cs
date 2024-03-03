@@ -7,11 +7,12 @@ using Insperex.EventHorizon.EventStreaming.Subscriptions;
 
 namespace Insperex.EventHorizon.EventStreaming.Test.Shared;
 
-public class ListStreamConsumer<T> : IStreamConsumer<T> where T : ITopicMessage
+public class ListStreamConsumer<TMessage> : IStreamConsumer<TMessage>
+    where TMessage : ITopicMessage
 {
-    public readonly BlockingCollection<MessageContext<T>> List = new();
+    public readonly BlockingCollection<MessageContext<TMessage>> List = new();
 
-    public Task OnBatch(SubscriptionContext<T> context)
+    public Task OnBatch(SubscriptionContext<TMessage> context)
     {
         foreach (var message in context.Messages)
             List.Add(message);

@@ -25,8 +25,8 @@ public class PulsarSingleton : IAsyncDisposable
 
     public static readonly IHost Host = HostTestUtil.GetPulsarHost(null);
 
-    public static readonly Lazy<IStreamFactory> Factory = new(() => Host.Services.GetRequiredService<IStreamFactory>());
-    public static readonly Lazy<StreamingClient> StreamClient = new(() => Host.Services.GetRequiredService<StreamingClient>());
+    public static readonly Lazy<IStreamFactory<Event>> Factory = new(() => Host.Services.GetRequiredService<IStreamFactory<Event>>());
+    public static readonly Lazy<StreamingClient<Event>> StreamClient = new(() => Host.Services.GetRequiredService<StreamingClient<Event>>());
 
     private readonly Dictionary<Type, Publisher<Event>> Publishers = new();
     private readonly Dictionary<Type, ITopicConsumer<Event>> Consumers = new();
@@ -39,7 +39,7 @@ public class PulsarSingleton : IAsyncDisposable
         if (Publishers.ContainsKey(type))
             return Publishers[type];
 
-        Publishers[type] = StreamClient.Value.CreatePublisher<Event>()
+        Publishers[type] = StreamClient.Value.CreatePublisher()
             .AddStream<T>()
             .Build();
 
@@ -51,7 +51,7 @@ public class PulsarSingleton : IAsyncDisposable
         if (Consumers.ContainsKey(type))
             return Consumers[type];
 
-        var topic = Factory.Value.GetTopicResolver().GetTopic<Event>(type);
+        var topic = Factory.Value.CreateAdmin().GetTopic(type);
         Consumers[type] = Factory.Value.CreateConsumer(new SubscriptionConfig<Event>
         {
             Topics = [topic],
@@ -68,7 +68,7 @@ public class PulsarSingleton : IAsyncDisposable
         if (Readers.ContainsKey(type))
             return Readers[type];
 
-        Readers[type] = StreamClient.Value.CreateReader<Event>()
+        Readers[type] = StreamClient.Value.CreateReader()
             .AddStream<T>()
             .Keys("5")
             .Build();
@@ -78,7 +78,7 @@ public class PulsarSingleton : IAsyncDisposable
 
     public PulsarTopicAdmin<Event> GetTopicAdmin()
     {
-        return _topicAdmin ??= (PulsarTopicAdmin<Event>) Factory.Value.CreateAdmin<Event>();
+        return _topicAdmin ??= (PulsarTopicAdmin<Event>) Factory.Value.CreateAdmin();
     }
 
     public Event[] FakeEvents(int count)
@@ -117,6 +117,6 @@ public class PulsarSingleton : IAsyncDisposable
 
         // Delete Topics
         foreach (var type in types)
-            await StreamClient.Value.GetAdmin<Event>().DeleteTopicAsync(type, ct: CancellationToken.None);
+            await StreamClient.Value.GetAdmin().DeleteTopicAsync(type, ct: CancellationToken.None);
     }
 }

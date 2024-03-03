@@ -5,11 +5,11 @@ using Insperex.EventHorizon.EventStreaming.Subscriptions;
 
 namespace Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 
-public interface IStreamFactory
+public interface IStreamFactory<TMessage>
+    where TMessage : ITopicMessage
 {
-    ITopicProducer<T> CreateProducer<T>(PublisherConfig config) where T : class, ITopicMessage, new();
-    ITopicConsumer<T> CreateConsumer<T>(SubscriptionConfig<T> config) where T : class, ITopicMessage, new();
-    ITopicReader<T> CreateReader<T>(ReaderConfig config) where T : class, ITopicMessage, new();
-    ITopicAdmin<T> CreateAdmin<T>() where T : ITopicMessage;
-    ITopicResolver GetTopicResolver();
+    ITopicProducer<TMessage> CreateProducer(PublisherConfig config);
+    ITopicConsumer<TMessage> CreateConsumer(SubscriptionConfig<TMessage> config);
+    ITopicReader<TMessage> CreateReader(ReaderConfig config);
+    ITopicAdmin<TMessage> CreateAdmin();
 }

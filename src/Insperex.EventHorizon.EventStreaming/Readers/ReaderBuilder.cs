@@ -9,9 +9,10 @@ using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 
 namespace Insperex.EventHorizon.EventStreaming.Readers;
 
-public class ReaderBuilder<TMessage> where TMessage : class, ITopicMessage, new()
+public class ReaderBuilder<TMessage>
+    where TMessage : ITopicMessage
 {
-    private readonly IStreamFactory _factory;
+    private readonly IStreamFactory<TMessage> _factory;
     private DateTime? _endDateTime;
     private bool _isBeginning = true;
     private DateTime? _startDateTime;
@@ -19,7 +20,7 @@ public class ReaderBuilder<TMessage> where TMessage : class, ITopicMessage, new(
     private string _topic;
     private readonly Dictionary<string, Type> _typeDict = new();
 
-    public ReaderBuilder(IStreamFactory factory)
+    public ReaderBuilder(IStreamFactory<TMessage> factory)
     {
         _factory = factory;
     }
@@ -35,7 +36,7 @@ public class ReaderBuilder<TMessage> where TMessage : class, ITopicMessage, new(
             _typeDict[type.Key] = type.Value;
 
         // Add Topics
-        _topic = _factory.GetTopicResolver().GetTopic<TMessage>(stateType, senderId);
+        _topic = _factory.CreateAdmin().GetTopic(stateType, senderId);
 
         return this;
     }
@@ -52,7 +53,7 @@ public class ReaderBuilder<TMessage> where TMessage : class, ITopicMessage, new(
             _typeDict[type.Name] = type;
 
         // Add Topics
-        _topic = _factory.GetTopicResolver().GetTopic<TMessage>(typeof(TAction), senderId);
+        _topic = _factory.CreateAdmin().GetTopic(typeof(TAction), senderId);
 
         return this;
     }
@@ -92,7 +93,7 @@ public class ReaderBuilder<TMessage> where TMessage : class, ITopicMessage, new(
             EndDateTime = _endDateTime,
             IsBeginning = _isBeginning
         };
-        var consumer = _factory.CreateReader<TMessage>(config);
+        var consumer = _factory.CreateReader(config);
 
         return new Reader<TMessage>(consumer);
     }

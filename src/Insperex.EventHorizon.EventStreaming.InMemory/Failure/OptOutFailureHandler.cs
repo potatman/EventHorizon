@@ -5,13 +5,14 @@ using Insperex.EventHorizon.Abstractions.Models;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory.Failure;
 
-public class OptOutFailureHandler<T>: IFailureHandler<T> where T : class, ITopicMessage, new()
+public class OptOutFailureHandler<TMessage>: IFailureHandler<TMessage>
+    where TMessage : ITopicMessage
 {
     public bool InNormalMode(string topic, string streamId) => true;
 
-    public MessageContext<T>[] GetMessagesForRetry(int capacity) => Array.Empty<MessageContext<T>>();
+    public MessageContext<TMessage>[] GetMessagesForRetry(int capacity) => Array.Empty<MessageContext<TMessage>>();
 
-    public void FinalizeBatch(MessageContext<T>[] acks, MessageContext<T>[] nacks,
+    public void FinalizeBatch(MessageContext<TMessage>[] acks, MessageContext<TMessage>[] nacks,
         Dictionary<string, long> maxIndexByTopic)
     {
     }

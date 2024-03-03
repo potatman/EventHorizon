@@ -7,7 +7,7 @@ namespace Insperex.EventHorizon.EventStreaming.Extensions;
 
 public static class TopicMessageExtensions
 {
-    public static object GetPayload<T>(this T message, Dictionary<string, Type> types)
-        where T : class, ITopicMessage =>
+    public static object GetPayload<TMessage>(this TMessage message, Dictionary<string, Type> types)
+        where TMessage : ITopicMessage =>
         JsonSerializer.Deserialize(message.Payload, types[message.Type]);
 }

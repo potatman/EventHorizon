@@ -8,34 +8,35 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStreaming;
 
-public class StreamingClient
+public class StreamingClient<TMessage>
+    where TMessage : class, ITopicMessage
 {
     private readonly ILoggerFactory _loggerFactory;
-    private readonly IStreamFactory _streamFactory;
+    private readonly IStreamFactory<TMessage> _streamFactory;
 
-    public StreamingClient(IStreamFactory streamFactory, ILoggerFactory loggerFactory)
+    public StreamingClient(IStreamFactory<TMessage> streamFactory, ILoggerFactory loggerFactory)
     {
         _streamFactory = streamFactory;
         _loggerFactory = loggerFactory;
     }
 
-    public PublisherBuilder<T> CreatePublisher<T>() where T : class, ITopicMessage, new()
+    public PublisherBuilder<TMessage> CreatePublisher()
     {
-        return new PublisherBuilder<T>(_streamFactory, _loggerFactory);
+        return new PublisherBuilder<TMessage>(_streamFactory, _loggerFactory);
     }
 
-    public ReaderBuilder<T> CreateReader<T>() where T : class, ITopicMessage, new()
+    public ReaderBuilder<TMessage> CreateReader()
     {
-        return new ReaderBuilder<T>(_streamFactory);
+        return new ReaderBuilder<TMessage>(_streamFactory);
     }
 
-    public SubscriptionBuilder<T> CreateSubscription<T>() where T : class, ITopicMessage, new()
+    public SubscriptionBuilder<TMessage> CreateSubscription()
     {
-        return new SubscriptionBuilder<T>(_streamFactory, _loggerFactory);
+        return new SubscriptionBuilder<TMessage>(_streamFactory, _loggerFactory);
     }
 
-    public Admin<T> GetAdmin<T>() where T : class, ITopicMessage, new()
+    public Admin<TMessage> GetAdmin()
     {
-        return new Admin<T>(_streamFactory.CreateAdmin<T>(), _streamFactory.GetTopicResolver());
+        return new Admin<TMessage>(_streamFactory.CreateAdmin());
     }
 }

@@ -13,6 +13,7 @@ using Insperex.EventHorizon.EventStreaming.Samples.Models;
 using Insperex.EventHorizon.EventStreaming.Test.Fakers;
 using Insperex.EventHorizon.EventStreaming.Test.Util;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -23,10 +24,10 @@ public class PulsarAdminApiTests: IAsyncLifetime
 {
     private readonly ITestOutputHelper _outputHelper;
     private readonly PulsarClientResolver _pulsarClientResolver;
-    private readonly StreamingClient _streamingClient;
+    private readonly StreamingClient<Event> _streamingClient;
     private Stopwatch _stopwatch;
     private readonly TimeSpan _timeout;
-    private readonly PulsarTopicResolver _pulsarTopicResolver;
+    private readonly PulsarTopicAdmin<Event> _pulsarTopicResolver;
     private Event[] _events;
 
     public PulsarAdminApiTests(ITestOutputHelper outputHelper)
@@ -34,10 +35,10 @@ public class PulsarAdminApiTests: IAsyncLifetime
         _outputHelper = outputHelper;
         var serviceProvider = HostTestUtil.GetPulsarHost(_outputHelper).Services;
         _pulsarClientResolver = serviceProvider.GetRequiredService<PulsarClientResolver>();
-        _streamingClient = serviceProvider.GetRequiredService<StreamingClient>();
+        _streamingClient = serviceProvider.GetRequiredService<StreamingClient<Event>>();
         _timeout = TimeSpan.FromSeconds(30);
         var attributeUtil = serviceProvider.GetRequiredService<AttributeUtil>();
-        _pulsarTopicResolver = new(attributeUtil);
+        _pulsarTopicResolver = new(_pulsarClientResolver, attributeUtil, new NullLogger<PulsarTopicAdmin<Event>>());
     }
 
     public Task InitializeAsync()
@@ -52,7 +53,7 @@ public class PulsarAdminApiTests: IAsyncLifetime
     public async Task DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged));
+        await _streamingClient.GetAdmin().DeleteTopicAsync(typeof(Feed1PriceChanged));
     }
 
     [Fact]
@@ -60,13 +61,13 @@ public class PulsarAdminApiTests: IAsyncLifetime
     {
         const string SubscriptionName = "MyTestSubscription";
 
-        var builder = _streamingClient.CreateSubscription<Event>()
+        var builder = _streamingClient.CreateSubscription()
             .AddStream<Feed1PriceChanged>()
             .SubscriptionName(SubscriptionName)
             .BatchSize(100)
             .OnBatch((context) => Task.CompletedTask);
 
-        await using var publisher = await _streamingClient.CreatePublisher<Event>()
+        await using var publisher = await _streamingClient.CreatePublisher()
             .AddStream<Feed1PriceChanged>()
             .Build()
             .PublishAsync(_events);
@@ -81,7 +82,7 @@ public class PulsarAdminApiTests: IAsyncLifetime
         var cts = new CancellationTokenSource();
         cts.CancelAfter(_timeout);
 
-        var topicName = _pulsarTopicResolver.GetTopic<Event>(typeof(Feed1PriceChanged));
+        var topicName = _pulsarTopicResolver.GetTopic(typeof(Feed1PriceChanged));
         var topic = PulsarTopicParser.Parse(topicName);
 
         var url = $"{topic.ApiRoot}/stats?subscriptionBacklogSize=false";

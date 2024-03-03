@@ -10,7 +10,8 @@ using Pulsar.Client.Api;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar;
 
-public class PulsarStreamFactory : IStreamFactory
+public class PulsarStreamFactory<TMessage> : IStreamFactory<TMessage>
+    where TMessage : ITopicMessage
 {
     private readonly PulsarClientResolver _pulsarClientResolver;
     private readonly PulsarClient _pulsarClient;
@@ -29,30 +30,25 @@ public class PulsarStreamFactory : IStreamFactory
         _loggerFactory = loggerFactory;
     }
 
-    public ITopicProducer<T> CreateProducer<T>(PublisherConfig config) where T : class, ITopicMessage, new()
+    public ITopicProducer<TMessage> CreateProducer(PublisherConfig config)
     {
-        return new PulsarTopicProducer<T>(_pulsarClient, config,  CreateAdmin<T>());
+        return new PulsarTopicProducer<TMessage>(_pulsarClient, config,  CreateAdmin());
     }
 
-    public ITopicConsumer<T> CreateConsumer<T>(SubscriptionConfig<T> config) where T : class, ITopicMessage, new()
+    public ITopicConsumer<TMessage> CreateConsumer(SubscriptionConfig<TMessage> config)
     {
         if (config.IsMessageOrderGuaranteedOnFailure)
-            return new OrderGuaranteedPulsarTopicConsumer<T>(_pulsarClient, config, this, _loggerFactory);
-        return new PulsarTopicConsumer<T>(_pulsarClient, config, CreateAdmin<T>());
+            return new OrderGuaranteedPulsarTopicConsumer<TMessage>(_pulsarClient, config, this, _loggerFactory);
+        return new PulsarTopicConsumer<TMessage>(_pulsarClient, config, CreateAdmin());
     }
 
-    public ITopicReader<T> CreateReader<T>(ReaderConfig config) where T : class, ITopicMessage, new()
+    public ITopicReader<TMessage> CreateReader(ReaderConfig config)
     {
-        return new PulsarTopicReader<T>(_pulsarClient, config, CreateAdmin<T>());
+        return new PulsarTopicReader<TMessage>(_pulsarClient, config, CreateAdmin());
     }
 
-    public ITopicAdmin<T> CreateAdmin<T>() where T : ITopicMessage
+    public ITopicAdmin<TMessage> CreateAdmin()
     {
-        return new PulsarTopicAdmin<T>(_pulsarClientResolver, _attributeUtil, _loggerFactory.CreateLogger<PulsarTopicAdmin<T>>());
-    }
-
-    public ITopicResolver GetTopicResolver()
-    {
-        return new PulsarTopicResolver(_attributeUtil);
+        return new PulsarTopicAdmin<TMessage>(_pulsarClientResolver, _attributeUtil, _loggerFactory.CreateLogger<PulsarTopicAdmin<TMessage>>());
     }
 }

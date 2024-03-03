@@ -8,16 +8,17 @@ using Insperex.EventHorizon.EventStreaming.Tracing;
 
 namespace Insperex.EventHorizon.EventStreaming.Readers;
 
-public class Reader<T> : IAsyncDisposable where T : class, ITopicMessage
+public class Reader<TMessage> : IAsyncDisposable
+    where TMessage : ITopicMessage
 {
-    private readonly ITopicReader<T> _reader;
+    private readonly ITopicReader<TMessage> _reader;
 
-    public Reader(ITopicReader<T> reader)
+    public Reader(ITopicReader<TMessage> reader)
     {
         _reader = reader;
     }
 
-    public async Task<MessageContext<T>[]> GetNextAsync(int batchSize, TimeSpan? timeout = default)
+    public async Task<MessageContext<TMessage>[]> GetNextAsync(int batchSize, TimeSpan? timeout = default)
     {
         using var activity = TraceConstants.ActivitySource.StartActivity();
         try

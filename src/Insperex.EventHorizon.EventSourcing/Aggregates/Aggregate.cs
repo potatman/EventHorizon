@@ -14,7 +14,7 @@ using Insperex.EventHorizon.EventStreaming.Extensions;
 namespace Insperex.EventHorizon.EventSourcing.Aggregates;
 
 public class Aggregate<T>
-    where T : class, IState
+    where T : IState
 {
     internal readonly List<Event> Events = new();
     internal readonly List<Response> Responses = new();

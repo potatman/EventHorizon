@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using Insperex.EventHorizon.Abstractions.Interfaces;
+using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventSourcing.Interfaces;
 using Insperex.EventHorizon.EventSourcing.Util;
 using Insperex.EventHorizon.EventStore.Interfaces;
@@ -20,8 +21,8 @@ public class AggregateBuilder<TParent, T>
     private readonly ICrudStore<TParent> _crudStore;
     private readonly ILoggerFactory _loggerFactory;
     private readonly ValidationUtil _validationUtil;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly StreamingClient _streamingClient;
+    private readonly IServiceProvider _provider;
+    private readonly StreamingClient<Event> _streamingClient;
     private bool _isValidationEnabled = true;
     private bool _isRebuildEnabled;
     private IAggregateMiddleware<T> _middleware;
@@ -30,16 +31,16 @@ public class AggregateBuilder<TParent, T>
     private readonly ILogger<AggregateBuilder<TParent, T>> _logger;
 
     public AggregateBuilder(
-        IServiceProvider serviceProvider,
-        StreamingClient streamingClient,
+        IServiceProvider provider,
+        StreamingClient<Event> streamingClient,
         ILoggerFactory loggerFactory)
     {
         _crudStore = typeof(TParent).Name == typeof(Snapshot<>).Name?
-            (ICrudStore<TParent>)serviceProvider.GetRequiredService<ISnapshotStore<T>>() :
-            (ICrudStore<TParent>)serviceProvider.GetRequiredService<IViewStore<T>>();
-        _lockFactory = serviceProvider.GetRequiredService<LockFactory<T>>();
-        _validationUtil = serviceProvider.GetRequiredService<ValidationUtil>();
-        _serviceProvider = serviceProvider;
+            (ICrudStore<TParent>)provider.GetRequiredService<ISnapshotStore<T>>() :
+            (ICrudStore<TParent>)provider.GetRequiredService<IViewStore<T>>();
+        _lockFactory = provider.GetRequiredService<LockFactory<T>>();
+        _validationUtil = provider.GetRequiredService<ValidationUtil>();
+        _provider = provider;
         _streamingClient = streamingClient;
         _loggerFactory = loggerFactory;
         _logger = loggerFactory.CreateLogger<AggregateBuilder<TParent, T>>();
@@ -65,7 +66,7 @@ public class AggregateBuilder<TParent, T>
 
     public AggregateBuilder<TParent, T> UseMiddleware<TMiddle>() where TMiddle : IAggregateMiddleware<T>
     {
-        using var scope = _serviceProvider.CreateScope();
+        using var scope = _provider.CreateScope();
         _middleware = scope.ServiceProvider.GetRequiredService<TMiddle>();
         return this;
     }
@@ -92,6 +93,6 @@ public class AggregateBuilder<TParent, T>
             _validationUtil.Validate<TParent, T>();
 
         var logger = _loggerFactory.CreateLogger<Aggregator<TParent, T>>();
-        return new Aggregator<TParent, T>(_crudStore, _streamingClient, config, logger);
+        return new Aggregator<TParent, T>(_crudStore, _streamingClient, _provider, config, logger);
     }
 }

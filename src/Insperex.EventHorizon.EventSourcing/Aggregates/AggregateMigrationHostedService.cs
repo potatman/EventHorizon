@@ -18,10 +18,10 @@ namespace Insperex.EventHorizon.EventSourcing.Aggregates
         private readonly Subscription<Event> _subscription;
 
         public AggregateMigrationHostedService(Aggregator<Snapshot<TTarget>, TTarget> aggregator,
-            StreamingClient streamingClient,
+            StreamingClient<Event> streamingClient,
             Func<SubscriptionBuilder<Event>, SubscriptionBuilder<Event>> onBuildSubscription = null)
         {
-            var builder = streamingClient.CreateSubscription<Event>()
+            var builder = streamingClient.CreateSubscription()
                 .AddStateStream<TSource>()
                 .SubscriptionName($"Migrate-{typeof(TSource).Name}-{typeof(TTarget).Name}")
                 .OnBatch(async batch =>

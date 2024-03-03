@@ -20,20 +20,21 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.AdvancedFailure;
 /// Interface for communication with the topic that acts as an event history for individual
 /// streams entering or exiting failure state for a subscription.
 /// </summary>
-/// <typeparam name="T">Type of message from the primary topic.</typeparam>
-public sealed class FailureStateTopic<T> where T : ITopicMessage, new()
+/// <typeparam name="TMessage">Type of message from the primary topic.</typeparam>
+public sealed class FailureStateTopic<TMessage>
+    where TMessage : ITopicMessage
 {
     private readonly PulsarClient _pulsarClient;
-    private readonly PulsarTopicAdmin<T> _admin;
-    private readonly ILogger<FailureStateTopic<T>> _logger;
+    private readonly PulsarTopicAdmin<TMessage> _admin;
+    private readonly ILogger<FailureStateTopic<TMessage>> _logger;
     private readonly PulsarTopic _topic;
     private IProducer<TopicStreamState> _producer;
     private readonly string _publisherName;
     private ITableView<TopicStreamState> _tableView;
     private readonly OTelProducerInterceptor.OTelProducerInterceptor<TopicStreamState> _intercept;
 
-    public FailureStateTopic(SubscriptionConfig<T> subscriptionConfig, PulsarClient pulsarClient,
-        PulsarTopicAdmin<T> admin, ILogger<FailureStateTopic<T>> logger)
+    public FailureStateTopic(SubscriptionConfig<TMessage> subscriptionConfig, PulsarClient pulsarClient,
+        PulsarTopicAdmin<TMessage> admin, ILogger<FailureStateTopic<TMessage>> logger)
     {
         _pulsarClient = pulsarClient;
         _admin = admin;

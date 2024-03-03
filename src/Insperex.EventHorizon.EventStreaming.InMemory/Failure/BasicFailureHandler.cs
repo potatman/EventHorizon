@@ -7,24 +7,25 @@ using Insperex.EventHorizon.EventStreaming.Subscriptions;
 
 namespace Insperex.EventHorizon.EventStreaming.InMemory.Failure;
 
-public class BasicFailureHandler<T>: IFailureHandler<T> where T : class, ITopicMessage, new()
+public class BasicFailureHandler<TMessage>: IFailureHandler<TMessage>
+    where TMessage : ITopicMessage
 {
-    private readonly SubscriptionConfig<T> _config;
-    private readonly Dictionary<string, Queue<MessageContext<T>>> _backlogs = new();
+    private readonly SubscriptionConfig<TMessage> _config;
+    private readonly Dictionary<string, Queue<MessageContext<TMessage>>> _backlogs = new();
 
-    public BasicFailureHandler(SubscriptionConfig<T> config)
+    public BasicFailureHandler(SubscriptionConfig<TMessage> config)
     {
         _config = config;
 
         foreach (var topic in _config.Topics)
         {
-            _backlogs[topic] = new Queue<MessageContext<T>>();
+            _backlogs[topic] = new Queue<MessageContext<TMessage>>();
         }
     }
 
     public bool InNormalMode(string topic, string streamId) => true;
 
-    public MessageContext<T>[] GetMessagesForRetry(int capacity)
+    public MessageContext<TMessage>[] GetMessagesForRetry(int capacity)
     {
         var backlogList = BuildBacklogBuffer(capacity);
 
@@ -43,14 +44,14 @@ public class BasicFailureHandler<T>: IFailureHandler<T> where T : class, ITopicM
         return backlogList.ToArray();
     }
 
-    private List<MessageContext<T>> BuildBacklogBuffer(int capacity)
+    private List<MessageContext<TMessage>> BuildBacklogBuffer(int capacity)
     {
         var totalBackloggedItemCount = _backlogs.Values.Sum(bl => bl.Count);
-        var backlogList = new List<MessageContext<T>>(Math.Min(capacity, totalBackloggedItemCount));
+        var backlogList = new List<MessageContext<TMessage>>(Math.Min(capacity, totalBackloggedItemCount));
         return backlogList;
     }
 
-    public void FinalizeBatch(MessageContext<T>[] acks, MessageContext<T>[] nacks,
+    public void FinalizeBatch(MessageContext<TMessage>[] acks, MessageContext<TMessage>[] nacks,
         Dictionary<string, long> maxIndexByTopic)
     {
         foreach (var message in nacks)

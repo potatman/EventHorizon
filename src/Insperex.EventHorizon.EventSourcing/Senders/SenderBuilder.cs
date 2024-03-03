@@ -10,15 +10,15 @@ namespace Insperex.EventHorizon.EventSourcing.Senders;
 public class SenderBuilder
 {
     private readonly SenderSubscriptionTracker _subscriptionTracker;
-    private readonly StreamingClient _streamingClient;
+    private readonly IServiceProvider _provider;
     private readonly ILoggerFactory _loggerFactory;
     private Func<Request, HttpStatusCode, string, IResponse> _getErrorResult;
     private TimeSpan _timeout = TimeSpan.FromSeconds(120);
 
-    public SenderBuilder(SenderSubscriptionTracker subscriptionTracker, StreamingClient streamingClient, ILoggerFactory loggerFactory)
+    public SenderBuilder(SenderSubscriptionTracker subscriptionTracker, IServiceProvider provider, ILoggerFactory loggerFactory)
     {
         _subscriptionTracker = subscriptionTracker;
-        _streamingClient = streamingClient;
+        _provider = provider;
         _loggerFactory = loggerFactory;
     }
 
@@ -42,6 +42,6 @@ public class SenderBuilder
             GetErrorResult = _getErrorResult
         };
 
-        return new Sender(_subscriptionTracker, _streamingClient, config, _loggerFactory.CreateLogger<Sender>());
+        return new Sender(_subscriptionTracker, _provider, config, _loggerFactory.CreateLogger<Sender>());
     }
 }

@@ -13,30 +13,34 @@ using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventSourcing.Aggregates;
 
 public class Aggregator<TParent, TState>
-    where TParent : class, IStateParent<TState>, new()
-    where TState : class, IState
+    where TParent : IStateParent<TState>, new()
+    where TState : IState
 {
     private readonly Type TStateType = typeof(TState);
     private readonly string TStateTypeName = typeof(TState).Name;
     private readonly AggregateConfig<TState> _config;
     private readonly ICrudStore<TParent> _crudStore;
     private readonly ILogger<Aggregator<TParent, TState>> _logger;
-    private readonly StreamingClient _streamingClient;
+    private readonly StreamingClient<Event> _streamingClient;
+    private readonly IServiceProvider _provider;
     private readonly Dictionary<string, object> _publisherDict = new();
 
     public Aggregator(
         ICrudStore<TParent> crudStore,
-        StreamingClient streamingClient,
+        StreamingClient<Event> streamingClient,
+        IServiceProvider provider,
         AggregateConfig<TState> config,
         ILogger<Aggregator<TParent, TState>> logger)
     {
         _crudStore = crudStore;
         _streamingClient = streamingClient;
+        _provider = provider;
         _config = config;
         _logger = logger;
     }
@@ -49,7 +53,7 @@ public class Aggregator<TParent, TState>
     public async Task RebuildAllAsync(CancellationToken ct)
     {
         // TODO: need to move
-        var reader = _streamingClient.CreateReader<Event>().AddStateStream<TState>().Build();
+        var reader = _streamingClient.CreateReader().AddStateStream<TState>().Build();
 
         while (!ct.IsCancellationRequested)
         {
@@ -80,13 +84,13 @@ public class Aggregator<TParent, TState>
         }
     }
 
-    public async Task<Response> HandleAsync<TM>(TM message, CancellationToken ct) where TM : ITopicMessage
+    public async Task<Response> HandleAsync<TMessage>(TMessage message, CancellationToken ct) where TMessage : ITopicMessage
     {
         var responses = await HandleAsync(new[] { message }, ct);
         return responses.FirstOrDefault();
     }
 
-    public async Task<Response[]> HandleAsync<TM>(TM[] messages, CancellationToken ct) where TM : ITopicMessage
+    public async Task<Response[]> HandleAsync<TMessage>(TMessage[] messages, CancellationToken ct) where TMessage : ITopicMessage
     {
         // Load Aggregate
         var streamIds = messages.Select(x => x.StreamId).Distinct().ToArray();
@@ -101,7 +105,7 @@ public class Aggregator<TParent, TState>
         return  aggregateDict.Values.SelectMany(x => x.Responses).ToArray();
     }
 
-    private void TriggerHandle<TM>(TM[] messages, Dictionary<string, Aggregate<TState>> aggregateDict) where TM : ITopicMessage
+    private void TriggerHandle<TMesssage>(TMesssage[] messages, Dictionary<string, Aggregate<TState>> aggregateDict) where TMesssage : ITopicMessage
     {
         var sw = Stopwatch.StartNew();
         foreach (var message in messages)
@@ -252,13 +256,14 @@ public class Aggregator<TParent, TState>
         }
     }
 
-    private Publisher<TM> GetPublisher<TM>(string path) where TM : class, ITopicMessage, new()
+    private Publisher<TMessage> GetPublisher<TMessage>(string path)
+        where TMessage : class, ITopicMessage
     {
-        var key = $"{typeof(TM).Name}-{path}";
+        var key = $"{typeof(TMessage).Name}-{path}";
         if (!_publisherDict.ContainsKey(key))
-            _publisherDict[key] = _streamingClient.CreatePublisher<TM>().AddStateStream<TState>(path).Build();
+            _publisherDict[key] = _provider.GetRequiredService<StreamingClient<TMessage>>().CreatePublisher().AddStateStream<TState>(path).Build();
 
-        return _publisherDict[key] as Publisher<TM>;
+        return _publisherDict[key] as Publisher<TMessage>;
     }
 
     private static void ResetAll(Dictionary<string, Aggregate<TState>> aggregateDict)
@@ -348,7 +353,7 @@ public class Aggregator<TParent, TState>
 
     public Task<MessageContext<Event>[]> GetEventsAsync(string[] streamIds, DateTime? endDateTime = null)
     {
-        var reader = _streamingClient.CreateReader<Event>().AddStateStream<TState>().Keys(streamIds).EndDateTime(endDateTime).Build();
+        var reader = _streamingClient.CreateReader().AddStateStream<TState>().Keys(streamIds).EndDateTime(endDateTime).Build();
         return reader.GetNextAsync(10000);
     }
 
@@ -359,9 +364,9 @@ public class Aggregator<TParent, TState>
     public async Task DropAllAsync(CancellationToken ct)
     {
         await _crudStore.DropDatabaseAsync(ct);
-        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(TStateType, ct: ct);
-        await _streamingClient.GetAdmin<Request>().DeleteTopicAsync(TStateType, ct: ct);
-        await _streamingClient.GetAdmin<Command>().DeleteTopicAsync(TStateType, ct: ct);
+        await _provider.GetRequiredService<StreamingClient<Event>>().GetAdmin().DeleteTopicAsync(TStateType, ct: ct);
+        await _provider.GetRequiredService<StreamingClient<Request>>().GetAdmin().DeleteTopicAsync(TStateType, ct: ct);
+        await _provider.GetRequiredService<StreamingClient<Command>>().GetAdmin().DeleteTopicAsync(TStateType, ct: ct);
     }
 
     #endregion

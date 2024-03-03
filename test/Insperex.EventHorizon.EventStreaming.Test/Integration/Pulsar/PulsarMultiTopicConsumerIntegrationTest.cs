@@ -26,8 +26,8 @@ public class PulsarMultiTopicConsumerIntegrationTest : BaseMultiTopicConsumerInt
     {
         await base.DisposeAsync();
 
-        var streamFactory = Provider.GetRequiredService<IStreamFactory>();
-        var topicAdmin = (PulsarTopicAdmin<Event>)streamFactory.CreateAdmin<Event>();
+        var streamFactory = Provider.GetRequiredService<IStreamFactory<Event>>();
+        var topicAdmin = (PulsarTopicAdmin<Event>)streamFactory.CreateAdmin();
         await topicAdmin.DeleteTopicAsync(
             $"persistent://test_pricing/Event/subscription__ReSharperTestRunner-Fails_{UniqueTestId}__streamFailureState",
             CancellationToken.None);
@@ -40,7 +40,7 @@ public class PulsarMultiTopicConsumerIntegrationTest : BaseMultiTopicConsumerInt
             100, true);
 
         // Consume
-        await using var subscription = await _streamingClient.CreateSubscription<Event>()
+        await using var subscription = await _streamingClient.CreateSubscription()
             .SubscriptionName($"Fails_{UniqueTestId}")
             .AddStream<Feed1PriceChanged>()
             .AddStream<Feed2PriceChanged>()
