@@ -97,19 +97,19 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
             }
         }
 
-        private static void MapRequest<TReq, TRes, T>(IEndpointRouteBuilder endpointRouteBuilder)
-            where T : class, IState, new()
-            where TReq : IRequest<T, TRes>
-            where TRes : class, IResponse<T>
+        private static void MapRequest<TReq, TRes, TState>(IEndpointRouteBuilder endpointRouteBuilder)
+            where TState : class, IState, new()
+            where TReq : IRequest<TState, TRes>
+            where TRes : class, IResponse<TState>
         {
-            var esClient = endpointRouteBuilder.ServiceProvider.GetRequiredService<EventSourcingClient<T>>();
+            var esClient = endpointRouteBuilder.ServiceProvider.GetRequiredService<EventSourcingClient<TState>>();
             var sender = esClient.CreateSender().Build();
-            var typeName = typeof(T).Name;
+            var typeName = typeof(TState).Name;
             var reqName = typeof(TReq).Name;
             endpointRouteBuilder.MapGroup("api")
                 .MapPost(typeName + "/{id}/" + reqName, async (string id, TReq req)  =>
                 {
-                    var response = await sender.SendAndReceiveAsync<T>(new Request(id, req));
+                    var response = await sender.SendAndReceiveAsync(new Request(id, req));
                     var first = response.First();
                     var statusCode = (HttpStatusCode)first.StatusCode;
                     if ((int)statusCode > 300)
@@ -128,13 +128,13 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                 .Produces(StatusCodes.Status500InternalServerError);
         }
 
-        private static void MapCommand<TCmd, T>(IEndpointRouteBuilder endpointRouteBuilder)
-            where T : class, IState, new()
-            where TCmd : ICommand<T>
+        private static void MapCommand<TCmd, TState>(IEndpointRouteBuilder endpointRouteBuilder)
+            where TState : class, IState, new()
+            where TCmd : ICommand<TState>
         {
-            var sender = endpointRouteBuilder.ServiceProvider.GetRequiredService<EventSourcingClient<T>>().CreateSender().Build();
+            var sender = endpointRouteBuilder.ServiceProvider.GetRequiredService<EventSourcingClient<TState>>().CreateSender().Build();
 
-            var typeName = typeof(T).Name;
+            var typeName = typeof(TState).Name;
             var reqName = typeof(TCmd).Name;
             endpointRouteBuilder.MapGroup("api")
                 .MapPost(typeName + "/{id}/" + reqName, async (string id, TCmd cmd)  =>

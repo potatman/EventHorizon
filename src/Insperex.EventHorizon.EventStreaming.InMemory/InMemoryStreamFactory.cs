@@ -13,18 +13,16 @@ namespace Insperex.EventHorizon.EventStreaming.InMemory;
 public class InMemoryStreamFactory<TMessage> : IStreamFactory<TMessage>
     where TMessage : ITopicMessage
 {
-    private readonly AttributeUtil _attributeUtil;
     private readonly IndexDatabase _indexDatabase;
     private readonly MessageDatabase _messageDatabase;
     private readonly ConsumerDatabase _consumerDatabase;
     private readonly FailureHandlerFactory _failureHandlerFactory;
     private readonly ILoggerFactory _loggerFactory;
 
-    public InMemoryStreamFactory(AttributeUtil attributeUtil, MessageDatabase messageDatabase,
+    public InMemoryStreamFactory(MessageDatabase messageDatabase,
         IndexDatabase indexDatabase, ConsumerDatabase consumerDatabase, FailureHandlerFactory failureHandlerFactory,
         ILoggerFactory loggerFactory)
     {
-        _attributeUtil = attributeUtil;
         _messageDatabase = messageDatabase;
         _indexDatabase = indexDatabase;
         _consumerDatabase = consumerDatabase;
@@ -50,6 +48,6 @@ public class InMemoryStreamFactory<TMessage> : IStreamFactory<TMessage>
 
     public ITopicAdmin<TMessage> CreateAdmin()
     {
-        return new InMemoryTopicAdmin<TMessage>(_attributeUtil, _messageDatabase, _indexDatabase, _consumerDatabase);
+        return new InMemoryTopicAdmin<TMessage>(_messageDatabase, _indexDatabase, _consumerDatabase);
     }
 }

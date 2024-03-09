@@ -8,7 +8,6 @@ namespace Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 public interface ITopicAdmin<TMessage>
     where TMessage : ITopicMessage
 {
-    string GetTopic(Type type, string senderId = null);
     Task RequireTopicAsync(string str, CancellationToken ct);
     Task DeleteTopicAsync(string str, CancellationToken ct);
 }

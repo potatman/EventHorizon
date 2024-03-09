@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models;
@@ -15,26 +16,31 @@ namespace Insperex.EventHorizon.EventSourcing.Senders;
 public class SenderSubscriptionTracker : IAsyncDisposable
 {
     private readonly StreamingClient<Response> _streamingClient;
+    private readonly Formatter _formatter;
     private readonly Dictionary<Type, Subscription<Response>> _subscriptionDict = new ();
     private readonly Dictionary<string, MessageContext<Response>> _responseDict = new ();
-    private readonly string _senderId;
+    private readonly string _nodeId;
     private bool _cleaning;
 
-    public SenderSubscriptionTracker(StreamingClient<Response> streamingClient)
+    public SenderSubscriptionTracker(StreamingClient<Response> streamingClient, Formatter formatter)
     {
         _streamingClient = streamingClient;
-        _senderId = AssemblyUtil.AssemblyNameWithGuid;
+        _formatter = formatter;
+        _nodeId = Guid.NewGuid().ToString()[..8];
+
         // Used for when process is stopped mid way
         AppDomain.CurrentDomain.ProcessExit += OnExit;
     }
 
-    public string GetSenderId() => _senderId;
+    public string GetNodeId() => _nodeId;
 
-    public async Task TrackSubscription<T>() where T : IState
+    public async Task<string> TrackSubscription<TState>() where TState : IState
     {
-        var type = typeof(T);
+        var type = typeof(TState);
+        var topic = _formatter.GetTopic<Response>(AssemblyUtil.Assembly, type, _nodeId);
+
         if(_subscriptionDict.ContainsKey(type))
-            return;
+            return topic;
 
         var subscription = _streamingClient.CreateSubscription()
             .SubscriptionType(SubscriptionType.Exclusive)
@@ -45,13 +51,15 @@ public class SenderSubscriptionTracker : IAsyncDisposable
                     _responseDict[response.Data.Id] = response;
             })
             .BatchSize(100000)
-            .AddStateStream<T>(_senderId)
+            .AddStateStream<TState>(AssemblyUtil.Assembly, _nodeId)
             .IsBeginning(true)
             .Build();
 
         _subscriptionDict[type] = subscription;
 
         await subscription.StartAsync();
+
+        return topic;
     }
 
     public Response[] GetResponses(Request[] requests, Func<Request, HttpStatusCode, string, IResponse> configGetErrorResult)
@@ -63,7 +71,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
             {
                 // Add Response, Make Custom if needed
                 responses.Add(value.Data.Error != null
-                    ? new Response(value.Data.Id, value.Data.SenderId, value.Data.StreamId,
+                    ? new Response(value.Data.Id, value.Data.Topic, value.Data.StreamId,
                         configGetErrorResult(request, (HttpStatusCode)value.Data.StatusCode, value.Data.Error), value.Data.Error, value.Data.StatusCode)
                     : value.Data);
             }
@@ -81,7 +89,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
             await group.Value.StopAsync();
 
             // Delete Topic
-            await _streamingClient.GetAdmin().DeleteTopicAsync(group.Key, _senderId);
+            await _streamingClient.GetAdmin().DeleteTopicAsync(group.Key);
         }
         _subscriptionDict.Clear();
     }

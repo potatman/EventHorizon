@@ -15,18 +15,15 @@ public class PulsarStreamFactory<TMessage> : IStreamFactory<TMessage>
 {
     private readonly PulsarClientResolver _pulsarClientResolver;
     private readonly PulsarClient _pulsarClient;
-    private readonly AttributeUtil _attributeUtil;
     private readonly ILoggerFactory _loggerFactory;
 
     public PulsarStreamFactory(
         PulsarClientResolver pulsarClientResolver,
         PulsarClient pulsarClient,
-        AttributeUtil attributeUtil,
         ILoggerFactory loggerFactory)
     {
         _pulsarClientResolver = pulsarClientResolver;
         _pulsarClient = pulsarClient;
-        _attributeUtil = attributeUtil;
         _loggerFactory = loggerFactory;
     }
 
@@ -49,6 +46,6 @@ public class PulsarStreamFactory<TMessage> : IStreamFactory<TMessage>
 
     public ITopicAdmin<TMessage> CreateAdmin()
     {
-        return new PulsarTopicAdmin<TMessage>(_pulsarClientResolver, _attributeUtil, _loggerFactory.CreateLogger<PulsarTopicAdmin<TMessage>>());
+        return new PulsarTopicAdmin<TMessage>(_pulsarClientResolver, _loggerFactory.CreateLogger<PulsarTopicAdmin<TMessage>>());
     }
 }

@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Extensions;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
@@ -17,9 +20,9 @@ namespace Insperex.EventHorizon.EventStreaming.Subscriptions;
 public class SubscriptionBuilder<TMessage>
     where TMessage : ITopicMessage
 {
+    private readonly Formatter _formatter;
     private readonly IStreamFactory<TMessage> _factory;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly ITopicAdmin<TMessage> _admin;
     private readonly List<string> _topics;
     private readonly Dictionary<string, Type> _typeDict = new();
     private int? _batchSize = 1000;
@@ -33,45 +36,42 @@ public class SubscriptionBuilder<TMessage>
     private Func<SubscriptionContext<TMessage>, Task> _onBatch;
     private SubscriptionType _subscriptionType = Abstractions.Models.SubscriptionType.KeyShared;
     private bool _isPreload;
+    private readonly Type _messageType;
 
-    public SubscriptionBuilder(IStreamFactory<TMessage> factory, ILoggerFactory loggerFactory)
+    public SubscriptionBuilder(Formatter formatter, IStreamFactory<TMessage> factory, ILoggerFactory loggerFactory)
     {
+        _formatter = formatter;
         _factory = factory;
         _loggerFactory = loggerFactory;
         _topics = new List<string>();
-        _admin = _factory.CreateAdmin();
+        _messageType = typeof(TMessage);
     }
 
-    public SubscriptionBuilder<TMessage> AddStateStream<TState>(string senderId = null) where TState : IState
+    public SubscriptionBuilder<TMessage> AddStateStream<TState>(Assembly assembly = null, string nodeId = null) where TState : IState
     {
-        var stateType = typeof(TState);
-        var stateDetails = ReflectionFactory.GetStateDetail(stateType);
+        var rootStateType = typeof(TState);
 
-        // Add types
-        foreach (var type in stateDetails.ActionDict)
-            _typeDict[type.Key] = type.Value;
+        foreach (var stateType in ReflectionFactory.GetStateDetail(rootStateType).AllStateTypes)
+        {
+            var stateDetails = ReflectionFactory.GetStateDetail(stateType);
+            var types = stateDetails.MessageTypeDict[_messageType];
+            if(types == null) continue;
 
-        // Add Sub Topics (for IState only)
-        var topics = stateDetails.AllStateTypes
-            .Select(x => _admin.GetTopic(x, senderId))
-            .Where(x => x != null)
-            .ToArray();
-
-        _topics.AddRange(topics);
+            // Add Types and Topics
+            _typeDict.AddRange(types);
+            _topics.Add(_formatter.GetTopic<TMessage>(assembly, stateType, nodeId));
+        }
 
         return this;
     }
-    public SubscriptionBuilder<TMessage> AddStream<TAction>(string senderId = null) where TAction : IAction
+
+    public SubscriptionBuilder<TMessage> AddStream<TAction>() where TAction : IAction
     {
         var actionType = typeof(TAction);
 
-        // Add types
-        var types = ReflectionFactory.GetTypeDetail(actionType).GetTypes<TAction>();
-        foreach (var type in types)
-            _typeDict[type.Name] = type;
-
-        // Add Main Topic
-        _topics.Add(_admin.GetTopic(actionType, senderId));
+        // Add Types and Topics
+        _typeDict.AddRange(ReflectionFactory.GetTypeDetail(actionType).GetTypes<TAction>());
+        _topics.Add(_formatter.GetTopic<TMessage>(actionType.Assembly, actionType));
 
         return this;
     }

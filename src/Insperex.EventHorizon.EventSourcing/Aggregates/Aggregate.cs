@@ -1,26 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Net;
+using System.Reflection;
+using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
+using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Models;
-using Insperex.EventHorizon.EventStreaming.Extensions;
 
 namespace Insperex.EventHorizon.EventSourcing.Aggregates;
 
 public class Aggregate<T>
     where T : IState
 {
+    private static readonly Type Type = typeof(T);
+    private static readonly StateDetail StateDetail = new(Type);
+    private readonly Dictionary<string, Type> _types = StateDetail.ActionDict;
+    private Dictionary<Type, object> AllStates { get; set; }
+
     internal readonly List<Event> Events = new();
     internal readonly List<Response> Responses = new();
-    private readonly Type _type = typeof(T);
-    private readonly StateDetail _stateDetail = new StateDetail(typeof(T));
-    private Dictionary<Type, object> AllStates { get; set; }
     public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
     public string Error { get; private set; }
     public bool IsDirty { get; private set; }
@@ -62,33 +67,27 @@ public class Aggregate<T>
             Apply(@event.Data, false);
     }
 
+    public void AddTypes(Dictionary<string, Type> types)
+    {
+        foreach (var type in types)
+            _types[type.Key] = type.Value;
+    }
+
     public void Handle(Command command)
     {
-        // Try Self
-        var payload = command.GetPayload(_stateDetail.CommandDict);
-        foreach (var state in AllStates)
-        {
-            var context = new AggregateContext(Exists());
-            var method = ReflectionFactory.GetStateDetail(state.Key).CommandHandlersDict[state.Key.Name].GetValueOrDefault(command.Type);
-            method?.Invoke(state.Value, parameters: new [] { payload, context } );
-            foreach(var item in context.Events)
-                Apply(new Event(Id, SequenceId, item));
-        }
+        var context = new AggregateContext(Exists());
+        StateDetail.TriggerHandler(AllStates, context, command);
+        foreach(var item in context.Events)
+            Apply(new Event(Id, SequenceId, item));
     }
 
     public void Handle(Request request)
     {
-        // Try Self
-        var payload = request.GetPayload(_stateDetail.RequestDict);
-        foreach (var state in AllStates)
-        {
-            var context = new AggregateContext(Exists());
-            var method = ReflectionFactory.GetStateDetail(state.Key).RequestHandlersDict[state.Key.Name].GetValueOrDefault(request.Type);
-            var result = method?.Invoke(state.Value, parameters: new [] { payload, context } );
-            Responses.Add(new Response(request.Id, request.SenderId, Id, result, Error, (int)StatusCode));
-            foreach(var item in context.Events)
-                Apply(new Event(Id, SequenceId, item));
-        }
+        var context = new AggregateContext(Exists());
+        var result = StateDetail.TriggerHandler(AllStates, context, request);
+        Responses.Add(new Response(request.Id, request.ResponseTopic, Id, result, Error, (int)StatusCode));
+        foreach(var item in context.Events)
+            Apply(new Event(Id, SequenceId, item));
     }
 
     public void Apply(IEvent<T> @event)
@@ -99,12 +98,7 @@ public class Aggregate<T>
     public void Apply(Event @event, bool isFirstTime = true)
     {
         // Try Self
-        var payload = @event.GetPayload(_stateDetail.EventDict);
-        foreach (var state in AllStates)
-        {
-            var method = ReflectionFactory.GetStateDetail(state.Key).EventAppliersDict[state.Key.Name].GetValueOrDefault(@event.Type);
-            method?.Invoke(state.Value, parameters: new [] { payload } );
-        }
+        StateDetail.TriggerApply(AllStates, @event);
 
         // Track Events only if first time applying
         if (isFirstTime)
@@ -132,12 +126,14 @@ public class Aggregate<T>
         }
     }
 
+
+
     private void Setup()
     {
         // Initialize Data
         State ??= Activator.CreateInstance<T>();
         State.Id = Id;
-        var properties = _stateDetail.PropertiesWithStates;
+        var properties = StateDetail.PropertiesWithStates;
         AllStates = properties
             .ToDictionary(x => x.PropertyType, x =>
             {
@@ -149,7 +145,7 @@ public class Aggregate<T>
                 x.SetValue(State, state);
                 return state;
             });
-        AllStates[_type] = State;
+        AllStates[Type] = State;
     }
 
     public bool Exists() => SequenceId > 0;

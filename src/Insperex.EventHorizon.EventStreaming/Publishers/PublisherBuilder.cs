@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using Insperex.EventHorizon.Abstractions.Exceptions;
+using Insperex.EventHorizon.Abstractions.Extensions;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
@@ -13,6 +15,7 @@ namespace Insperex.EventHorizon.EventStreaming.Publishers;
 public class PublisherBuilder<TMessage>
     where TMessage : class, ITopicMessage
 {
+    private readonly Formatter _formatter;
     private readonly IStreamFactory<TMessage> _factory;
     private readonly ILoggerFactory _loggerFactory;
     private string _topic;
@@ -21,49 +24,45 @@ public class PublisherBuilder<TMessage>
     private bool _isGuaranteed;
     private int _batchSize = 100;
     private bool _isOrderGuaranteed = true;
+    private readonly Type _messageType;
 
-    public PublisherBuilder(IStreamFactory<TMessage> factory, ILoggerFactory loggerFactory)
+    public PublisherBuilder(Formatter formatter, IStreamFactory<TMessage> factory, ILoggerFactory loggerFactory)
     {
+        _formatter = formatter;
         _factory = factory;
         _loggerFactory = loggerFactory;
+        _messageType = typeof(TMessage);
     }
 
-    internal PublisherBuilder<TMessage> AddTopic(string topicName = null)
+    public PublisherBuilder<TMessage> AddTopic(string topicName = null)
     {
         if (_topic != null) throw new MultiTopicNotSupportedException<PublisherBuilder<TMessage>>();
         _topic = topicName;
         return this;
     }
 
-    public PublisherBuilder<TMessage> AddStateStream<TState>(string senderId = null) where TState : IState
+    public PublisherBuilder<TMessage> AddStateStream<TState>() where TState : IState
     {
         if (_topic != null) throw new MultiTopicNotSupportedException<PublisherBuilder<TMessage>>();
 
-        // Add Types
         var stateType = typeof(TState);
-        var stateDetails = ReflectionFactory.GetStateDetail(stateType);
-        foreach (var type in stateDetails.ActionDict)
-            _typeDict[type.Key] = type.Value;
 
-        // Add Topics
-        _topic = _factory.CreateAdmin().GetTopic(stateType, senderId);
+        // Add Types and Topics
+        _typeDict.AddRange(ReflectionFactory.GetStateDetail(stateType).MessageTypeDict[_messageType]);
+        _topic = _formatter.GetTopic<TMessage>(stateType);
 
         return this;
     }
 
-    public PublisherBuilder<TMessage> AddStream<TAction>(string senderId = null) where TAction : IAction
+    public PublisherBuilder<TMessage> AddStream<TAction>() where TAction : IAction
     {
         if (_topic != null) throw new MultiTopicNotSupportedException<PublisherBuilder<TMessage>>();
 
         var actionType = typeof(TAction);
 
-        // Add Types
-        var types = ReflectionFactory.GetTypeDetail(actionType).GetTypes<TAction>();
-        foreach (var type in types)
-            _typeDict[type.Name] = type;
-
-        // Add Topics
-        _topic = _factory.CreateAdmin().GetTopic(actionType, senderId);
+        // Add Types and Topics
+        _typeDict.AddRange(ReflectionFactory.GetTypeDetail(actionType).GetTypes<TAction>());
+        _topic = _formatter.GetTopic<TMessage>(actionType);
 
         return this;
     }

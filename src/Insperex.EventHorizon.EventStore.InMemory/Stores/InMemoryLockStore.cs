@@ -1,11 +1,14 @@
+using System;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 
 namespace Insperex.EventHorizon.EventStore.InMemory.Stores
 {
-    public class InMemoryLockStore<T> : AbstractInMemoryCrudStore<Lock>, ILockStore<T> where T : IState
+    public class InMemoryLockStore<TState> : AbstractInMemoryCrudStore<Lock>, ILockStore<TState> where TState : IState
     {
-        public InMemoryLockStore(InMemoryStoreClient crudDb) : base(crudDb) { }
+        private static readonly Type Type = typeof(TState);
+        public InMemoryLockStore(Formatter formatter, InMemoryStoreClient crudDb) : base(crudDb, formatter.GetDatabase<Lock>(Type)) { }
     }
 }

@@ -8,7 +8,6 @@ using Insperex.EventHorizon.EventStore.ElasticSearch.Attributes;
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 
 [ViewStore("test_bank_view_account")]
-[Stream(typeof(Account))]
 [ElasticIndex(Refresh = "true", RefreshIntervalMs = 200, MaxResultWindow = 5000000)]
 public class AccountView : IState,
     IApplyEvent<AccountOpened>,

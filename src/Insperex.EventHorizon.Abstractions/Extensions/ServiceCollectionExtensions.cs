@@ -1,4 +1,5 @@
 using System;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Util;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,6 +11,9 @@ namespace Insperex.EventHorizon.Abstractions.Extensions
         {
             configure(new EventHorizonConfigurator(collection));
             collection.AddSingleton<AttributeUtil>();
+            collection.AddSingleton<Formatter>();
+            collection.AddSingleton<ITopicFormatter, DefaultTopicFormatter>();
+            collection.AddSingleton<IDatabaseFormatter, DefaultDatabaseFormatter>();
         }
     }
 }

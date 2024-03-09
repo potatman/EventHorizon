@@ -10,7 +10,6 @@ using Insperex.EventHorizon.EventSourcing.Samples.Models.Actions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 using Insperex.EventHorizon.EventStore.Models;
-using Insperex.EventHorizon.EventStreaming.Extensions;
 using Xunit;
 
 namespace Insperex.EventHorizon.EventSourcing.Test.Unit;

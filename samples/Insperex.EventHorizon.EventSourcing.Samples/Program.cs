@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Destructurama;
 using Insperex.EventHorizon.Abstractions.Extensions;
+using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventSourcing.Extensions;
 using Insperex.EventHorizon.EventSourcing.Samples.Middleware;
@@ -18,6 +19,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.FSharp.Control;
 using Serilog;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples;
@@ -45,7 +47,7 @@ public class Program
                         services.AddEventHorizon(x =>
                         {
                             x.AddEventSourcing()
-                                
+
                                 // Stores
                                 .AddMongoDbSnapshotStore(context.Configuration.GetSection("MongoDb").Bind)
                                 .AddElasticViewStore(context.Configuration.GetSection("ElasticSearch").Bind)
@@ -56,7 +58,7 @@ public class Program
                                 .ApplyEventsToView<SearchAccountView>(h =>
                                     h.UseMiddleware<SearchAccountViewMiddleware>())
 
-                                .AddSubscription<AccountConsumer, Event>(s => s.AddStateStream<Account>());
+                                .AddSubscription<AccountConsumer, Event>(s => s.AddStream<IEvent<Account>>());
                         });
                     })
                     .Configure(app =>

@@ -66,9 +66,9 @@ public class AggregatorIntegrationTest : IAsyncLifetime
                     .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
                     .Destructure.UsingAttributes();
             })
+            .AddTestEventHorizonTesting()
             .UseEnvironment("test")
-            .Build()
-            .AddTestBucketIds();
+            .Build();
 
         _eventSourcingClient = _host.Services.GetRequiredService<EventSourcingClient<Account>>();
         _accountAggregator = _eventSourcingClient.Aggregator().Build();

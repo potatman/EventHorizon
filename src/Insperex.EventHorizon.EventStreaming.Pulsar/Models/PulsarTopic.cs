@@ -1,4 +1,6 @@
-﻿namespace Insperex.EventHorizon.EventStreaming.Pulsar.Models;
+﻿using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
+
+namespace Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 
 public class PulsarTopic
 {

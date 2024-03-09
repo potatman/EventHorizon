@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 
@@ -9,21 +10,23 @@ namespace Insperex.EventHorizon.EventStreaming.Admins
     public class Admin<TMessage>
         where TMessage : ITopicMessage
     {
+        private readonly Formatter _formatter;
         private readonly ITopicAdmin<TMessage> _topicAdmin;
 
-        public Admin(ITopicAdmin<TMessage> topicAdmin)
+        public Admin(Formatter formatter, ITopicAdmin<TMessage> topicAdmin)
         {
+            _formatter = formatter;
             _topicAdmin = topicAdmin;
         }
 
-        public async Task RequireTopicAsync(Type type, string senderId = default, CancellationToken ct = default)
+        public async Task RequireTopicAsync(Type type, CancellationToken ct = default)
         {
-            await _topicAdmin.RequireTopicAsync(_topicAdmin.GetTopic(type, senderId), ct);
+            await _topicAdmin.RequireTopicAsync(_formatter.GetTopic<TMessage>(type), ct);
         }
 
-        public async Task DeleteTopicAsync(Type type, string senderId = default, CancellationToken ct = default)
+        public async Task DeleteTopicAsync(Type type, CancellationToken ct = default)
         {
-            var topic = _topicAdmin.GetTopic(type, senderId);
+            var topic = _formatter.GetTopic<TMessage>(type);
             if(topic == null) return;
 
             await _topicAdmin.DeleteTopicAsync(topic, ct);

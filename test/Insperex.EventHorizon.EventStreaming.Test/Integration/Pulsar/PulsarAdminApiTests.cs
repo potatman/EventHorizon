@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Pulsar;
@@ -27,7 +28,7 @@ public class PulsarAdminApiTests: IAsyncLifetime
     private readonly StreamingClient<Event> _streamingClient;
     private Stopwatch _stopwatch;
     private readonly TimeSpan _timeout;
-    private readonly PulsarTopicAdmin<Event> _pulsarTopicResolver;
+    private readonly Formatter _topicFormatter;
     private Event[] _events;
 
     public PulsarAdminApiTests(ITestOutputHelper outputHelper)
@@ -37,8 +38,7 @@ public class PulsarAdminApiTests: IAsyncLifetime
         _pulsarClientResolver = serviceProvider.GetRequiredService<PulsarClientResolver>();
         _streamingClient = serviceProvider.GetRequiredService<StreamingClient<Event>>();
         _timeout = TimeSpan.FromSeconds(30);
-        var attributeUtil = serviceProvider.GetRequiredService<AttributeUtil>();
-        _pulsarTopicResolver = new(_pulsarClientResolver, attributeUtil, new NullLogger<PulsarTopicAdmin<Event>>());
+        _topicFormatter = serviceProvider.GetRequiredService<Formatter>();
     }
 
     public Task InitializeAsync()
@@ -82,7 +82,7 @@ public class PulsarAdminApiTests: IAsyncLifetime
         var cts = new CancellationTokenSource();
         cts.CancelAfter(_timeout);
 
-        var topicName = _pulsarTopicResolver.GetTopic(typeof(Feed1PriceChanged));
+        var topicName = _topicFormatter.GetTopic<Event>(typeof(Feed1PriceChanged));
         var topic = PulsarTopicParser.Parse(topicName);
 
         var url = $"{topic.ApiRoot}/stats?subscriptionBacklogSize=false";

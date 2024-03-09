@@ -43,22 +43,6 @@ public class AttributeUtilUnitTest
         Assert.Equal(origAttr.Database, newAttr2.Database);
     }
 
-    [Fact]
-    public void TestSetTestValues()
-    {
-        var origBucketId = _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).Database;
-        TestUtil.SetTestBucketIds(_attributeUtil, "123", _type);
-        var newAttr = _attributeUtil.GetOne<SnapshotStoreAttribute>(_type);
-
-        // Assert
-        Assert.NotEqual(origBucketId, newAttr.Database);
-
-        // Restore
-        _attributeUtil.Set(_type, new SnapshotStoreAttribute(origBucketId));
-        var newAttr2 = _attributeUtil.GetOne<SnapshotStoreAttribute>(_type);
-        Assert.Equal(origBucketId, newAttr2.Database);
-    }
-
     [Fact(Skip = "Skip For Now")]
     public void TestGetPropertyStateAttribute()
     {

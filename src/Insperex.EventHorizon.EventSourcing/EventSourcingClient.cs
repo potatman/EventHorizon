@@ -8,22 +8,22 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Insperex.EventHorizon.EventSourcing;
 
-public class EventSourcingClient<T> where T : class, IState, new()
+public class EventSourcingClient<TState> where TState : class, IState, new()
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly SenderBuilder _senderBuilder;
+    private readonly SenderBuilder<TState> _senderBuilder;
 
     public EventSourcingClient(
-        SenderBuilder senderBuilder,
+        SenderBuilder<TState> senderBuilder,
         IServiceProvider serviceProvider)
     {
         _senderBuilder = senderBuilder;
         _serviceProvider = serviceProvider;
     }
 
-    public SenderBuilder CreateSender() => _senderBuilder;
-    public AggregateBuilder<Snapshot<T>, T> Aggregator() => _serviceProvider.GetRequiredService<AggregateBuilder<Snapshot<T>, T>>();
-    public AggregateBuilder<View<T>, T> ViewAggregator() => _serviceProvider.GetRequiredService<AggregateBuilder<View<T>, T>>();
-    public ICrudStore<Snapshot<T>> GetSnapshotStore() => _serviceProvider.GetRequiredService<ISnapshotStore<T>>();
-    public ICrudStore<View<T>> GetViewStore() => _serviceProvider.GetRequiredService<IViewStore<T>>();
+    public SenderBuilder<TState> CreateSender() => _senderBuilder;
+    public AggregateBuilder<Snapshot<TState>, TState> Aggregator() => _serviceProvider.GetRequiredService<AggregateBuilder<Snapshot<TState>, TState>>();
+    public AggregateBuilder<View<TState>, TState> ViewAggregator() => _serviceProvider.GetRequiredService<AggregateBuilder<View<TState>, TState>>();
+    public ICrudStore<Snapshot<TState>> GetSnapshotStore() => _serviceProvider.GetRequiredService<ISnapshotStore<TState>>();
+    public ICrudStore<View<TState>> GetViewStore() => _serviceProvider.GetRequiredService<IViewStore<TState>>();
 }

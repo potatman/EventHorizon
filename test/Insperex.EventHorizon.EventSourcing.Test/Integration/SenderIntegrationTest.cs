@@ -34,9 +34,9 @@ public class SenderIntegrationTest : IAsyncLifetime
 {
     private readonly ITestOutputHelper _output;
     private readonly IHost _senderHost;
-    private readonly Sender _sender;
+    private readonly Sender<Account> _sender;
     private Stopwatch _stopwatch;
-    private readonly Sender _sender2;
+    private readonly Sender<Account> _sender2;
     private readonly EventSourcingClient<Account> _eventSourcingClient;
     private readonly StreamingClient<Event> _streamingClient;
     private readonly IHost _consumerHost;
@@ -64,9 +64,9 @@ public class SenderIntegrationTest : IAsyncLifetime
                     .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
                     .Destructure.UsingAttributes();
             })
+            .AddTestEventHorizonTesting()
             .UseEnvironment("test")
-            .Build()
-            .AddTestBucketIds(postfix);
+            .Build();
 
         _consumerHost =  Host.CreateDefaultBuilder(Array.Empty<string>())
             .ConfigureServices((hostContext, services) =>
@@ -90,16 +90,16 @@ public class SenderIntegrationTest : IAsyncLifetime
                     .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
                     .Destructure.UsingAttributes();
             })
+            .AddTestEventHorizonTesting()
             .UseEnvironment("test")
-            .Build()
-            .AddTestBucketIds(postfix);
+            .Build();
 
-        _sender = _senderHost.Services.GetRequiredService<SenderBuilder>()
+        _sender = _senderHost.Services.GetRequiredService<SenderBuilder<Account>>()
             .Timeout(TimeSpan.FromSeconds(30))
             .GetErrorResult((req, status, error) => new AccountResponse(status, error))
             .Build();
 
-        _sender2 = _senderHost.Services.GetRequiredService<SenderBuilder>()
+        _sender2 = _senderHost.Services.GetRequiredService<SenderBuilder<Account>>()
             .Timeout(TimeSpan.FromSeconds(120))
             .GetErrorResult((req, status, error) => new AccountResponse(status, error))
             .Build();
@@ -176,7 +176,7 @@ public class SenderIntegrationTest : IAsyncLifetime
             // Send Command
             var largeRequests  = Enumerable.Range(0, numOfEvents).Select(x => new Deposit(1)).ToArray();
             var allRequests = largeRequests.Select(x => new Request(Guid.NewGuid().ToString(), x)).ToArray();
-            var responses = await _sender2.SendAndReceiveAsync<Account>(allRequests);
+            var responses = await _sender2.SendAndReceiveAsync(allRequests);
 
             Assert.Equal(numOfEvents, responses.Length);
             foreach (var response in responses)
@@ -200,7 +200,7 @@ public class SenderIntegrationTest : IAsyncLifetime
     [Fact]
     public async Task TestSenderTimedOut()
     {
-        var sender = _senderHost.Services.GetRequiredService<SenderBuilder>()
+        var sender = _senderHost.Services.GetRequiredService<SenderBuilder<Account>>()
             .Timeout(TimeSpan.Zero)
             .GetErrorResult((req, status, error) => new AccountResponse(status, error))
             .Build();

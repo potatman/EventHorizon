@@ -1,5 +1,6 @@
 ﻿using System;
 using Insperex.EventHorizon.Abstractions;
+using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventSourcing.Aggregates;
@@ -19,7 +20,7 @@ public static class ServiceCollectionExtensions
     {
         configurator.Collection.TryAddSingleton(typeof(EventSourcingClient<>));
         configurator.Collection.TryAddSingleton(typeof(AggregateBuilder<,>));
-        configurator.Collection.TryAddSingleton<SenderBuilder>();
+        configurator.Collection.TryAddSingleton(typeof(SenderBuilder<>));
         configurator.Collection.TryAddSingleton<SenderSubscriptionTracker>();
         configurator.Collection.TryAddSingleton<ValidationUtil>();
 

@@ -2,11 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Insperex.EventHorizon.Abstractions.Attributes;
+using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Handlers;
-using Insperex.EventHorizon.Abstractions.Util;
+using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
+using Insperex.EventHorizon.Abstractions.Models;
+using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 
 namespace Insperex.EventHorizon.Abstractions.Reflection
 {
@@ -20,13 +22,12 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
         public readonly Dictionary<string, Type> ActionDict;
 
         // Handlers
-        public readonly Dictionary<string, Dictionary<string, MethodInfo>> CommandHandlersDict;
-        public readonly Dictionary<string, Dictionary<string, MethodInfo>> RequestHandlersDict;
-        public readonly Dictionary<string, Dictionary<string, MethodInfo>> EventAppliersDict;
-
+        public Dictionary<Type, Dictionary<string, MethodInfo>> HandlersDict { get; set; }
+        public Dictionary<Type, Dictionary<string, Type>> MessageTypeDict { get; set; }
 
         public readonly PropertyInfo[] PropertiesWithStates;
         public readonly Type[] SubStates;
+        public readonly StateDetail[] SubStateDetails;
         public readonly Type[] AllStateTypes;
 
         public StateDetail(Type type) : base(type)
@@ -34,8 +35,8 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
             // State Properties
             PropertiesWithStates = type.GetProperties().Where(p => p.PropertyType.GetInterface(nameof(IState)) != null).ToArray();
             SubStates = PropertiesWithStates.Select(s => s.PropertyType).ToArray();
+            SubStateDetails = SubStates.Select(x => new StateDetail(x)).ToArray();
             AllStateTypes = SubStates.Concat([Type]).ToArray();
-            AllStateTypes = AllStateTypes.Concat(GetSubTypes(AllStateTypes)).ToArray();
 
             // Actions
             EventDict = GetTypeDictWithGenericArg<IEvent>();
@@ -45,41 +46,21 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
             ActionDict = GetTypeDictWithGenericArg<IAction>();
 
             // Handlers
-            CommandHandlersDict = GetHandlers(typeof(IHandleCommand<>), "Handle");
-            RequestHandlersDict = GetHandlers(typeof(IHandleRequest<,>), "Handle");
-            EventAppliersDict = GetHandlers(typeof(IApplyEvent<>), "Apply");
-        }
-
-        public Dictionary<string, Type> GetTypeDictWithGenericArg<T>() => AllStateTypes.SelectMany(x => x.Assembly
-                .GetTypes().Where(t =>
-                {
-                    return t.GetInterfaces().Any(i =>
-                        typeof(T).IsAssignableFrom(i)
-                        && i.GetGenericArguments().Any()
-                        && i.GetGenericArguments()[0] == x);
-                })
-            )
-            .ToDictionary(x => x.Name);
-
-        private Dictionary<string, Dictionary<string, MethodInfo>> GetHandlers(MemberInfo type, string methodName)
-        {
-            return AllStateTypes.ToDictionary(x => x.Name, t => t.GetInterfaces()
-                    .Where(i => i.Name == type.Name)
-                    .ToDictionary(d => d.GetGenericArguments()[0].Name, d => d.GetMethod(methodName)))
-                ;
-        }
-
-        private static Type[] GetSubTypes(Type[] types)
-        {
-            var newType = new List<Type>();
-            foreach (var type in types)
+            HandlersDict = new Dictionary<Type, Dictionary<string, MethodInfo>>
             {
-                var streamAttributes = new AttributeUtil().GetAll<StreamAttribute>(type).ToArray();
-                var streamSubTypes = streamAttributes.Select(x => x.SubType).Where(x => x != null).ToArray();
-                newType.AddRange(streamSubTypes);
-            }
+                [typeof(Command)] = GetHandlers(typeof(IHandleCommand<>), "Handle"),
+                [typeof(Request)] = GetHandlers(typeof(IHandleRequest<,>), "Handle"),
+                [typeof(Event)] = GetHandlers(typeof(IApplyEvent<>), "Apply")
+            };
 
-            return newType.ToArray();
+            // Handler Types
+            MessageTypeDict = new Dictionary<Type, Dictionary<string, Type>>
+            {
+                [typeof(Command)] = GetHandlerTypeDict(typeof(IHandleCommand<>)),
+                [typeof(Request)] = GetHandlerTypeDict(typeof(IHandleRequest<,>)),
+                [typeof(Event)] = GetHandlerTypeDict(typeof(IApplyEvent<>)),
+                [typeof(Response)] = ResponseDict
+            };
         }
 
         public string[] Validate<TMessage>(Type typeHandler, string methodName)
@@ -89,7 +70,7 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
             var missing = new List<string>();
             foreach (var message in messages)
             {
-                var handler = handlers.Values.FirstOrDefault(h => h.Any(x => x.Key == message.Key));
+                var handler = handlers.GetValueOrDefault(message.Key);
                 if (handler != null) continue;
                 var argCount = typeHandler.GetGenericArguments().Length;
                 var commas = argCount == 1? string.Empty : string.Join(",", Enumerable.Range(0, argCount));
@@ -99,5 +80,63 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
             return missing.ToArray();
         }
 
+        public object TriggerHandler<TMessage>(Dictionary<Type, object> stateDict, AggregateContext context, TMessage message)
+            where TMessage : ITopicMessage
+        {
+            var messageType = typeof(TMessage);
+            foreach (var state in stateDict)
+            {
+                var stateDetail = ReflectionFactory.GetStateDetail(state.Key);
+                var method = stateDetail.HandlersDict[messageType].GetValueOrDefault(message.Type);
+                if (method == null) continue;
+                var payload = message.GetPayload(stateDetail.MessageTypeDict[messageType]);
+                var result = method?.Invoke(state.Value, parameters: [payload, context]);
+                return result;
+            }
+
+            return null;
+        }
+
+        public void TriggerApply(Dictionary<Type, object> stateDict, Event message)
+        {
+            var messageType = typeof(Event);
+            foreach (var state in stateDict)
+            {
+                var stateDetail = ReflectionFactory.GetStateDetail(state.Key);
+                var method = stateDetail.HandlersDict[messageType].GetValueOrDefault(message.Type);
+                if(method == null) continue;
+                var payload = message.GetPayload(stateDetail.MessageTypeDict[messageType]);
+                method?.Invoke(state.Value, parameters: new [] { payload } );
+            }
+        }
+
+        private Dictionary<string, MethodInfo> GetHandlers(MemberInfo handlerType, string methodName)
+        {
+            return Type.GetInterfaces()
+                .Where(i => i.Name == handlerType.Name)
+                .ToDictionary(d => d.GetGenericArguments()[0].Name, d => d.GetMethod(methodName));
+        }
+
+        private Dictionary<string, Type> GetHandlerTypeDict(MemberInfo handlerType)
+        {
+            return Type.GetInterfaces()
+                .Where(i => i.Name == handlerType.Name)
+                .Select(d => d.GetGenericArguments()[0])
+                .ToDictionary(d => d.Name);
+        }
+
+        private Dictionary<string, Type> GetTypeDictWithGenericArg<T>()
+        {
+            var type = typeof(T);
+            return Type.Assembly
+                .GetTypes().Where(t =>
+                {
+                    return t.GetInterfaces().Any(i =>
+                        type.IsAssignableFrom(i)
+                        && i.GetGenericArguments().Any()
+                        && i.GetGenericArguments()[0] == Type);
+                })
+                .ToDictionary(x => x.Name);
+        }
     }
 }

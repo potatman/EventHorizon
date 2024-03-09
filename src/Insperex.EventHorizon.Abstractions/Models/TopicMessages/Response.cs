@@ -6,7 +6,7 @@ namespace Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 public class Response : ITopicMessage
 {
     public string Id { get; set; }
-    public string SenderId { get; set; }
+    public string Topic { get; set; }
     public string StreamId { get; set; }
     public string Type { get; set; }
     public string Payload { get; set; }
@@ -17,11 +17,11 @@ public class Response : ITopicMessage
     {
     }
 
-    public Response(string id, string senderId, string streamId, object payload, string error, int statusCode)
+    public Response(string id, string topic, string streamId, object payload, string error, int statusCode)
     {
         Id = id;
         StreamId = streamId;
-        SenderId = senderId;
+        Topic = topic;
         Payload = JsonSerializer.Serialize(payload);
         Type = payload?.GetType().Name;
         Error = error;

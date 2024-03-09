@@ -24,4 +24,8 @@
       <InternalsVisibleTo Include="Insperex.EventHorizon.EventStreaming.InMemory" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Extensions\" />
+    </ItemGroup>
+
 </Project>

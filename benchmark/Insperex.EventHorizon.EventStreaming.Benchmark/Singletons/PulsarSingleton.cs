@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Bogus;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
@@ -51,7 +52,7 @@ public class PulsarSingleton : IAsyncDisposable
         if (Consumers.ContainsKey(type))
             return Consumers[type];
 
-        var topic = Factory.Value.CreateAdmin().GetTopic(type);
+        var topic = Host.Services.GetRequiredService<Formatter>().GetTopic<Event>(type);
         Consumers[type] = Factory.Value.CreateConsumer(new SubscriptionConfig<Event>
         {
             Topics = [topic],

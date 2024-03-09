@@ -10,7 +10,7 @@ public class Request : ITopicMessage
     public string StreamId { get; set; }
     public string Type { get; set; }
     public string Payload { get; set; }
-    public string SenderId { get; set; }
+    public string ResponseTopic { get; set; }
 
     public Request()
     {

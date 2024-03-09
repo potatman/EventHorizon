@@ -16,7 +16,7 @@ public class ValidationUtilUnitTest
 
     public ValidationUtilUnitTest()
     {
-        _validationUtil = new ValidationUtil(new AttributeUtil());
+        _validationUtil = new ValidationUtil();
     }
 
     [Fact]
