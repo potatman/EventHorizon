@@ -57,8 +57,11 @@ public class AggregatorIntegrationTest : IAsyncLifetime
                         // Stores
                         .AddInMemorySnapshotStore()
                         .AddInMemoryViewStore()
-                        .AddInMemoryEventStream();
+                        .AddInMemoryEventStream()
+
+                        ;
                 });
+                services.AddTestingForEventHorizon();
             })
             .UseSerilog((_, config) =>
             {
@@ -66,7 +69,6 @@ public class AggregatorIntegrationTest : IAsyncLifetime
                     .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
                     .Destructure.UsingAttributes();
             })
-            .AddTestEventHorizonTesting()
             .UseEnvironment("test")
             .Build();
 

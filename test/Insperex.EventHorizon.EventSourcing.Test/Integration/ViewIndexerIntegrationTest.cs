@@ -57,6 +57,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
                         .AddInMemoryViewStore()
                         .AddInMemoryEventStream();
                 });
+                services.AddTestingForEventHorizon();
             })
             .UseSerilog((_, config) =>
             {
@@ -64,7 +65,6 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
                     .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
                     .Destructure.UsingAttributes();
             })
-            .AddTestEventHorizonTesting()
             .UseEnvironment("test")
             .Build();
 

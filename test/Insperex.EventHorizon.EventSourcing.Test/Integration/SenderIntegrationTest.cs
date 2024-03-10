@@ -57,6 +57,7 @@ public class SenderIntegrationTest : IAsyncLifetime
                         .AddElasticSnapshotStore(hostContext.Configuration.GetSection("ElasticSearch").Bind)
                         .AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                 });
+                services.AddTestingForEventHorizon();
             })
             .UseSerilog((_, config) =>
             {
@@ -64,7 +65,6 @@ public class SenderIntegrationTest : IAsyncLifetime
                     .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
                     .Destructure.UsingAttributes();
             })
-            .AddTestEventHorizonTesting()
             .UseEnvironment("test")
             .Build();
 
@@ -83,6 +83,7 @@ public class SenderIntegrationTest : IAsyncLifetime
                         .AddElasticSnapshotStore(hostContext.Configuration.GetSection("ElasticSearch").Bind)
                         .AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                 });
+                services.AddTestingForEventHorizon();
             })
             .UseSerilog((_, config) =>
             {
@@ -90,7 +91,6 @@ public class SenderIntegrationTest : IAsyncLifetime
                     .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
                     .Destructure.UsingAttributes();
             })
-            .AddTestEventHorizonTesting()
             .UseEnvironment("test")
             .Build();
 

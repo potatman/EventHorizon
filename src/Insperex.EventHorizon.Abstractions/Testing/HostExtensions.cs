@@ -13,7 +13,7 @@ namespace Insperex.EventHorizon.Abstractions.Testing;
 
 public static class HostExtensions
 {
-    public static IServiceCollection AddTestEventHorizonTesting(this IServiceCollection collection, string postfix = null)
+    public static IServiceCollection AddTestingForEventHorizon(this IServiceCollection collection, string postfix = null)
     {
         postfix ??= $"-{Guid.NewGuid().ToString()[..8]}";
 
@@ -25,12 +25,6 @@ public static class HostExtensions
             ServiceLifetime.Singleton));
 
         return collection;
-    }
-
-
-    public static IHostBuilder AddTestEventHorizonTesting(this IHostBuilder hostBuilder, string postfix = null)
-    {
-        return hostBuilder.ConfigureServices((_, collection) => collection.AddTestEventHorizonTesting(postfix));
     }
 
 }

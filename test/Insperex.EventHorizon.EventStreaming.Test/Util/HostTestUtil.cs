@@ -23,7 +23,7 @@ public static class HostTestUtil
                 {
                     x.AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                 });
-                services.AddTestEventHorizonTesting();
+                services.AddTestingForEventHorizon();
             })
             .Build();
     }
@@ -37,6 +37,7 @@ public static class HostTestUtil
                 {
                     x.AddInMemoryEventStream();
                 });
+                services.AddTestingForEventHorizon();
             })
             .Build();
     }
@@ -52,7 +53,6 @@ public static class HostTestUtil
                 if(output != null)
                     config.WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture);
             })
-            .AddTestEventHorizonTesting()
             .UseEnvironment("test");
     }
 }

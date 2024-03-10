@@ -53,6 +53,7 @@ public static class HostTestUtil
                     x.AddMongoDbSnapshotStore(context.Configuration.GetSection("MongoDb").Bind)
                         .AddMongoDbViewStore(context.Configuration.GetSection("MongoDb").Bind);
                 });
+                services.AddTestingForEventHorizon();
             })
             .Build();
     }
@@ -68,7 +69,6 @@ public static class HostTestUtil
                 if(output != null)
                     config.WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture);
             })
-            .AddTestEventHorizonTesting()
             .UseEnvironment("test");
     }
 }
