@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Util;
+using Newtonsoft.Json.Serialization;
 
 namespace Insperex.EventHorizon.Abstractions.Formatters
 {
@@ -15,6 +17,7 @@ namespace Insperex.EventHorizon.Abstractions.Formatters
         private readonly string _databaseFormat;
         private readonly Dictionary<string, string> _dict;
         private readonly string _postfix;
+        private readonly SnakeCaseNamingStrategy _snakeCaseNamingStrategy;
 
         public Formatter(AttributeUtil attributeUtil, ITopicFormatter topicFormatter, IDatabaseFormatter databaseFormatter, IFormatterPostfix formatterPostfix)
         {
@@ -23,28 +26,32 @@ namespace Insperex.EventHorizon.Abstractions.Formatters
             _databaseFormat = databaseFormatter.GetFormat();
             _postfix = formatterPostfix.GetPostfix();
             _dict = new Dictionary<string, string>();
+            _snakeCaseNamingStrategy = new SnakeCaseNamingStrategy();
         }
 
         public string GetTopic<TMessage>(Type type, string node = null) where TMessage : ITopicMessage => GetTopic<TMessage>(null, type, node);
 
         public string GetTopic<TMessage>(Assembly assembly, Type type, string node = null) where TMessage : ITopicMessage
         {
+            var assemblyName = (assembly ?? type.Assembly).GetName().Name;
             var topicFormat = _attributeUtil.GetOne<StreamAttribute>(type)?.TopicFormat ?? _topicFormat;
-            return ReplaceKeys(assembly ?? type.Assembly, type, typeof(TMessage), node, "-", topicFormat);
+            return ReplaceKeys(assemblyName, type, typeof(TMessage), node, "-", topicFormat);
         }
 
         public string GetDatabase<TCollection>(Type type) => GetDatabase <TCollection>(null, type);
 
         public string GetDatabase<TCollection>(Assembly assembly, Type type)
         {
+            var assemblyName = (assembly ?? type.Assembly).GetName().Name;
             var databaseFormat = _attributeUtil.GetOne<SnapshotStoreAttribute>(type)?.Database ?? _databaseFormat;
-            return ReplaceKeys(assembly ?? type.Assembly, type, typeof(TCollection), null, "_", databaseFormat);
+            var str = ReplaceKeys(assemblyName.Split(".").First(), type, typeof(TCollection), null, "_", databaseFormat);
+            return _snakeCaseNamingStrategy.GetPropertyName(str, false);
         }
 
-        private string ReplaceKeys(Assembly assembly, MemberInfo type, MemberInfo messageType, string node, string separator, string format)
+        private string ReplaceKeys(string assemblyName, MemberInfo type, MemberInfo messageType, string node, string separator, string format)
         {
             var str = format
-                .Replace(EventHorizonConstants.AssemblyKey, assembly.GetName().Name)
+                .Replace(EventHorizonConstants.AssemblyKey, assemblyName)
                 .Replace(EventHorizonConstants.TypeKey, type.Name)
                 .Replace(EventHorizonConstants.MessageKey, node ?? messageType.Name);
 

@@ -15,7 +15,6 @@ using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 using Insperex.EventHorizon.EventSourcing.Test.Fakers;
 using Insperex.EventHorizon.EventStore.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
-using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
