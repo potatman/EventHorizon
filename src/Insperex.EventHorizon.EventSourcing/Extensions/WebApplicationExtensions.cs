@@ -73,7 +73,7 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
             var stateDetail = ReflectionFactory.GetStateDetail(type);
 
             // Map Requests
-            var requests = stateDetail.RequestDict.Values
+            var requests = stateDetail.MessageTypeDict[typeof(Request)].Values
                 .Where(x => x.GetInterfaces().Any(i => i.Name == typeof(IRequest<,>).Name &&  i.GetGenericArguments()[0] == type))
                 .ToDictionary(x => x, x => x.GetInterfaces().FirstOrDefault(i => i.Name == typeof(IRequest<,>).Name));
             var methodReq = typeof(WebApplicationExtensions).GetMethod("MapRequest", BindingFlags.Static | BindingFlags.NonPublic);
@@ -85,7 +85,7 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
             }
 
             // Map Commands
-            var commands = stateDetail.CommandDict.Values
+            var commands = stateDetail.MessageTypeDict[typeof(Command)].Values
                 .Where(x => x.GetInterfaces().Any(i => i.Name == typeof(ICommand<>).Name &&  i.GetGenericArguments()[0] == type))
                 .ToDictionary(x => x, x => x.GetInterfaces().FirstOrDefault(i => i.Name == typeof(ICommand<>).Name));
             var methodCmd = typeof(WebApplicationExtensions).GetMethod("MapCommand", BindingFlags.Static | BindingFlags.NonPublic);

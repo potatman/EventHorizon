@@ -14,13 +14,6 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
 {
     public class StateDetail : TypeDetail
     {
-        // Actions
-        public readonly Dictionary<string, Type> CommandDict;
-        public readonly Dictionary<string, Type> EventDict;
-        public readonly Dictionary<string, Type> RequestDict;
-        public readonly Dictionary<string, Type> ResponseDict;
-        public readonly Dictionary<string, Type> ActionDict;
-
         // Handlers
         public Dictionary<Type, Dictionary<string, MethodInfo>> HandlersDict { get; set; }
         public Dictionary<Type, Dictionary<string, Type>> MessageTypeDict { get; set; }
@@ -38,13 +31,6 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
             SubStateDetails = SubStates.Select(x => new StateDetail(x)).ToArray();
             AllStateTypes = SubStates.Concat([Type]).ToArray();
 
-            // Actions
-            EventDict = GetTypeDictWithGenericArg<IEvent>();
-            CommandDict = GetTypeDictWithGenericArg<ICommand>();
-            RequestDict = GetTypeDictWithGenericArg<IRequest>();
-            ResponseDict = GetTypeDictWithGenericArg<IResponse>();
-            ActionDict = GetTypeDictWithGenericArg<IAction>();
-
             // Handlers
             HandlersDict = new Dictionary<Type, Dictionary<string, MethodInfo>>
             {
@@ -59,7 +45,7 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
                 [typeof(Command)] = GetHandlerTypeDict(typeof(IHandleCommand<>)),
                 [typeof(Request)] = GetHandlerTypeDict(typeof(IHandleRequest<,>)),
                 [typeof(Event)] = GetHandlerTypeDict(typeof(IApplyEvent<>)),
-                [typeof(Response)] = ResponseDict
+                [typeof(Response)] = GetTypeDictWithGenericArg<IResponse>()
             };
         }
 
