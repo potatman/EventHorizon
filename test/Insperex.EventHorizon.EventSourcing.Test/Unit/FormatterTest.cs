@@ -41,7 +41,7 @@ namespace Insperex.EventHorizon.EventSourcing.Test.Unit
         public void TestPulsarTopic()
         {
             var topic = _pulsarFormatter.GetTopic<Event>(typeof(FormatterTest));
-            Assert.Equal("persistent://Insperex.EventHorizon.EventSourcing.Test/FormatterTest/Event", topic);
+            Assert.Equal("persistent://Insperex.EventHorizon.EventSourcing.Test/FormatterTest-Event/FormatterTest-Event", topic);
         }
 
         [Fact]

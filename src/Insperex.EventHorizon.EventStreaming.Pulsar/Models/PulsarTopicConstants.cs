@@ -10,7 +10,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Models
         public const string DefaultTenant = "public";
         public const string DefaultNamespace = "default";
         public const string MessageNamespace = "message";
-        public const string DefaultTopicFormat = $"persistent://{EventHorizonConstants.AssemblyKey}/{EventHorizonConstants.TypeKey}/{EventHorizonConstants.MessageKey}";
+        public const string DefaultTopicFormat = $"persistent://{EventHorizonConstants.AssemblyKey}/{EventHorizonConstants.TypeKey}-{EventHorizonConstants.MessageKey}/{EventHorizonConstants.TypeKey}-{EventHorizonConstants.MessageKey}";
 
         public const string Persistent = "persistent";
         public const string NonPersistent = "non-persistent";
