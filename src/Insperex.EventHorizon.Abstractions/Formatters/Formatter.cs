@@ -43,7 +43,7 @@ namespace Insperex.EventHorizon.Abstractions.Formatters
         public string GetDatabase<TCollection>(Assembly assembly, Type type)
         {
             var assemblyName = (assembly ?? type.Assembly).GetName().Name;
-            var databaseFormat = _attributeUtil.GetOne<SnapshotStoreAttribute>(type)?.Database ?? _databaseFormat;
+            var databaseFormat = _attributeUtil.GetOne<StoreAttribute>(type)?.Database ?? _databaseFormat;
             var str = ReplaceKeys(assemblyName.Split(".").First(), type, typeof(TCollection), null, "_", databaseFormat);
             return _snakeCaseNamingStrategy.GetPropertyName(str, false);
         }

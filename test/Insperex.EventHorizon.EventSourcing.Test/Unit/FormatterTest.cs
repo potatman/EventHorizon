@@ -81,7 +81,7 @@ namespace Insperex.EventHorizon.EventSourcing.Test.Unit
         public class ExampleFormatter { }
 
         [Stream("TestTopic")]
-        [SnapshotStore("TestDatabase")]
+        [Store("TestDatabase")]
         public class AttributeFormatter { }
 
     }

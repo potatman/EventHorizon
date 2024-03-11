@@ -3,11 +3,11 @@
 namespace Insperex.EventHorizon.Abstractions.Attributes;
 
 [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
-public sealed class SnapshotStoreAttribute : Attribute
+public sealed class StoreAttribute : Attribute
 {
     public string Database { get; set; }
 
-    public SnapshotStoreAttribute(string database)
+    public StoreAttribute(string database)
     {
         Database = database;
     }

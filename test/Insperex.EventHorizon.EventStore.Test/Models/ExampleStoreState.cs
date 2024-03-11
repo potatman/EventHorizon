@@ -4,7 +4,7 @@ using Insperex.EventHorizon.EventStore.ElasticSearch.Attributes;
 
 namespace Insperex.EventHorizon.EventStore.Test.Models;
 
-[SnapshotStore("test_snapshot_example")]
+[Store("test_snapshot_example")]
 [ElasticIndex(Refresh = "true")]
 public class ExampleStoreState : IState
 {

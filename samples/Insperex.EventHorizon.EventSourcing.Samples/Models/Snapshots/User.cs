@@ -7,7 +7,7 @@ using Insperex.EventHorizon.Abstractions.Models;
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
 [Stream("persistent://test_bank/user/$message")]
-[SnapshotStore("test_snapshot_bank_user")]
+[Store("test_snapshot_bank_user")]
 public class User : IState,
     IHandleCommand<ChangeUserName>,
     IApplyEvent<UserNameChanged>
