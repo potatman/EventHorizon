@@ -22,11 +22,11 @@ public class Subscription<TMessage> : IAsyncDisposable
     private bool _running;
     private bool _stopped;
 
-    public Subscription(IStreamFactory<TMessage> factory, SubscriptionConfig<TMessage> config, ILogger<Subscription<TMessage>> logger)
+    public Subscription(IStreamFactory factory, SubscriptionConfig<TMessage> config, ILogger<Subscription<TMessage>> logger)
     {
         _config = config;
         _logger = logger;
-        _admin = factory.CreateAdmin();
+        _admin = factory.CreateAdmin<TMessage>();
         _consumer = factory.CreateConsumer(_config);
     }
 

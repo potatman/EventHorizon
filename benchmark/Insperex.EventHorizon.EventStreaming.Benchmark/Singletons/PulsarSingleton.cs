@@ -26,7 +26,7 @@ public class PulsarSingleton : IAsyncDisposable
 
     public static readonly IHost Host = HostTestUtil.GetPulsarHost(null);
 
-    public static readonly Lazy<IStreamFactory<Event>> Factory = new(() => Host.Services.GetRequiredService<IStreamFactory<Event>>());
+    public static readonly Lazy<IStreamFactory> Factory = new(() => Host.Services.GetRequiredService<IStreamFactory>());
     public static readonly Lazy<StreamingClient<Event>> StreamClient = new(() => Host.Services.GetRequiredService<StreamingClient<Event>>());
 
     private readonly Dictionary<Type, Publisher<Event>> Publishers = new();
@@ -79,7 +79,7 @@ public class PulsarSingleton : IAsyncDisposable
 
     public PulsarTopicAdmin<Event> GetTopicAdmin()
     {
-        return _topicAdmin ??= (PulsarTopicAdmin<Event>) Factory.Value.CreateAdmin();
+        return _topicAdmin ??= (PulsarTopicAdmin<Event>) Factory.Value.CreateAdmin<Event>();
     }
 
     public Event[] FakeEvents(int count)

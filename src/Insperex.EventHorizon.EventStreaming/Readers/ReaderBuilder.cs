@@ -15,7 +15,7 @@ public class ReaderBuilder<TMessage>
     where TMessage : ITopicMessage
 {
     private readonly Formatter _resolver;
-    private readonly IStreamFactory<TMessage> _factory;
+    private readonly IStreamFactory _factory;
     private DateTime? _endDateTime;
     private bool _isBeginning = true;
     private DateTime? _startDateTime;
@@ -24,7 +24,7 @@ public class ReaderBuilder<TMessage>
     private readonly Dictionary<string, Type> _typeDict = new();
     private readonly Type _messageType;
 
-    public ReaderBuilder(Formatter resolver, IStreamFactory<TMessage> factory)
+    public ReaderBuilder(Formatter resolver, IStreamFactory factory)
     {
         _resolver = resolver;
         _factory = factory;
@@ -92,7 +92,7 @@ public class ReaderBuilder<TMessage>
             EndDateTime = _endDateTime,
             IsBeginning = _isBeginning
         };
-        var consumer = _factory.CreateReader(config);
+        var consumer = _factory.CreateReader<TMessage>(config);
 
         return new Reader<TMessage>(consumer);
     }

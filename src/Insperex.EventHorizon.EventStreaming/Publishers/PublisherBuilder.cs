@@ -16,7 +16,7 @@ public class PublisherBuilder<TMessage>
     where TMessage : class, ITopicMessage
 {
     private readonly Formatter _formatter;
-    private readonly IStreamFactory<TMessage> _factory;
+    private readonly IStreamFactory _factory;
     private readonly ILoggerFactory _loggerFactory;
     private string _topic;
     private readonly Dictionary<string, Type> _typeDict = new();
@@ -26,7 +26,7 @@ public class PublisherBuilder<TMessage>
     private bool _isOrderGuaranteed = true;
     private readonly Type _messageType;
 
-    public PublisherBuilder(Formatter formatter, IStreamFactory<TMessage> factory, ILoggerFactory loggerFactory)
+    public PublisherBuilder(Formatter formatter, IStreamFactory factory, ILoggerFactory loggerFactory)
     {
         _formatter = formatter;
         _factory = factory;

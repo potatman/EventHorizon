@@ -1,7 +1,6 @@
 using System;
 using Insperex.EventHorizon.Abstractions;
 using Insperex.EventHorizon.Abstractions.Formatters;
-using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.Admins;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
@@ -9,7 +8,6 @@ using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
 using Pulsar.Client.Api;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar.Extensions
@@ -29,7 +27,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Extensions
             AddPulsarClient(configurator, onConfig);
 
             // Pulsar
-            configurator.Collection.AddSingleton(typeof(IStreamFactory<>), typeof(PulsarStreamFactory<>));
+            configurator.Collection.AddSingleton(typeof(IStreamFactory), typeof(PulsarStreamFactory));
             configurator.Collection.Replace(new ServiceDescriptor(typeof(ITopicFormatter), typeof(PulsarTopicFormatter)));
 
             // Common

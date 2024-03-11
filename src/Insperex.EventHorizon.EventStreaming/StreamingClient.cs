@@ -14,9 +14,9 @@ public class StreamingClient<TMessage>
 {
     private readonly ILoggerFactory _loggerFactory;
     private readonly Formatter _formatter;
-    private readonly IStreamFactory<TMessage> _streamFactory;
+    private readonly IStreamFactory _streamFactory;
 
-    public StreamingClient(Formatter formatter, IStreamFactory<TMessage> streamFactory, ILoggerFactory loggerFactory)
+    public StreamingClient(Formatter formatter, IStreamFactory streamFactory, ILoggerFactory loggerFactory)
     {
         _formatter = formatter;
         _streamFactory = streamFactory;
@@ -40,6 +40,6 @@ public class StreamingClient<TMessage>
 
     public Admin<TMessage> GetAdmin()
     {
-        return new Admin<TMessage>(_formatter, _streamFactory.CreateAdmin());
+        return new Admin<TMessage>(_formatter, _streamFactory.CreateAdmin<TMessage>());
     }
 }

@@ -21,7 +21,7 @@ public class SubscriptionBuilder<TMessage>
     where TMessage : ITopicMessage
 {
     private readonly Formatter _formatter;
-    private readonly IStreamFactory<TMessage> _factory;
+    private readonly IStreamFactory _factory;
     private readonly ILoggerFactory _loggerFactory;
     private readonly List<string> _topics;
     private readonly Dictionary<string, Type> _typeDict = new();
@@ -38,7 +38,7 @@ public class SubscriptionBuilder<TMessage>
     private bool _isPreload;
     private readonly Type _messageType;
 
-    public SubscriptionBuilder(Formatter formatter, IStreamFactory<TMessage> factory, ILoggerFactory loggerFactory)
+    public SubscriptionBuilder(Formatter formatter, IStreamFactory factory, ILoggerFactory loggerFactory)
     {
         _formatter = formatter;
         _factory = factory;

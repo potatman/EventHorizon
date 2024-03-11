@@ -26,8 +26,8 @@ namespace Insperex.EventHorizon.EventStreaming.InMemory.Extensions
         {
             AddInMemoryStreamClient(configurator);
             configurator.Collection.Replace(ServiceDescriptor.Describe(
-                typeof(IStreamFactory<>),
-                typeof(InMemoryStreamFactory<>),
+                typeof(IStreamFactory),
+                typeof(InMemoryStreamFactory),
                 ServiceLifetime.Singleton));
             configurator.Collection.Replace(ServiceDescriptor.Describe(
                 typeof(ITopicFormatter),
