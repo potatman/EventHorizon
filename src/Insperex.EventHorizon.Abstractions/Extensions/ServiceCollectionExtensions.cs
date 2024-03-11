@@ -12,6 +12,7 @@ namespace Insperex.EventHorizon.Abstractions.Extensions
             configure(new EventHorizonConfigurator(collection));
             collection.AddSingleton<AttributeUtil>();
             collection.AddSingleton<Formatter>();
+            collection.AddSingleton<IFormatterPostfix, DefaultFormatterPostfix>();
             collection.AddSingleton<ITopicFormatter, DefaultTopicFormatter>();
             collection.AddSingleton<IDatabaseFormatter, DefaultDatabaseFormatter>();
         }

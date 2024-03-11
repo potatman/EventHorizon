@@ -44,7 +44,7 @@ public class SenderIntegrationTest : IAsyncLifetime
     public SenderIntegrationTest(ITestOutputHelper output)
     {
         _output = output;
-        var postfix = $"_{Guid.NewGuid().ToString()[..8]}";
+        var postfix = Guid.NewGuid().ToString()[..8];
         _senderHost = Host.CreateDefaultBuilder(Array.Empty<string>())
             .ConfigureServices((hostContext, services) =>
             {
@@ -57,7 +57,7 @@ public class SenderIntegrationTest : IAsyncLifetime
                         .AddElasticSnapshotStore(hostContext.Configuration.GetSection("ElasticSearch").Bind)
                         .AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                 });
-                services.AddTestingForEventHorizon();
+                services.AddTestingForEventHorizon(postfix);
             })
             .UseSerilog((_, config) =>
             {
@@ -83,7 +83,7 @@ public class SenderIntegrationTest : IAsyncLifetime
                         .AddElasticSnapshotStore(hostContext.Configuration.GetSection("ElasticSearch").Bind)
                         .AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                 });
-                services.AddTestingForEventHorizon();
+                services.AddTestingForEventHorizon(postfix);
             })
             .UseSerilog((_, config) =>
             {

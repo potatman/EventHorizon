@@ -4,6 +4,7 @@ namespace Insperex.EventHorizon.Abstractions.Models
 {
     public static class EventHorizonConstants
     {
+        public const string GuidKey = "$guid";
         public const string TypeKey = "$payload";
         public const string MessageKey = "$message";
         public const string AssemblyKey = "$assembly";
