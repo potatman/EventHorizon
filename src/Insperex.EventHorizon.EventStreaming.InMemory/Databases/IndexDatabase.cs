@@ -25,7 +25,7 @@ public class IndexDatabase
 
     public long GetCurrentSequence(string topic, string subscription, int consumer)
     {
-        return _indexes[$"{topic}-{subscription}-{consumer}"];
+        return _indexes.GetValueOrDefault($"{topic}-{subscription}-{consumer}");
     }
 
     public void SetCurrentSequence(string topic, string subscription, int consumer, long sequence)

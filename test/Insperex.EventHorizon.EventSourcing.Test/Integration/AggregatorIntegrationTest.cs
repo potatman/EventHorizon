@@ -52,7 +52,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
                         // Hosts
                         .ApplyRequestsToSnapshot<Account>()
                         .ApplyCommandsToSnapshot<User>()
-                        .ApplyRequestsToSnapshot<SearchAccountView>()
+                        .ApplyEventsToView<SearchAccountView>()
 
                         // Stores
                         .AddInMemorySnapshotStore()
