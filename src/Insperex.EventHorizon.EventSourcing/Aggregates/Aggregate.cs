@@ -21,7 +21,6 @@ public class Aggregate<T>
 {
     private static readonly Type Type = typeof(T);
     private static readonly StateDetail StateDetail = new(Type);
-    private readonly Dictionary<string, Type> _types = StateDetail.ActionDict;
     private Dictionary<Type, object> AllStates { get; set; }
 
     internal readonly List<Event> Events = new();
@@ -65,12 +64,6 @@ public class Aggregate<T>
         // Apply Events
         foreach (var @event in events)
             Apply(@event.Data, false);
-    }
-
-    public void AddTypes(Dictionary<string, Type> types)
-    {
-        foreach (var type in types)
-            _types[type.Key] = type.Value;
     }
 
     public void Handle(Command command)

@@ -30,7 +30,7 @@ public class AggregateUnitTests
         var events = Enumerable.Range(0, 5).Select(x => new AccountCredited(100)).ToArray();
         var eventWrappers = events.Select((x,i) => new Event(_streamId, i, x)).ToArray();
 
-        var typeDict = ReflectionFactory.GetStateDetail(typeof(Account)).EventDict;
+        var typeDict = ReflectionFactory.GetStateDetail(typeof(Account)).MessageTypeDict[typeof(Event)];
         var messages = eventWrappers.Select(x => new MessageContext<Event>(x, new TopicData(Guid.NewGuid().ToString(), "topic", DateTime.UtcNow), typeDict)).ToArray();
         var aggregate = new Aggregate<Account>(messages);
 
