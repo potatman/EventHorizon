@@ -34,26 +34,26 @@ public abstract class BaseInsertBenchmark
     }
 
     [PerfCleanup]
-    public async Task Cleanup()
+    public void Cleanup()
     {
-        await _snapshotStore.DropDatabaseAsync(CancellationToken.None);
+        _snapshotStore.DropDatabaseAsync(CancellationToken.None).Wait();
     }
 
     [PerfBenchmark(Description = "Test Save Throughput",
         NumberOfIterations = 3, RunMode = RunMode.Throughput, RunTimeMilliseconds = 1000, TestMode = TestMode.Test)]
     [CounterThroughputAssertion("TestCounter", MustBe.GreaterThan, 0.5d)]
-    public async Task BenchmarkBulkSave()
+    public void BenchmarkBulkSave()
     {
-        await _snapshotStore.UpsertAllAsync(_snapshots, CancellationToken.None);
+        _snapshotStore.UpsertAllAsync(_snapshots, CancellationToken.None).Wait();
         _counter.Increment();
     }
 
     [PerfBenchmark(Description = "Test Insert Throughput",
         NumberOfIterations = 3, RunMode = RunMode.Throughput, RunTimeMilliseconds = 1000, TestMode = TestMode.Test)]
     [CounterThroughputAssertion("TestCounter", MustBe.GreaterThan, 0.5d)]
-    public async Task BenchmarkBulkInsert()
+    public void BenchmarkBulkInsert()
     {
-        await _snapshotStore.InsertAllAsync(_snapshots, CancellationToken.None);
+        _snapshotStore.InsertAllAsync(_snapshots, CancellationToken.None).Wait();
         _counter.Increment();
     }
 }
