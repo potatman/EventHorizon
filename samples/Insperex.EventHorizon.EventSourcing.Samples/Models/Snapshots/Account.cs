@@ -1,22 +1,17 @@
-﻿using System.Collections.Generic;
-using System.Net;
+﻿using System.Net;
 using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces;
-using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Handlers;
 using Insperex.EventHorizon.Abstractions.Models;
-using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Actions;
 using Insperex.EventHorizon.EventStore.MongoDb.Attributes;
 using Insperex.EventHorizon.EventStore.MongoDb.Models;
-using Insperex.EventHorizon.EventStreaming.Pulsar.Attributes;
 using MongoDB.Driver;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
-[Stream("$type")]
-[PulsarNamespace("test_bank", "account")]
-[SnapshotStore("test_bank_snapshot_account")]
+[Stream("persistent://test_bank/account/$message")]
+[Store("test_bank_snapshot_account")]
 [MongoCollection(ReadPreferenceMode = ReadPreferenceMode.SecondaryPreferred,
     ReadConcernLevel = ReadConcernLevel.Majority,
     WriteConcernLevel = WriteConcernLevel.Majority)]

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
@@ -20,7 +21,8 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
             AssemblyTypes = Assembly.GetTypes();
         }
 
-        public Type[] GetTypes<T>() => AssemblyTypes
-            .Where(x => typeof(T).IsAssignableFrom(x) && x.IsClass).ToArray();
+        public Dictionary<string, Type> GetTypes<T>() => AssemblyTypes
+            .Where(x => typeof(T).IsAssignableFrom(x) && x.IsClass)
+            .ToDictionary(x => x.Name);
     }
 }

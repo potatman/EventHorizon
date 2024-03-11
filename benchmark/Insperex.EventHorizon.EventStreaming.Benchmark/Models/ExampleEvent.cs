@@ -1,14 +1,9 @@
 ﻿using Insperex.EventHorizon.Abstractions.Attributes;
-using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
-using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
-using Insperex.EventHorizon.EventStreaming.Pulsar.Attributes;
-using ProtoBuf;
 
 namespace Insperex.EventHorizon.EventStreaming.Benchmark.Models;
 
-[Stream("benchmark")]
-[PulsarNamespace("test_benchmark", "$type")]
+[Stream("persistent://test_benchmark/$payload/$message")]
 public class ExampleEvent : IEvent
 {
     public string Property1 { get; set; }

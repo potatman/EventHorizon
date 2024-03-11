@@ -23,40 +23,24 @@ public class AttributeUtilUnitTest
     [Fact]
     public void TestGetBucketFromState()
     {
-        var attribute = _attributeUtil.GetOne<SnapshotStoreAttribute>(_type);
+        var attribute = _attributeUtil.GetOne<StoreAttribute>(_type);
         Assert.Equal("test_bank_snapshot_account", attribute.Database);
     }
 
     [Fact]
     public void TestSetBucketFromState()
     {
-        var origAttr = _attributeUtil.GetOne<SnapshotStoreAttribute>(_type);
-        _attributeUtil.Set(_type, new SnapshotStoreAttribute("temp"));
-        var newAttr = _attributeUtil.GetOne<SnapshotStoreAttribute>(_type);
+        var origAttr = _attributeUtil.GetOne<StoreAttribute>(_type);
+        _attributeUtil.Set(_type, new StoreAttribute("temp"));
+        var newAttr = _attributeUtil.GetOne<StoreAttribute>(_type);
 
         // Assert
         Assert.Equal("temp", newAttr.Database);
 
         // Restore
-        _attributeUtil.Set(_type, new SnapshotStoreAttribute(origAttr.Database));
-        var newAttr2 = _attributeUtil.GetOne<SnapshotStoreAttribute>(_type);
+        _attributeUtil.Set(_type, new StoreAttribute(origAttr.Database));
+        var newAttr2 = _attributeUtil.GetOne<StoreAttribute>(_type);
         Assert.Equal(origAttr.Database, newAttr2.Database);
-    }
-
-    [Fact]
-    public void TestSetTestValues()
-    {
-        var origBucketId = _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).Database;
-        TestUtil.SetTestBucketIds(_attributeUtil, "123", _type);
-        var newAttr = _attributeUtil.GetOne<SnapshotStoreAttribute>(_type);
-
-        // Assert
-        Assert.NotEqual(origBucketId, newAttr.Database);
-
-        // Restore
-        _attributeUtil.Set(_type, new SnapshotStoreAttribute(origBucketId));
-        var newAttr2 = _attributeUtil.GetOne<SnapshotStoreAttribute>(_type);
-        Assert.Equal(origBucketId, newAttr2.Database);
     }
 
     [Fact(Skip = "Skip For Now")]

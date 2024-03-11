@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Bogus;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
@@ -25,7 +26,7 @@ public class PulsarSingleton : IAsyncDisposable
 
     public static readonly IHost Host = HostTestUtil.GetPulsarHost(null);
 
-    public static readonly Lazy<IStreamFactory<Event>> Factory = new(() => Host.Services.GetRequiredService<IStreamFactory<Event>>());
+    public static readonly Lazy<IStreamFactory> Factory = new(() => Host.Services.GetRequiredService<IStreamFactory>());
     public static readonly Lazy<StreamingClient<Event>> StreamClient = new(() => Host.Services.GetRequiredService<StreamingClient<Event>>());
 
     private readonly Dictionary<Type, Publisher<Event>> Publishers = new();
@@ -51,7 +52,7 @@ public class PulsarSingleton : IAsyncDisposable
         if (Consumers.ContainsKey(type))
             return Consumers[type];
 
-        var topic = Factory.Value.CreateAdmin().GetTopic(type);
+        var topic = Host.Services.GetRequiredService<Formatter>().GetTopic<Event>(type);
         Consumers[type] = Factory.Value.CreateConsumer(new SubscriptionConfig<Event>
         {
             Topics = [topic],
@@ -78,7 +79,7 @@ public class PulsarSingleton : IAsyncDisposable
 
     public PulsarTopicAdmin<Event> GetTopicAdmin()
     {
-        return _topicAdmin ??= (PulsarTopicAdmin<Event>) Factory.Value.CreateAdmin();
+        return _topicAdmin ??= (PulsarTopicAdmin<Event>) Factory.Value.CreateAdmin<Event>();
     }
 
     public Event[] FakeEvents(int count)

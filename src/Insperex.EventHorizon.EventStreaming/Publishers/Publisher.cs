@@ -18,12 +18,12 @@ public class Publisher<TMessage> : IAsyncDisposable
     private readonly string _typeName;
     private readonly ITopicProducer<TMessage> _producer;
 
-    public Publisher(IStreamFactory<TMessage> factory, PublisherConfig config, ILogger<Publisher<TMessage>> logger)
+    public Publisher(IStreamFactory factory, PublisherConfig config, ILogger<Publisher<TMessage>> logger)
     {
         _config = config;
         _logger = logger;
         _typeName = typeof(TMessage).Name;
-        _producer = factory.CreateProducer(config);
+        _producer = factory.CreateProducer<TMessage>(config);
     }
 
     public Task PublishAsync(string streamId, params object[] objs)

@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
-using Insperex.EventHorizon.Abstractions.Util;
+using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.EventStreaming.InMemory.Databases;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 
@@ -14,26 +12,15 @@ public class InMemoryTopicAdmin<TMessage> : ITopicAdmin<TMessage>
     where TMessage : ITopicMessage
 {
     private readonly IndexDatabase _indexDatabase;
-    private readonly AttributeUtil _attributeUtil;
     private readonly MessageDatabase _messageDatabase;
     private readonly ConsumerDatabase _consumerDatabase;
 
-    public InMemoryTopicAdmin(AttributeUtil attributeUtil, MessageDatabase messageDatabase, IndexDatabase indexDatabase,
+    public InMemoryTopicAdmin(MessageDatabase messageDatabase, IndexDatabase indexDatabase,
         ConsumerDatabase consumerDatabase)
     {
-        _attributeUtil = attributeUtil;
         _messageDatabase = messageDatabase;
         _indexDatabase = indexDatabase;
         _consumerDatabase = consumerDatabase;
-    }
-
-    public string GetTopic(Type type, string senderId = null)
-    {
-        var attribute = _attributeUtil.GetAll<StreamAttribute>(type).FirstOrDefault(x => x.SubType == null);
-        if (attribute == null) return null;
-
-        var topic = senderId == null ? attribute.Topic : $"{attribute.Topic}-{senderId}";
-        return $"in-memory://{typeof(TMessage).Name}/{topic}".Replace("$type", typeof(TMessage).Name);
     }
 
     public Task RequireTopicAsync(string str, CancellationToken ct)

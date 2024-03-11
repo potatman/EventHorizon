@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Destructurama;
@@ -14,7 +13,6 @@ using Insperex.EventHorizon.EventSourcing.Samples.Models.Actions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
-using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
@@ -48,14 +46,18 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
                     x.AddEventSourcing()
 
                         // Hosts
-                        .ApplyEventsToView<AccountView>()
-                        .ApplyEventsToView<SearchAccountView>()
+                        .ApplyEventsToView<AccountView>(a => {}, a =>
+                            a.AddStateStream<Account>())
+                        .ApplyEventsToView<SearchAccountView>(a => {}, a =>
+                            a.AddStateStream<Account>()
+                                .AddStateStream<User>())
 
                         // Stores
                         .AddInMemorySnapshotStore()
                         .AddInMemoryViewStore()
                         .AddInMemoryEventStream();
                 });
+                services.AddTestingForEventHorizon();
             })
             .UseSerilog((_, config) =>
             {
@@ -64,8 +66,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
                     .Destructure.UsingAttributes();
             })
             .UseEnvironment("test")
-            .Build()
-            .AddTestBucketIds();
+            .Build();
 
         _streamingClient = _host.Services.GetRequiredService<StreamingClient<Event>>();
         _accountAggregate = _host.Services.GetRequiredService<EventSourcingClient<AccountView>>().ViewAggregator().Build();

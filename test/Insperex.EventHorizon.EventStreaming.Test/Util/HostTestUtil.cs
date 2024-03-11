@@ -23,9 +23,9 @@ public static class HostTestUtil
                 {
                     x.AddPulsarEventStream(hostContext.Configuration.GetSection("Pulsar").Bind);
                 });
+                services.AddTestingForEventHorizon();
             })
-            .Build()
-            .AddTestBucketIds();
+            .Build();
     }
 
     public static IHost GetInMemoryHost(ITestOutputHelper output)
@@ -37,9 +37,9 @@ public static class HostTestUtil
                 {
                     x.AddInMemoryEventStream();
                 });
+                services.AddTestingForEventHorizon();
             })
-            .Build()
-            .AddTestBucketIds();
+            .Build();
     }
 
     private static IHostBuilder GetHostBase(ITestOutputHelper output)

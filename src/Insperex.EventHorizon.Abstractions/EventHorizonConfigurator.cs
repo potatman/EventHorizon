@@ -1,3 +1,4 @@
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -7,7 +7,7 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
 {
     public static class AssemblyUtil
     {
-        private static readonly Assembly Assembly = Assembly.GetEntryAssembly() ?? Assembly.GetCallingAssembly();
+        public static readonly Assembly Assembly = Assembly.GetEntryAssembly() ?? Assembly.GetCallingAssembly();
         public static readonly string AssemblyName = Assembly.GetName().Name;
         public static string AssemblyNameWithGuid => $"{AssemblyName}_{Guid.NewGuid().ToString()[..8]}";
 

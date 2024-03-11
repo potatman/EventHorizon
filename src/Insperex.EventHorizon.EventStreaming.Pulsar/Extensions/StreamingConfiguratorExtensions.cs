@@ -1,13 +1,13 @@
 using System;
 using Insperex.EventHorizon.Abstractions;
-using Insperex.EventHorizon.Abstractions.Util;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.EventStreaming.Admins;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Publishers;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Pulsar.Client.Api;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar.Extensions
@@ -25,8 +25,10 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Extensions
         {
             // Add Admin and Factory
             AddPulsarClient(configurator, onConfig);
-            configurator.Collection.AddSingleton(typeof(ITopicAdmin<>), typeof(PulsarTopicAdmin<>));
-            configurator.Collection.AddSingleton(typeof(IStreamFactory<>), typeof(PulsarStreamFactory<>));
+
+            // Pulsar
+            configurator.Collection.AddSingleton(typeof(IStreamFactory), typeof(PulsarStreamFactory));
+            configurator.Collection.Replace(new ServiceDescriptor(typeof(ITopicFormatter), typeof(PulsarTopicFormatter)));
 
             // Common
             configurator.Collection.AddSingleton(typeof(StreamingClient<>));

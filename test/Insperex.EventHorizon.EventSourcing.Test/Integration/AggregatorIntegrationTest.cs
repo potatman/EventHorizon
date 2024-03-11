@@ -15,7 +15,6 @@ using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 using Insperex.EventHorizon.EventSourcing.Test.Fakers;
 using Insperex.EventHorizon.EventStore.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
-using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
@@ -52,13 +51,16 @@ public class AggregatorIntegrationTest : IAsyncLifetime
                         // Hosts
                         .ApplyRequestsToSnapshot<Account>()
                         .ApplyCommandsToSnapshot<User>()
-                        .ApplyRequestsToSnapshot<SearchAccountView>()
+                        .ApplyEventsToView<SearchAccountView>()
 
                         // Stores
                         .AddInMemorySnapshotStore()
                         .AddInMemoryViewStore()
-                        .AddInMemoryEventStream();
+                        .AddInMemoryEventStream()
+
+                        ;
                 });
+                services.AddTestingForEventHorizon();
             })
             .UseSerilog((_, config) =>
             {
@@ -67,8 +69,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
                     .Destructure.UsingAttributes();
             })
             .UseEnvironment("test")
-            .Build()
-            .AddTestBucketIds();
+            .Build();
 
         _eventSourcingClient = _host.Services.GetRequiredService<EventSourcingClient<Account>>();
         _accountAggregator = _eventSourcingClient.Aggregator().Build();

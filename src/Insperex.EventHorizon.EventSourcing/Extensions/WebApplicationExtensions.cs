@@ -73,7 +73,7 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
             var stateDetail = ReflectionFactory.GetStateDetail(type);
 
             // Map Requests
-            var requests = stateDetail.RequestDict.Values
+            var requests = stateDetail.MessageTypeDict[typeof(Request)].Values
                 .Where(x => x.GetInterfaces().Any(i => i.Name == typeof(IRequest<,>).Name &&  i.GetGenericArguments()[0] == type))
                 .ToDictionary(x => x, x => x.GetInterfaces().FirstOrDefault(i => i.Name == typeof(IRequest<,>).Name));
             var methodReq = typeof(WebApplicationExtensions).GetMethod("MapRequest", BindingFlags.Static | BindingFlags.NonPublic);
@@ -85,7 +85,7 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
             }
 
             // Map Commands
-            var commands = stateDetail.CommandDict.Values
+            var commands = stateDetail.MessageTypeDict[typeof(Command)].Values
                 .Where(x => x.GetInterfaces().Any(i => i.Name == typeof(ICommand<>).Name &&  i.GetGenericArguments()[0] == type))
                 .ToDictionary(x => x, x => x.GetInterfaces().FirstOrDefault(i => i.Name == typeof(ICommand<>).Name));
             var methodCmd = typeof(WebApplicationExtensions).GetMethod("MapCommand", BindingFlags.Static | BindingFlags.NonPublic);
@@ -97,19 +97,19 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
             }
         }
 
-        private static void MapRequest<TReq, TRes, T>(IEndpointRouteBuilder endpointRouteBuilder)
-            where T : class, IState, new()
-            where TReq : IRequest<T, TRes>
-            where TRes : class, IResponse<T>
+        private static void MapRequest<TReq, TRes, TState>(IEndpointRouteBuilder endpointRouteBuilder)
+            where TState : class, IState, new()
+            where TReq : IRequest<TState, TRes>
+            where TRes : class, IResponse<TState>
         {
-            var esClient = endpointRouteBuilder.ServiceProvider.GetRequiredService<EventSourcingClient<T>>();
+            var esClient = endpointRouteBuilder.ServiceProvider.GetRequiredService<EventSourcingClient<TState>>();
             var sender = esClient.CreateSender().Build();
-            var typeName = typeof(T).Name;
+            var typeName = typeof(TState).Name;
             var reqName = typeof(TReq).Name;
             endpointRouteBuilder.MapGroup("api")
                 .MapPost(typeName + "/{id}/" + reqName, async (string id, TReq req)  =>
                 {
-                    var response = await sender.SendAndReceiveAsync<T>(new Request(id, req));
+                    var response = await sender.SendAndReceiveAsync(new Request(id, req));
                     var first = response.First();
                     var statusCode = (HttpStatusCode)first.StatusCode;
                     if ((int)statusCode > 300)
@@ -128,13 +128,13 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                 .Produces(StatusCodes.Status500InternalServerError);
         }
 
-        private static void MapCommand<TCmd, T>(IEndpointRouteBuilder endpointRouteBuilder)
-            where T : class, IState, new()
-            where TCmd : ICommand<T>
+        private static void MapCommand<TCmd, TState>(IEndpointRouteBuilder endpointRouteBuilder)
+            where TState : class, IState, new()
+            where TCmd : ICommand<TState>
         {
-            var sender = endpointRouteBuilder.ServiceProvider.GetRequiredService<EventSourcingClient<T>>().CreateSender().Build();
+            var sender = endpointRouteBuilder.ServiceProvider.GetRequiredService<EventSourcingClient<TState>>().CreateSender().Build();
 
-            var typeName = typeof(T).Name;
+            var typeName = typeof(TState).Name;
             var reqName = typeof(TCmd).Name;
             endpointRouteBuilder.MapGroup("api")
                 .MapPost(typeName + "/{id}/" + reqName, async (string id, TCmd cmd)  =>

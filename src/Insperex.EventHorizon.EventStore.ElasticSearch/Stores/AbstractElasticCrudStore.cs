@@ -8,6 +8,7 @@ using Elastic.Clients.Elasticsearch.IndexManagement;
 using Elastic.Clients.Elasticsearch.Mapping;
 using Elastic.Transport;
 using Elastic.Transport.Products.Elasticsearch;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.EventStore.ElasticSearch.Attributes;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
@@ -29,7 +30,7 @@ public abstract class AbstractElasticCrudStore<TE> : ICrudStore<TE>
         _elasticAttr = elasticAttr;
         _client = client;
         _logger = logger;
-        _dbName = database + "_" + typeof(TE).Name.Replace("`1", string.Empty).ToLower(CultureInfo.InvariantCulture);
+        _dbName = database;
     }
 
     public async Task MigrateAsync(CancellationToken ct)

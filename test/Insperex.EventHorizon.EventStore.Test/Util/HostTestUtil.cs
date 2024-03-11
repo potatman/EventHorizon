@@ -26,8 +26,7 @@ public static class HostTestUtil
                         .AddElasticViewStore(context.Configuration.GetSection("ElasticSearch").Bind);
                 });
             })
-            .Build()
-            .AddTestBucketIds();
+            .Build();
     }
 
     public static IHost GetInMemoryHost(ITestOutputHelper output)
@@ -41,8 +40,7 @@ public static class HostTestUtil
                         .AddInMemoryViewStore();
                 });
             })
-            .Build()
-            .AddTestBucketIds();
+            .Build();
     }
 
     public static IHost GetMongoDbHost(ITestOutputHelper output)
@@ -55,9 +53,9 @@ public static class HostTestUtil
                     x.AddMongoDbSnapshotStore(context.Configuration.GetSection("MongoDb").Bind)
                         .AddMongoDbViewStore(context.Configuration.GetSection("MongoDb").Bind);
                 });
+                services.AddTestingForEventHorizon();
             })
-            .Build()
-            .AddTestBucketIds();
+            .Build();
     }
 
     private static IHostBuilder GetHostBase(ITestOutputHelper output)

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using Insperex.EventHorizon.Abstractions.Exceptions;
+using Insperex.EventHorizon.Abstractions.Extensions;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
@@ -12,31 +14,32 @@ namespace Insperex.EventHorizon.EventStreaming.Readers;
 public class ReaderBuilder<TMessage>
     where TMessage : ITopicMessage
 {
-    private readonly IStreamFactory<TMessage> _factory;
+    private readonly Formatter _resolver;
+    private readonly IStreamFactory _factory;
     private DateTime? _endDateTime;
     private bool _isBeginning = true;
     private DateTime? _startDateTime;
     private string[] _keys;
     private string _topic;
     private readonly Dictionary<string, Type> _typeDict = new();
+    private readonly Type _messageType;
 
-    public ReaderBuilder(IStreamFactory<TMessage> factory)
+    public ReaderBuilder(Formatter resolver, IStreamFactory factory)
     {
+        _resolver = resolver;
         _factory = factory;
+        _messageType = typeof(TMessage);
     }
 
     public ReaderBuilder<TMessage> AddStateStream<TState>(string senderId = null) where TState : IState
     {
         if (_topic != null) throw new MultiTopicNotSupportedException<ReaderBuilder<TMessage>>();
 
-        // Add Types
         var stateType = typeof(TState);
-        var stateDetails = ReflectionFactory.GetStateDetail(stateType);
-        foreach (var type in stateDetails.ActionDict)
-            _typeDict[type.Key] = type.Value;
 
-        // Add Topics
-        _topic = _factory.CreateAdmin().GetTopic(stateType, senderId);
+        // Add Types and Topics
+        _typeDict.AddRange(ReflectionFactory.GetStateDetail(stateType).MessageTypeDict[_messageType]);
+        _topic = _resolver.GetTopic<TMessage>(stateType);
 
         return this;
     }
@@ -47,13 +50,9 @@ public class ReaderBuilder<TMessage>
 
         var actionType = typeof(TAction);
 
-        // Add Types
-        var types = ReflectionFactory.GetTypeDetail(actionType).GetTypes<TAction>();
-        foreach (var type in types)
-            _typeDict[type.Name] = type;
-
-        // Add Topics
-        _topic = _factory.CreateAdmin().GetTopic(typeof(TAction), senderId);
+        // Add Types and Topics
+        _typeDict.AddRange(ReflectionFactory.GetTypeDetail(actionType).GetTypes<TAction>());
+        _topic = _resolver.GetTopic<TMessage>(actionType);
 
         return this;
     }
@@ -93,7 +92,7 @@ public class ReaderBuilder<TMessage>
             EndDateTime = _endDateTime,
             IsBeginning = _isBeginning
         };
-        var consumer = _factory.CreateReader(config);
+        var consumer = _factory.CreateReader<TMessage>(config);
 
         return new Reader<TMessage>(consumer);
     }

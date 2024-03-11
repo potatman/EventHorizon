@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
@@ -16,62 +17,71 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventSourcing.Senders;
 
-public class Sender
+public class Sender<TState> where TState : IState
 {
     private readonly SenderConfig _config;
-    private readonly ILogger<Sender> _logger;
+    private readonly ILogger<Sender<TState>> _logger;
+    private readonly Formatter _formatter;
     private readonly SenderSubscriptionTracker _subscriptionTracker;
     private readonly IServiceProvider _provider;
     private readonly Dictionary<string, object> _publisherDict = new();
+    private readonly Type _stateType = typeof(TState);
+    private readonly string _commandTopic;
+    private readonly string _requestTopic;
 
-    public Sender(SenderSubscriptionTracker subscriptionTracker, IServiceProvider provider, SenderConfig config, ILogger<Sender> logger)
+    public Sender(
+        SenderSubscriptionTracker subscriptionTracker,
+        IServiceProvider provider,
+        SenderConfig config,
+        ILogger<Sender<TState>> logger)
     {
+        _formatter = provider.GetRequiredService<Formatter>();
+        _commandTopic = _formatter.GetTopic<Command>(_stateType);
+        _requestTopic = _formatter.GetTopic<Request>(_stateType);
         _subscriptionTracker = subscriptionTracker;
         _provider = provider;
         _config = config;
         _logger = logger;
     }
 
-    public Task SendAsync<T>(string streamId, params ICommand<T>[] objs) where T : IState
+    public Task SendAsync(string streamId, params ICommand<TState>[] objs)
     {
         var commands = objs.Select(x => new Command(streamId, x)).ToArray();
-        return SendAsync<T>(commands);
+        return SendAsync(commands);
     }
 
-    public Task SendAsync<T>(params Command[] commands) where T : IState
+    public Task SendAsync(params Command[] commands)
     {
-        return GetPublisher<Command, T>(null).PublishAsync(commands);
+        return GetPublisher<Command>(_commandTopic).PublishAsync(commands);
     }
 
-    public async Task<TR> SendAndReceiveAsync<T, TR>(string streamId, IRequest<T, TR> obj)
-        where T : IState
-        where TR : IResponse<T>
+    public async Task<TR> SendAndReceiveAsync<TR>(string streamId, IRequest<TState, TR> obj)
+        where TR : IResponse<TState>
     {
-        var results = await SendAndReceiveAsync(streamId, new[] { obj });
+        var results = await SendAndReceiveAsync(streamId, [obj]);
         return results.First();
     }
 
-    public async Task<TR[]> SendAndReceiveAsync<T, TR>(string streamId, IRequest<T, TR>[] objs)
-        where T : IState
-        where TR : IResponse<T>
+    public async Task<TR[]> SendAndReceiveAsync<TR>(string streamId, IRequest<TState, TR>[] objs)
+        where TR : IResponse<TState>
     {
         var requests = objs.Select(x => new Request(streamId, x)).ToArray();
-        var res = await SendAndReceiveAsync<T>(requests);
+        var res = await SendAndReceiveAsync(requests);
         return res.Select(x => JsonSerializer.Deserialize<TR>(x.Payload)).ToArray();
     }
 
-    public async Task<Response[]> SendAndReceiveAsync<T>(params Request[] requests) where T : IState
+    public async Task<Response[]> SendAndReceiveAsync(params Request[] requests)
     {
         // Ensure subscription is ready
-        await _subscriptionTracker.TrackSubscription<T>();
+        var topic = await _subscriptionTracker.TrackSubscription<TState>();
 
         // Sent SenderId to respond to
         foreach (var request in requests)
-            request.SenderId = _subscriptionTracker.GetSenderId();
+            request.ResponseTopic = topic;
 
         // Send requests
         var requestDict = requests.ToDictionary(x => x.Id);
-        await GetPublisher<Request, T>(null).PublishAsync(requests);
+        await GetPublisher<Request>(_requestTopic).PublishAsync(requests);
 
         // Wait for messages
         var sw = Stopwatch.StartNew();
@@ -90,7 +100,7 @@ public class Sender
             if (!responseDict.ContainsKey(request.Id))
             {
                 var error = "Request Timed Out";
-                responseDict[request.Id] = new Response(request.Id, _subscriptionTracker.GetSenderId(), request.StreamId,
+                responseDict[request.Id] = new Response(request.Id, _subscriptionTracker.GetNodeId(), request.StreamId,
                     _config.GetErrorResult?.Invoke(request, HttpStatusCode.RequestTimeout, error), error, (int)HttpStatusCode.RequestTimeout);
             }
 
@@ -108,17 +118,15 @@ public class Sender
         return responseDict.Values.ToArray();
     }
 
-    private Publisher<TMessage> GetPublisher<TMessage, T>(string path)
+    private Publisher<TMessage> GetPublisher<TMessage>(string topic)
         where TMessage : class, ITopicMessage
-        where T : IState
     {
-        var key = $"{typeof(TMessage).Name}-{path}";
-        if (!_publisherDict.ContainsKey(key))
-            _publisherDict[key] = _provider.GetRequiredService<StreamingClient<TMessage>>()
+        if (!_publisherDict.ContainsKey(topic))
+            _publisherDict[topic] = _provider.GetRequiredService<StreamingClient<TMessage>>()
                 .CreatePublisher()
-                .AddStateStream<T>(path)
+                .AddTopic(topic)
                 .Build();
 
-        return _publisherDict[key] as Publisher<TMessage>;
+        return _publisherDict[topic] as Publisher<TMessage>;
     }
 }

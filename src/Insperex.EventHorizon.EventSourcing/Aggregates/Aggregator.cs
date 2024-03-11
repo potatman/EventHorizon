@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
@@ -22,14 +23,15 @@ public class Aggregator<TParent, TState>
     where TParent : IStateParent<TState>, new()
     where TState : IState
 {
-    private readonly Type TStateType = typeof(TState);
-    private readonly string TStateTypeName = typeof(TState).Name;
+    private readonly Type _stateType = typeof(TState);
+    private readonly string _stateTypeName = typeof(TState).Name;
     private readonly AggregateConfig<TState> _config;
     private readonly ICrudStore<TParent> _crudStore;
     private readonly ILogger<Aggregator<TParent, TState>> _logger;
     private readonly StreamingClient<Event> _streamingClient;
     private readonly IServiceProvider _provider;
     private readonly Dictionary<string, object> _publisherDict = new();
+    private readonly string _eventTopic;
 
     public Aggregator(
         ICrudStore<TParent> crudStore,
@@ -40,6 +42,7 @@ public class Aggregator<TParent, TState>
     {
         _crudStore = crudStore;
         _streamingClient = streamingClient;
+        _eventTopic = provider.GetRequiredService<Formatter>().GetTopic<Event>(_stateType);
         _provider = provider;
         _config = config;
         _logger = logger;
@@ -140,7 +143,7 @@ public class Aggregator<TParent, TState>
                 agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
         }
         _logger.LogInformation("TriggerHandled {Count} {Type} Aggregate(s) in {Duration}",
-            aggregateDict.Count, TStateTypeName, sw.ElapsedMilliseconds);
+            aggregateDict.Count, _stateTypeName, sw.ElapsedMilliseconds);
     }
 
     #region Save
@@ -158,7 +161,7 @@ public class Aggregator<TParent, TState>
             if (group.Key == null) continue;
             var first = group.First();
             _logger.LogError("{State} {Count} had {Status} => {Error}",
-                TStateTypeName, group.Count(), first.StatusCode, first.Error);
+                _stateTypeName, group.Count(), first.StatusCode, first.Error);
         }
 
         // OnCompleted Hook
@@ -206,7 +209,7 @@ public class Aggregator<TParent, TState>
                 aggregateDict[id].SequenceId++;
             }
             _logger.LogInformation("Saved {Count} {Type} Aggregate(s) in {Duration}",
-                aggregateDict.Count, TStateTypeName, sw.ElapsedMilliseconds);
+                aggregateDict.Count, _stateTypeName, sw.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
@@ -227,7 +230,7 @@ public class Aggregator<TParent, TState>
 
         try
         {
-            var publisher = GetPublisher<Event>(null);
+            var publisher = GetPublisher<Event>(_eventTopic);
             await publisher.PublishAsync(events);
         }
         catch (Exception ex)
@@ -243,7 +246,7 @@ public class Aggregator<TParent, TState>
     {
         try
         {
-            var responsesLookup = responses.ToLookup(x => x.SenderId);
+            var responsesLookup = responses.ToLookup(x => x.Topic);
             foreach (var group in responsesLookup)
             {
                 var publisher = GetPublisher<Response>(group.Key);
@@ -256,14 +259,12 @@ public class Aggregator<TParent, TState>
         }
     }
 
-    private Publisher<TMessage> GetPublisher<TMessage>(string path)
+    private Publisher<TMessage> GetPublisher<TMessage>(string topic)
         where TMessage : class, ITopicMessage
     {
-        var key = $"{typeof(TMessage).Name}-{path}";
-        if (!_publisherDict.ContainsKey(key))
-            _publisherDict[key] = _provider.GetRequiredService<StreamingClient<TMessage>>().CreatePublisher().AddStateStream<TState>(path).Build();
-
-        return _publisherDict[key] as Publisher<TMessage>;
+        if (!_publisherDict.ContainsKey(topic))
+            _publisherDict[topic] = _provider.GetRequiredService<StreamingClient<TMessage>>().CreatePublisher().AddTopic(topic).Build();
+        return _publisherDict[topic] as Publisher<TMessage>;
     }
 
     private static void ResetAll(Dictionary<string, Aggregate<TState>> aggregateDict)
@@ -313,7 +314,7 @@ public class Aggregator<TParent, TState>
                     agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
             }
             _logger.LogInformation("Loaded {Count} {Type} Aggregate(s) in {Duration}",
-                aggregateDict.Count, TStateTypeName, sw.ElapsedMilliseconds);
+                aggregateDict.Count, _stateTypeName, sw.ElapsedMilliseconds);
 
             return aggregateDict;
         }
@@ -364,9 +365,9 @@ public class Aggregator<TParent, TState>
     public async Task DropAllAsync(CancellationToken ct)
     {
         await _crudStore.DropDatabaseAsync(ct);
-        await _provider.GetRequiredService<StreamingClient<Event>>().GetAdmin().DeleteTopicAsync(TStateType, ct: ct);
-        await _provider.GetRequiredService<StreamingClient<Request>>().GetAdmin().DeleteTopicAsync(TStateType, ct: ct);
-        await _provider.GetRequiredService<StreamingClient<Command>>().GetAdmin().DeleteTopicAsync(TStateType, ct: ct);
+        await _provider.GetRequiredService<StreamingClient<Event>>().GetAdmin().DeleteTopicAsync(_stateType, ct: ct);
+        await _provider.GetRequiredService<StreamingClient<Request>>().GetAdmin().DeleteTopicAsync(_stateType, ct: ct);
+        await _provider.GetRequiredService<StreamingClient<Command>>().GetAdmin().DeleteTopicAsync(_stateType, ct: ct);
     }
 
     #endregion

@@ -1,4 +1,5 @@
 using Insperex.EventHorizon.Abstractions;
+using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.EventStreaming.Admins;
 using Insperex.EventHorizon.EventStreaming.InMemory.Databases;
 using Insperex.EventHorizon.EventStreaming.InMemory.Failure;
@@ -25,13 +26,12 @@ namespace Insperex.EventHorizon.EventStreaming.InMemory.Extensions
         {
             AddInMemoryStreamClient(configurator);
             configurator.Collection.Replace(ServiceDescriptor.Describe(
-                typeof(IStreamFactory<>),
-                typeof(InMemoryStreamFactory<>),
+                typeof(IStreamFactory),
+                typeof(InMemoryStreamFactory),
                 ServiceLifetime.Singleton));
-
             configurator.Collection.Replace(ServiceDescriptor.Describe(
-                typeof(ITopicAdmin<>),
-                typeof(InMemoryTopicAdmin<>),
+                typeof(ITopicFormatter),
+                typeof(InMemoryTopicFormatter),
                 ServiceLifetime.Singleton));
 
             configurator.Collection.AddSingleton(typeof(StreamingClient<>));

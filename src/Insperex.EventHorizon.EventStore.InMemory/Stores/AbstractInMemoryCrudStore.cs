@@ -14,14 +14,11 @@ namespace Insperex.EventHorizon.EventStore.InMemory.Stores
     {
         private readonly Dictionary<string, ICrudEntity> _table;
 
-        public AbstractInMemoryCrudStore(InMemoryStoreClient crudDb)
+        public AbstractInMemoryCrudStore(InMemoryStoreClient crudDb, string database)
         {
-            var typeArgs = typeof(T).GetGenericArguments();
-            var typeName = typeArgs.Any()?  typeArgs.First().Name : typeof(T).Name;
-            if (!crudDb.Entities.ContainsKey(typeName))
-                crudDb.Entities[typeName] = new Dictionary<string, ICrudEntity>();
-
-            _table = crudDb.Entities[typeName];
+            if (!crudDb.Entities.ContainsKey(database))
+                crudDb.Entities[database] = new Dictionary<string, ICrudEntity>();
+            _table = crudDb.Entities[database];
         }
 
         public Task MigrateAsync(CancellationToken ct)
