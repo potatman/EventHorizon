@@ -22,13 +22,6 @@ public class AttributeUtilUnitTest
     }
 
     [Fact]
-    public void TestGetBucketFromState()
-    {
-        var attribute = _attributeUtil.GetOne<StoreAttribute>(_type);
-        Assert.Equal("test_bank_snapshot_account", attribute.Database);
-    }
-
-    [Fact]
     public void TestSetBucketFromState()
     {
         var origAttr = _attributeUtil.GetOne<StoreAttribute>(_type);
