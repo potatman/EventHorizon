@@ -20,13 +20,13 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
     private Stopwatch _stopwatch;
     private string _streamId;
     private Event[] _events;
-    private readonly StreamingClient<Event> _streamingClient;
+    private readonly StreamingClient _streamingClient;
     private Publisher<Event> _publisher;
 
     protected BaseReaderIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
         _outputHelper = outputHelper;
-        _streamingClient = provider.GetRequiredService<StreamingClient<Event>>();
+        _streamingClient = provider.GetRequiredService<StreamingClient>();
     }
 
     public async Task InitializeAsync()
@@ -37,7 +37,7 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
 
         // Publish Events
         _events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(1000).Select(x => new Event(x.Id, x)).ToArray();
-        _publisher = _streamingClient.CreatePublisher().AddStream<Feed1PriceChanged>().Build();
+        _publisher = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
         await _publisher.PublishAsync(_events);
 
         // Setup
@@ -48,14 +48,14 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        await _streamingClient.GetAdmin().DeleteTopicAsync(typeof(Feed1PriceChanged));
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged));
         await _publisher.DisposeAsync();
     }
 
     [Fact]
     public async Task TestReaderGetStreamId()
     {
-        await using var reader = _streamingClient.CreateReader().AddStream<Feed1PriceChanged>().Keys(_streamId).Build();
+        await using var reader = _streamingClient.CreateReader<Event>().AddStream<Feed1PriceChanged>().Keys(_streamId).Build();
 
         var events = await reader.GetNextAsync(_events.Length);
 

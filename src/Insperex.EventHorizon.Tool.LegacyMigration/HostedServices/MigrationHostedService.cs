@@ -20,14 +20,14 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
     public class MigrationHostedService : BackgroundService
     {
         private readonly IMongoClient _mongoClient;
-        private readonly StreamingClient<Event> _streamingClient;
+        private readonly StreamingClient _streamingClient;
         private readonly IStreamFactory _streamFactory;
         private readonly ILoggerFactory _loggerFactory;
         private readonly Dictionary<string, string> _bucketToTopic;
         private readonly ILogger<MigrationHostedService> _logger;
         private static int _count;
 
-        public MigrationHostedService(IOptions<MongoConfig> mongoOptions, StreamingClient<Event> streamingClient, IStreamFactory streamFactory, ILoggerFactory loggerFactory, IConfiguration configuration)
+        public MigrationHostedService(IOptions<MongoConfig> mongoOptions, StreamingClient streamingClient, IStreamFactory streamFactory, ILoggerFactory loggerFactory, IConfiguration configuration)
         {
             _mongoClient = new MongoClient(mongoOptions.Value.ConnectionString);
             _streamingClient = streamingClient;
@@ -77,7 +77,7 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration.HostedServices
                 await _streamFactory.CreateAdmin<Event>().RequireTopicAsync(topic, ct);
                 _logger.LogInformation("{bucketId} Starting {topic}", bucketId, topic);
                 var dataSource = new MongoDbSource(_mongoClient, bucketId, _loggerFactory.CreateLogger<MongoDbSource>());
-                await using var publisher = _streamingClient.CreatePublisher().AddTopic(topic).Build();
+                await using var publisher = _streamingClient.CreatePublisher<Event>().AddTopic(topic).Build();
 
                 if (!await dataSource.AnyAsync(ct))
                     return;

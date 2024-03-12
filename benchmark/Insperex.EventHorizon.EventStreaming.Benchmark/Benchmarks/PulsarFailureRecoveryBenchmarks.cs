@@ -24,7 +24,7 @@ public class PulsarFailureRecoveryBenchmarks
     private const int IterationsPerScenario = 3;
 
     private Publisher<Event> _publisher;
-    private StreamingClient<Event> _streamingClient;
+    private StreamingClient _streamingClient;
 
     private string UniqueTestId { get; set; }
 
@@ -47,7 +47,7 @@ public class PulsarFailureRecoveryBenchmarks
     [PerfCleanup]
     public void Cleanup()
     {
-        _streamingClient.GetAdmin().DeleteTopicAsync(typeof(Feed1PriceChanged)).Wait();
+        _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged)).Wait();
 
         var topicAdmin = PulsarSingleton.Instance.GetTopicAdmin();
         topicAdmin.DeleteTopicAsync(
@@ -210,7 +210,7 @@ public class PulsarFailureRecoveryBenchmarks
         bool useAdvancedFailureHandling, Func<bool> endCondition)
     {
         // Consume
-        var builder = _streamingClient.CreateSubscription()
+        var builder = _streamingClient.CreateSubscription<Event>()
             .SubscriptionName($"FailBenchmark_{UniqueTestId}")
             .SubscriptionType(SubscriptionType.KeyShared)
             .AddStream<Feed1PriceChanged>()

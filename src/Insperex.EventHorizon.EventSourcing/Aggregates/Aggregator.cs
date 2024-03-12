@@ -28,14 +28,14 @@ public class Aggregator<TParent, TState>
     private readonly AggregateConfig<TState> _config;
     private readonly ICrudStore<TParent> _crudStore;
     private readonly ILogger<Aggregator<TParent, TState>> _logger;
-    private readonly StreamingClient<Event> _streamingClient;
+    private readonly StreamingClient _streamingClient;
     private readonly IServiceProvider _provider;
     private readonly Dictionary<string, object> _publisherDict = new();
     private readonly string _eventTopic;
 
     public Aggregator(
         ICrudStore<TParent> crudStore,
-        StreamingClient<Event> streamingClient,
+        StreamingClient streamingClient,
         IServiceProvider provider,
         AggregateConfig<TState> config,
         ILogger<Aggregator<TParent, TState>> logger)
@@ -56,7 +56,7 @@ public class Aggregator<TParent, TState>
     public async Task RebuildAllAsync(CancellationToken ct)
     {
         // TODO: need to move
-        var reader = _streamingClient.CreateReader().AddStateStream<TState>().Build();
+        var reader = _streamingClient.CreateReader<Event>().AddStateStream<TState>().Build();
 
         while (!ct.IsCancellationRequested)
         {
@@ -263,7 +263,7 @@ public class Aggregator<TParent, TState>
         where TMessage : class, ITopicMessage
     {
         if (!_publisherDict.ContainsKey(topic))
-            _publisherDict[topic] = _provider.GetRequiredService<StreamingClient<TMessage>>().CreatePublisher().AddTopic(topic).Build();
+            _publisherDict[topic] = _streamingClient.CreatePublisher<TMessage>().AddTopic(topic).Build();
         return _publisherDict[topic] as Publisher<TMessage>;
     }
 
@@ -354,7 +354,7 @@ public class Aggregator<TParent, TState>
 
     public Task<MessageContext<Event>[]> GetEventsAsync(string[] streamIds, DateTime? endDateTime = null)
     {
-        var reader = _streamingClient.CreateReader().AddStateStream<TState>().Keys(streamIds).EndDateTime(endDateTime).Build();
+        var reader = _streamingClient.CreateReader<Event>().AddStateStream<TState>().Keys(streamIds).EndDateTime(endDateTime).Build();
         return reader.GetNextAsync(10000);
     }
 
@@ -365,9 +365,9 @@ public class Aggregator<TParent, TState>
     public async Task DropAllAsync(CancellationToken ct)
     {
         await _crudStore.DropDatabaseAsync(ct);
-        await _provider.GetRequiredService<StreamingClient<Event>>().GetAdmin().DeleteTopicAsync(_stateType, ct: ct);
-        await _provider.GetRequiredService<StreamingClient<Request>>().GetAdmin().DeleteTopicAsync(_stateType, ct: ct);
-        await _provider.GetRequiredService<StreamingClient<Command>>().GetAdmin().DeleteTopicAsync(_stateType, ct: ct);
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(_stateType, ct: ct);
+        await _streamingClient.GetAdmin<Command>().DeleteTopicAsync(_stateType, ct: ct);
+        await _streamingClient.GetAdmin<Request>().DeleteTopicAsync(_stateType, ct: ct);
     }
 
     #endregion

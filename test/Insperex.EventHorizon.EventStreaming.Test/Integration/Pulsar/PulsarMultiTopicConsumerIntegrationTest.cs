@@ -40,7 +40,7 @@ public class PulsarMultiTopicConsumerIntegrationTest : BaseMultiTopicConsumerInt
             100, true);
 
         // Consume
-        await using var subscription = await _streamingClient.CreateSubscription()
+        await using var subscription = await _streamingClient.CreateSubscription<Event>()
             .SubscriptionName($"Fails_{UniqueTestId}")
             .AddStream<Feed1PriceChanged>()
             .AddStream<Feed2PriceChanged>()

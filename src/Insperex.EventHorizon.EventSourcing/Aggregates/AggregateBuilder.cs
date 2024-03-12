@@ -22,7 +22,7 @@ public class AggregateBuilder<TParent, T>
     private readonly ILoggerFactory _loggerFactory;
     private readonly ValidationUtil _validationUtil;
     private readonly IServiceProvider _provider;
-    private readonly StreamingClient<Event> _streamingClient;
+    private readonly StreamingClient _streamingClient;
     private bool _isValidationEnabled = true;
     private bool _isRebuildEnabled;
     private IAggregateMiddleware<T> _middleware;
@@ -32,7 +32,7 @@ public class AggregateBuilder<TParent, T>
 
     public AggregateBuilder(
         IServiceProvider provider,
-        StreamingClient<Event> streamingClient,
+        StreamingClient streamingClient,
         ILoggerFactory loggerFactory)
     {
         _crudStore = typeof(TParent).Name == typeof(Snapshot<>).Name?

@@ -30,7 +30,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
 {
     private readonly ITestOutputHelper _output;
     private readonly IHost _host;
-    private readonly StreamingClient<Event> _streamingClient;
+    private readonly StreamingClient _streamingClient;
     private Stopwatch _stopwatch;
     private readonly Aggregator<View<AccountView>, AccountView> _accountAggregate;
     private readonly Aggregator<View<SearchAccountView>, SearchAccountView> _userAccountStore;
@@ -68,7 +68,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
             .UseEnvironment("test")
             .Build();
 
-        _streamingClient = _host.Services.GetRequiredService<StreamingClient<Event>>();
+        _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
         _accountAggregate = _host.Services.GetRequiredService<EventSourcingClient<AccountView>>().ViewAggregator().Build();
         _userAccountStore = _host.Services.GetRequiredService<EventSourcingClient<SearchAccountView>>().ViewAggregator().Build();
     }
@@ -92,7 +92,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
     public async Task TestViewIndexer()
     {
         var streamId = "123";
-        var publisher = _streamingClient.CreatePublisher().AddStateStream<Account>().Build();
+        var publisher = _streamingClient.CreatePublisher<Event>().AddStateStream<Account>().Build();
 
         // Setup Event
         await publisher.PublishAsync(new Event(streamId, new AccountOpened(100)));

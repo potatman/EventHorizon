@@ -38,7 +38,7 @@ public class SenderIntegrationTest : IAsyncLifetime
     private Stopwatch _stopwatch;
     private readonly Sender<Account> _sender2;
     private readonly EventSourcingClient<Account> _eventSourcingClient;
-    private readonly StreamingClient<Event> _streamingClient;
+    private readonly StreamingClient _streamingClient;
     private readonly IHost _consumerHost;
 
     public SenderIntegrationTest(ITestOutputHelper output)
@@ -105,7 +105,7 @@ public class SenderIntegrationTest : IAsyncLifetime
             .Build();
 
         _eventSourcingClient = _senderHost.Services.GetRequiredService<EventSourcingClient<Account>>();
-        _streamingClient = _senderHost.Services.GetRequiredService<StreamingClient<Event>>();
+        _streamingClient = _senderHost.Services.GetRequiredService<StreamingClient>();
     }
 
     public async Task InitializeAsync()

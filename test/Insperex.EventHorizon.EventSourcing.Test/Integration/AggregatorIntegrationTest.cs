@@ -32,7 +32,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
 {
     private readonly ITestOutputHelper _output;
     private readonly IHost _host;
-    private readonly StreamingClient<Event> _streamingClient;
+    private readonly StreamingClient _streamingClient;
     private Stopwatch _stopwatch;
     private readonly Aggregator<Snapshot<Account>, Account> _accountAggregator;
     private readonly Aggregator<Snapshot<User>, User> _userAggregator;
@@ -76,7 +76,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         _userAggregator = _host.Services.GetRequiredService<EventSourcingClient<User>>().Aggregator().Build();
 
 
-        _streamingClient = _host.Services.GetRequiredService<StreamingClient<Event>>();
+        _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
     }
 
     public async Task InitializeAsync()
@@ -98,7 +98,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
     public async Task TestRebuild()
     {
         var streamId = EventSourcingFakers.Faker.Random.AlphaNumeric(9);
-        var publisher = _streamingClient.CreatePublisher().AddStateStream<Account>().Build();
+        var publisher = _streamingClient.CreatePublisher<Event>().AddStateStream<Account>().Build();
 
         // Setup Event
         await publisher.PublishAsync(streamId, new AccountOpened(100));

@@ -34,7 +34,7 @@ namespace Insperex.EventHorizon.EventStreaming.InMemory.Extensions
                 typeof(InMemoryTopicFormatter),
                 ServiceLifetime.Singleton));
 
-            configurator.Collection.AddSingleton(typeof(StreamingClient<>));
+            configurator.Collection.AddSingleton<StreamingClient>();
             configurator.Collection.AddSingleton(typeof(PublisherBuilder<>));
             configurator.Collection.AddSingleton(typeof(ReaderBuilder<>));
             configurator.Collection.AddSingleton(typeof(SubscriptionBuilder<>));

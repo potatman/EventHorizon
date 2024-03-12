@@ -122,8 +122,8 @@ public class Sender<TState> where TState : IState
         where TMessage : class, ITopicMessage
     {
         if (!_publisherDict.ContainsKey(topic))
-            _publisherDict[topic] = _provider.GetRequiredService<StreamingClient<TMessage>>()
-                .CreatePublisher()
+            _publisherDict[topic] = _provider.GetRequiredService<StreamingClient>()
+                .CreatePublisher<TMessage>()
                 .AddTopic(topic)
                 .Build();
 

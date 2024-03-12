@@ -35,7 +35,7 @@ public static class ServiceCollectionExtensions
         configurator.AddEventSourcing();
         configurator.Collection.AddHostedService(x =>
         {
-            var streamingClient = x.GetRequiredService<StreamingClient<Request>>();
+            var streamingClient = x.GetRequiredService<StreamingClient>();
             var builder = x.GetRequiredService<AggregateBuilder<Snapshot<T>, T>>();
             onBuild?.Invoke(builder);
             return new AggregateConsumerHostedService<Snapshot<T>, Request, T>(streamingClient,
@@ -53,7 +53,7 @@ public static class ServiceCollectionExtensions
         configurator.AddEventSourcing();
         configurator.Collection.AddHostedService(x =>
         {
-            var streamingClient = x.GetRequiredService<StreamingClient<Command>>();
+            var streamingClient = x.GetRequiredService<StreamingClient>();
             var builder = x.GetRequiredService<AggregateBuilder<Snapshot<T>, T>>();
             onBuild?.Invoke(builder);
             return new AggregateConsumerHostedService<Snapshot<T>, Command, T>(streamingClient,
@@ -71,7 +71,7 @@ public static class ServiceCollectionExtensions
         configurator.AddEventSourcing();
         configurator.Collection.AddHostedService(x =>
         {
-            var streamingClient = x.GetRequiredService<StreamingClient<Event>>();
+            var streamingClient = x.GetRequiredService<StreamingClient>();
             var builder = x.GetRequiredService<AggregateBuilder<View<T>, T>>();
             onBuild?.Invoke(builder);
             var aggregator = builder.Build();
@@ -92,7 +92,7 @@ public static class ServiceCollectionExtensions
 
         configurator.Collection.AddHostedService(x =>
         {
-            var streamingClient = x.GetRequiredService<StreamingClient<Event>>();
+            var streamingClient = x.GetRequiredService<StreamingClient>();
             var builder = x.GetRequiredService<AggregateBuilder<Snapshot<TTarget>, TTarget>>();
             onBuild?.Invoke(builder);
             var aggregator = builder.Build();

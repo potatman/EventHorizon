@@ -41,7 +41,7 @@ public class PulsarSingleTopicConsumerIntegrationTest : BaseSingleTopicConsumerI
             100, true);
 
         // Consume
-        await using var subscription = await _streamingClient.CreateSubscription()
+        await using var subscription = await _streamingClient.CreateSubscription<Event>()
             .SubscriptionName($"Fails_{UniqueTestId}")
             .SubscriptionType(SubscriptionType.KeyShared)
             .AddStream<Feed1PriceChanged>()

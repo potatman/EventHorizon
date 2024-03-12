@@ -15,14 +15,14 @@ namespace Insperex.EventHorizon.EventSourcing.Senders;
 
 public class SenderSubscriptionTracker : IAsyncDisposable
 {
-    private readonly StreamingClient<Response> _streamingClient;
+    private readonly StreamingClient _streamingClient;
     private readonly Formatter _formatter;
     private readonly Dictionary<Type, Subscription<Response>> _subscriptionDict = new ();
     private readonly Dictionary<string, MessageContext<Response>> _responseDict = new ();
     private readonly string _nodeId;
     private bool _cleaning;
 
-    public SenderSubscriptionTracker(StreamingClient<Response> streamingClient, Formatter formatter)
+    public SenderSubscriptionTracker(StreamingClient streamingClient, Formatter formatter)
     {
         _streamingClient = streamingClient;
         _formatter = formatter;
@@ -42,7 +42,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
         if(_subscriptionDict.ContainsKey(type))
             return topic;
 
-        var subscription = _streamingClient.CreateSubscription()
+        var subscription = _streamingClient.CreateSubscription<Response>()
             .SubscriptionType(SubscriptionType.Exclusive)
             .OnBatch(async x =>
             {
@@ -89,7 +89,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
             await group.Value.StopAsync();
 
             // Delete Topic
-            await _streamingClient.GetAdmin().DeleteTopicAsync(group.Key);
+            await _streamingClient.GetAdmin<Response>().DeleteTopicAsync(group.Key);
         }
         _subscriptionDict.Clear();
     }

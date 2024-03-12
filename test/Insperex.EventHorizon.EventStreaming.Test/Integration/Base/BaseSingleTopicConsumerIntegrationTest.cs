@@ -20,7 +20,7 @@ namespace Insperex.EventHorizon.EventStreaming.Test.Integration.Base;
 public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
 {
     protected readonly ITestOutputHelper _outputHelper;
-    protected readonly StreamingClient<Event> _streamingClient;
+    protected readonly StreamingClient _streamingClient;
     private Stopwatch _stopwatch;
     protected readonly TimeSpan _timeout;
     protected Event[] _events;
@@ -36,7 +36,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         Provider = provider;
         _outputHelper = outputHelper;
         _timeout = TimeSpan.FromSeconds(30);
-        _streamingClient = provider.GetRequiredService<StreamingClient<Event>>();
+        _streamingClient = provider.GetRequiredService<StreamingClient>();
         _handler = new ListStreamConsumer<Event>();
         _partialNackHandler = new(_outputHelper, 0.03, 3, 2,
             100, false);
@@ -52,7 +52,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         int sequenceId = 0;
         _events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(1000)
             .Select(x => new Event(x.Id, ++sequenceId, x)).ToArray();
-        _publisher = _streamingClient.CreatePublisher().AddStream<Feed1PriceChanged>().Build();
+        _publisher = _streamingClient.CreatePublisher<Event>().AddStream<Feed1PriceChanged>().Build();
         await _publisher.PublishAsync(_events);
 
         // Setup
@@ -62,7 +62,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     public virtual async Task DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        await _streamingClient.GetAdmin().DeleteTopicAsync(typeof(Feed1PriceChanged));
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged));
         await _publisher.DisposeAsync();
     }
 
@@ -70,7 +70,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task TestSingleConsumer()
     {
         // Consume
-        await using var subscription = await _streamingClient.CreateSubscription()
+        await using var subscription = await _streamingClient.CreateSubscription<Event>()
             .AddStream<Feed1PriceChanged>()
             .BatchSize(_events.Length / 10)
             .OnBatch(_handler.OnBatch)
@@ -87,7 +87,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     [Fact]
     public async Task TestKeySharedConsumers()
     {
-        var builder = _streamingClient.CreateSubscription()
+        var builder = _streamingClient.CreateSubscription<Event>()
             .AddStream<Feed1PriceChanged>()
             .BatchSize(_events.Length / 10)
             .OnBatch(_handler.OnBatch);
@@ -105,7 +105,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
     public async Task TestSingleConsumerWithAdvancedFailures()
     {
         // Consume
-        await using var subscription = await _streamingClient.CreateSubscription()
+        await using var subscription = await _streamingClient.CreateSubscription<Event>()
             .SubscriptionName($"Fails_{UniqueTestId}")
             .SubscriptionType(SubscriptionType.KeyShared)
             .AddStream<Feed1PriceChanged>()

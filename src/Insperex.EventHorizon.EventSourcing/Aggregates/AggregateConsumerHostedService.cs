@@ -21,7 +21,7 @@ public class AggregateConsumerHostedService<TParent, TMessage, T> : IHostedServi
     private readonly Subscription<TMessage> _subscription;
 
     public AggregateConsumerHostedService(
-        StreamingClient<TMessage> streamingClient,
+        StreamingClient streamingClient,
         Aggregator<TParent, T> aggregator,
         Func<SubscriptionBuilder<TMessage>, SubscriptionBuilder<TMessage>> onBuildSubscription = null)
     {
@@ -29,7 +29,7 @@ public class AggregateConsumerHostedService<TParent, TMessage, T> : IHostedServi
 
         var config = _aggregator.GetConfig();
 
-        var builder = streamingClient.CreateSubscription()
+        var builder = streamingClient.CreateSubscription<TMessage>()
             .SubscriptionName($"Apply-{typeof(TMessage).Name}-{typeof(T).Name}")
             .AddStateStream<T>()
             .OnBatch(async x =>
