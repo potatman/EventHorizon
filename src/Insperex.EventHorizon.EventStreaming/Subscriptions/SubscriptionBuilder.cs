@@ -51,15 +51,21 @@ public class SubscriptionBuilder<TMessage>
     {
         var rootStateType = typeof(TState);
 
+
+        // var states = ReflectionFactory.GetStateDetail(rootStateType).MessageStateDict[_messageType];
         foreach (var stateType in ReflectionFactory.GetStateDetail(rootStateType).AllStateTypes)
         {
-            var stateDetails = ReflectionFactory.GetStateDetail(stateType);
-            var types = stateDetails.MessageTypeDict[_messageType];
-            if(types == null) continue;
+            var states = ReflectionFactory.GetStateDetail(stateType).MessageStateDict[_messageType];
+            foreach (var state in states)
+            {
+                var stateDetails = ReflectionFactory.GetStateDetail(state);
+                var types = stateDetails.MessageTypeDict[_messageType];
+                if(types == null) continue;
 
-            // Add Types and Topics
-            _typeDict.AddRange(types);
-            _topics.Add(_formatter.GetTopic<TMessage>(assembly, stateType, nodeId));
+                // Add Types and Topics
+                _typeDict.AddRange(types);
+                _topics.Add(_formatter.GetTopic<TMessage>(assembly, state, nodeId));
+            }
         }
 
         return this;

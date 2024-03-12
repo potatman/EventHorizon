@@ -18,6 +18,9 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
         public Dictionary<Type, Dictionary<string, MethodInfo>> HandlersDict { get; set; }
         public Dictionary<Type, Dictionary<string, Type>> MessageTypeDict { get; set; }
 
+        public Dictionary<Type, Type[]> MessageStateDict { get; set; }
+
+
         public readonly PropertyInfo[] PropertiesWithStates;
         public readonly Type[] SubStates;
         public readonly Type[] AllStateTypes;
@@ -46,8 +49,12 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
                 [typeof(Response)] = GetTypeDictWithGenericArg<IResponse>()
             };
 
-            var d = GetHandlerTypeStates(typeof(IHandleCommand<>), typeof(ICommand<>));
-            var e = GetHandlerTypeStates(typeof(IApplyEvent<>), typeof(IEvent<>));
+            MessageStateDict = new Dictionary<Type, Type[]>()
+            {
+                [typeof(Command)] = GetHandlerTypeStates(typeof(IHandleCommand<>), typeof(ICommand<>)),
+                [typeof(Request)] = GetHandlerTypeStates(typeof(IHandleRequest<,>), typeof(IRequest<,>)),
+                [typeof(Event)] = GetHandlerTypeStates(typeof(IApplyEvent<>), typeof(IEvent<>)),
+            };
         }
 
         public string[] Validate<TMessage>(Type typeHandler, string methodName)
