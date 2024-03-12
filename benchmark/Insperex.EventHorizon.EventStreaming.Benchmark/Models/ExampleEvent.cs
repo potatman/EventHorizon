@@ -3,7 +3,6 @@ using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 
 namespace Insperex.EventHorizon.EventStreaming.Benchmark.Models;
 
-[Stream("persistent://test_benchmark/$payload/$message")]
 public class ExampleEvent : IEvent
 {
     public string Property1 { get; set; }

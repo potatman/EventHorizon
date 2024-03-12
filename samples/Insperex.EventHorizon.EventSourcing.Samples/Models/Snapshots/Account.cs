@@ -10,8 +10,6 @@ using MongoDB.Driver;
 
 namespace Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 
-[Stream("persistent://test_bank/account/$message")]
-[Store("test_bank_snapshot_account")]
 [MongoCollection(ReadPreferenceMode = ReadPreferenceMode.SecondaryPreferred,
     ReadConcernLevel = ReadConcernLevel.Majority,
     WriteConcernLevel = WriteConcernLevel.Majority)]
