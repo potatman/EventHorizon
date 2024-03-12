@@ -11,7 +11,7 @@ using NBench;
 
 namespace Insperex.EventHorizon.EventStore.Benchmark.Base;
 
-public abstract class BaseInsertBenchmark
+public abstract class BaseUpsertBenchmark
 {
     private readonly IServiceProvider _provider;
     private Counter _counter;
@@ -19,7 +19,7 @@ public abstract class BaseInsertBenchmark
     private ExampleStoreState[] _states;
     private Snapshot<ExampleStoreState>[] _snapshots;
 
-    protected BaseInsertBenchmark(IServiceProvider provider)
+    protected BaseUpsertBenchmark(IServiceProvider provider)
     {
         _provider = provider;
     }
@@ -45,15 +45,6 @@ public abstract class BaseInsertBenchmark
     public void BenchmarkBulkSave()
     {
         _snapshotStore.UpsertAllAsync(_snapshots, CancellationToken.None).Wait();
-        _counter.Increment();
-    }
-
-    [PerfBenchmark(Description = "Test Insert Throughput",
-        NumberOfIterations = 3, RunMode = RunMode.Throughput, RunTimeMilliseconds = 1000, TestMode = TestMode.Test)]
-    [CounterThroughputAssertion("TestCounter", MustBe.GreaterThan, 0.5d)]
-    public void BenchmarkBulkInsert()
-    {
-        _snapshotStore.InsertAllAsync(_snapshots, CancellationToken.None).Wait();
         _counter.Increment();
     }
 }
