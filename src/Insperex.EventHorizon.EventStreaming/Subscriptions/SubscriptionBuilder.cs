@@ -51,10 +51,11 @@ public class SubscriptionBuilder<TMessage>
     {
         var rootStateType = typeof(TState);
 
-
-        // var states = ReflectionFactory.GetStateDetail(rootStateType).MessageStateDict[_messageType];
+        // Loop States Inside State
         foreach (var stateType in ReflectionFactory.GetStateDetail(rootStateType).AllStateTypes)
         {
+            // Loop Sates from Events
+            // Note: needed for subscribers that don't own the actions (like views)
             var states = ReflectionFactory.GetStateDetail(stateType).MessageStateDict[_messageType];
             foreach (var state in states)
             {
