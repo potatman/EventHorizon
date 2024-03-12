@@ -54,21 +54,35 @@ public class SubscriptionBuilder<TMessage>
         // Loop States Inside State
         foreach (var stateType in ReflectionFactory.GetStateDetail(rootStateType).AllStateTypes)
         {
-            // Loop Sates from Events
-            // Note: needed for subscribers that don't own the actions (like views)
-            var states = ReflectionFactory.GetStateDetail(stateType).MessageStateDict[_messageType];
-            foreach (var state in states)
+            var subStateDetails = ReflectionFactory.GetStateDetail(stateType);
+            var subStateTypes = subStateDetails.MessageTypeDict[_messageType];
+            if (subStateTypes.Count != 0)
             {
-                var stateDetails = ReflectionFactory.GetStateDetail(state);
-                var types = stateDetails.MessageTypeDict[_messageType];
-                if(types == null) continue;
-
                 // Add Types and Topics
-                _typeDict.AddRange(types);
-                var topic = _formatter.GetTopic<TMessage>(assembly, state, nodeId);
+                _typeDict.AddRange(subStateTypes);
+                var topic = _formatter.GetTopic<TMessage>(assembly, stateType, nodeId);
                 if(!_topics.Contains(topic))
                     _topics.Add(topic);
             }
+            else
+            {
+                // Loop Sates from Events
+                // Note: needed for subscribers that don't own the actions (like views)
+                var actionStates = ReflectionFactory.GetStateDetail(stateType).MessageStateDict[_messageType];
+                foreach (var state in actionStates)
+                {
+                    var stateDetails = ReflectionFactory.GetStateDetail(state);
+                    var types = stateDetails.MessageTypeDict[_messageType];
+                    if(types == null) continue;
+
+                    // Add Types and Topics
+                    _typeDict.AddRange(types);
+                    var topic = _formatter.GetTopic<TMessage>(assembly, state, nodeId);
+                    if(!_topics.Contains(topic))
+                        _topics.Add(topic);
+                }
+            }
+
         }
 
         return this;

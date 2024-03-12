@@ -15,10 +15,11 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
     public class StateDetail : TypeDetail
     {
         // Handlers
-        public Dictionary<Type, Dictionary<string, MethodInfo>> HandlersDict { get; set; }
+        public Dictionary<Type, Dictionary<string, MethodInfo>> MessageToHandlerDict { get; set; }
         public Dictionary<Type, Dictionary<string, Type>> MessageTypeDict { get; set; }
-
         public Dictionary<Type, Type[]> MessageStateDict { get; set; }
+
+        public Dictionary<string, Type> MessageHandlerToEventTypes { get; set; }
 
 
         public readonly PropertyInfo[] PropertiesWithStates;
@@ -33,22 +34,26 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
             AllStateTypes = SubStates.Concat([Type]).ToArray();
 
             // Handlers
-            HandlersDict = new Dictionary<Type, Dictionary<string, MethodInfo>>
+            MessageToHandlerDict = new Dictionary<Type, Dictionary<string, MethodInfo>>
             {
-                [typeof(Command)] = GetHandlers(typeof(IHandleCommand<>), "Handle"),
-                [typeof(Request)] = GetHandlers(typeof(IHandleRequest<,>), "Handle"),
-                [typeof(Event)] = GetHandlers(typeof(IApplyEvent<>), "Apply")
+                [typeof(Command)] = GetMessageToHandlerDict(typeof(IHandleCommand<>), "Handle"),
+                [typeof(Request)] = GetMessageToHandlerDict(typeof(IHandleRequest<,>), "Handle"),
+                [typeof(Event)] = GetMessageToHandlerDict(typeof(IApplyEvent<>), "Apply")
             };
 
             // Handler Types
             MessageTypeDict = new Dictionary<Type, Dictionary<string, Type>>
             {
-                [typeof(Command)] = GetHandlerTypeDict(typeof(IHandleCommand<>)),
-                [typeof(Request)] = GetHandlerTypeDict(typeof(IHandleRequest<,>)),
-                [typeof(Event)] = GetHandlerTypeDict(typeof(IApplyEvent<>)),
-                [typeof(Response)] = GetTypeDictWithGenericArg<IResponse>()
+                [typeof(Command)] = GetMessageTypeDict<ICommand>(),// GetHandlerTypeDict(typeof(IHandleCommand<>)),
+                [typeof(Request)] = GetMessageTypeDict<IRequest>(),// GetHandlerTypeDict(typeof(IHandleRequest<,>)),
+                [typeof(Event)] = GetMessageTypeDict<IEvent>(),// GetHandlerTypeDict(typeof(IApplyEvent<>)),
+                [typeof(Response)] = GetMessageTypeDict<IResponse>()
             };
 
+            MessageHandlerToEventTypes = GetMessageHandlerToTypes(typeof(IApplyEvent<>));
+
+            // Action -> States
+            // Note: needed for subscribers that don't own the actions (like views)
             MessageStateDict = new Dictionary<Type, Type[]>()
             {
                 [typeof(Command)] = GetHandlerTypeStates(typeof(IHandleCommand<>), typeof(ICommand<>)),
@@ -59,8 +64,8 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
 
         public string[] Validate<TMessage>(Type typeHandler, string methodName)
         {
-            var messages = GetTypeDictWithGenericArg<TMessage>();
-            var handlers = GetHandlers(typeHandler, methodName);
+            var messages = GetMessageTypeDict<TMessage>();
+            var handlers = GetMessageToHandlerDict(typeHandler, methodName);
             var missing = new List<string>();
             foreach (var message in messages)
             {
@@ -81,7 +86,7 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
             foreach (var state in stateDict)
             {
                 var stateDetail = ReflectionFactory.GetStateDetail(state.Key);
-                var method = stateDetail.HandlersDict[messageType].GetValueOrDefault(message.Type);
+                var method = stateDetail.MessageToHandlerDict[messageType].GetValueOrDefault(message.Type);
                 if (method == null) continue;
                 var payload = message.GetPayload(stateDetail.MessageTypeDict[messageType]);
                 var result = method?.Invoke(state.Value, parameters: [payload, context]);
@@ -97,21 +102,21 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
             foreach (var state in stateDict)
             {
                 var stateDetail = ReflectionFactory.GetStateDetail(state.Key);
-                var method = stateDetail.HandlersDict[messageType].GetValueOrDefault(message.Type);
+                var method = stateDetail.MessageToHandlerDict[messageType].GetValueOrDefault(message.Type);
                 if(method == null) continue;
-                var payload = message.GetPayload(stateDetail.MessageTypeDict[messageType]);
+                var payload = message.GetPayload(stateDetail.MessageHandlerToEventTypes);
                 method?.Invoke(state.Value, parameters: new [] { payload } );
             }
         }
 
-        private Dictionary<string, MethodInfo> GetHandlers(MemberInfo handlerType, string methodName)
+        private Dictionary<string, MethodInfo> GetMessageToHandlerDict(MemberInfo handlerType, string methodName)
         {
             return Type.GetInterfaces()
                 .Where(i => i.Name == handlerType.Name)
                 .ToDictionary(d => d.GetGenericArguments()[0].Name, d => d.GetMethod(methodName));
         }
 
-        private Dictionary<string, Type> GetHandlerTypeDict(MemberInfo handlerType)
+        private Dictionary<string, Type> GetMessageHandlerToTypes(MemberInfo handlerType)
         {
             return Type.GetInterfaces()
                 .Where(i => i.Name == handlerType.Name)
@@ -129,7 +134,7 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
                 .ToArray();
         }
 
-        private Dictionary<string, Type> GetTypeDictWithGenericArg<T>()
+        private Dictionary<string, Type> GetMessageTypeDict<T>()
         {
             var type = typeof(T);
             return Type.Assembly
