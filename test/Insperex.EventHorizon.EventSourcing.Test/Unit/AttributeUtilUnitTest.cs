@@ -4,6 +4,7 @@ using Insperex.EventHorizon.Abstractions.Testing;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Actions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
+using Insperex.EventHorizon.EventStore.Test.Models;
 using Xunit;
 
 namespace Insperex.EventHorizon.EventSourcing.Test.Unit;
@@ -17,7 +18,7 @@ public class AttributeUtilUnitTest
     public AttributeUtilUnitTest()
     {
         _attributeUtil = new AttributeUtil();
-        _type = typeof(Account);
+        _type = typeof(FormatterTest.AttributeFormatter);
     }
 
     [Fact]
