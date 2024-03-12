@@ -64,7 +64,9 @@ public class SubscriptionBuilder<TMessage>
 
                 // Add Types and Topics
                 _typeDict.AddRange(types);
-                _topics.Add(_formatter.GetTopic<TMessage>(assembly, state, nodeId));
+                var topic = _formatter.GetTopic<TMessage>(assembly, state, nodeId);
+                if(!_topics.Contains(topic))
+                    _topics.Add(topic);
             }
         }
 
