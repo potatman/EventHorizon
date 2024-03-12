@@ -142,7 +142,4 @@ public class Aggregate<T>
     }
 
     public bool Exists() => SequenceId > 0;
-
-    public Snapshot<T> GetSnapshot() => new(Id, SequenceId, State, CreatedDate, UpdatedDate);
-    public View<T> GetView() => new(Id, SequenceId, State, CreatedDate, UpdatedDate);
 }
