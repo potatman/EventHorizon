@@ -38,22 +38,27 @@ namespace Insperex.EventHorizon.Abstractions.Formatters
             return ReplaceKeys(assemblyName, type, typeof(TMessage), node, "-", topicFormat);
         }
 
-        public string GetDatabase<TCollection>(Type type) => GetDatabase <TCollection>(null, type);
+        public string GetDatabase<TCollection>(Type type) => GetDatabase<TCollection>(null, type);
 
         public string GetDatabase<TCollection>(Assembly assembly, Type type)
         {
             var assemblyName = (assembly ?? type.Assembly).GetName().Name;
-            var databaseFormat = _attributeUtil.GetOne<StoreAttribute>(type)?.Database ?? _databaseFormat;
+            var attributeFormat = _attributeUtil.GetOne<StoreAttribute>(type)?.Database;
+            var databaseFormat = attributeFormat ?? _databaseFormat;
             var str = ReplaceKeys(assemblyName.Split(".").First(), type, typeof(TCollection), null, "_", databaseFormat);
-            return _snakeCaseNamingStrategy.GetPropertyName(str, false);
+
+            if (attributeFormat == null)
+                str = _snakeCaseNamingStrategy.GetPropertyName(str, false);
+
+            return str;
         }
 
-        private string ReplaceKeys(string assemblyName, MemberInfo type, MemberInfo messageType, string node, string separator, string format)
+        private string ReplaceKeys(string assemblyName, MemberInfo type, MemberInfo wrapperType, string node, string separator, string format)
         {
             var str = format
                 .Replace(EventHorizonConstants.AssemblyKey, assemblyName)
-                .Replace(EventHorizonConstants.TypeKey, type.Name)
-                .Replace(EventHorizonConstants.MessageKey, node ?? messageType.Name);
+                .Replace(EventHorizonConstants.TypeKey, type.Name.Split("`")[0])
+                .Replace(EventHorizonConstants.MessageKey, node ?? wrapperType.Name.Split("`")[0]);
 
             return _postfix == null? str : str + separator + _postfix;
         }

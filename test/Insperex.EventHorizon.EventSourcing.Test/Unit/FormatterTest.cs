@@ -3,6 +3,7 @@ using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Testing;
 using Insperex.EventHorizon.Abstractions.Util;
+using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming.InMemory;
 using Insperex.EventHorizon.EventStreaming.Pulsar;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
@@ -64,19 +65,19 @@ namespace Insperex.EventHorizon.EventSourcing.Test.Unit
         [Fact]
         public void TestDefaultDatabase()
         {
-            var topic = _defaultFormatter.GetDatabase<Event>(typeof(ExampleFormatter));
-            Assert.Equal("insperex_event_example_formatter", topic);
-            var topic2 = _defaultFormatter.GetDatabase<Event>(typeof(AttributeFormatter));
-            Assert.Equal("test_database", topic2);
+            var database = _defaultFormatter.GetDatabase<Snapshot<ExampleFormatter>>(typeof(ExampleFormatter));
+            Assert.Equal("insperex_snapshot_example_formatter", database);
+            var database2 = _defaultFormatter.GetDatabase<Snapshot<AttributeFormatter>>(typeof(AttributeFormatter));
+            Assert.Equal("TestDatabase", database2);
         }
 
         [Fact]
         public void TestDefaultDatabaseWithPostfix()
         {
-            var topic = _testFormatter.GetDatabase<Event>(typeof(ExampleFormatter));
-            Assert.Equal("insperex_event_example_formatter_abc", topic);
-            var topic2 = _testFormatter.GetDatabase<Event>(typeof(AttributeFormatter));
-            Assert.Equal("test_database_abc", topic2);
+            var database = _testFormatter.GetDatabase<Snapshot<ExampleFormatter>>(typeof(ExampleFormatter));
+            Assert.Equal("insperex_snapshot_example_formatter_abc", database);
+            var database2 = _testFormatter.GetDatabase<Snapshot<AttributeFormatter>>(typeof(AttributeFormatter));
+            Assert.Equal("TestDatabase_ABC", database2);
         }
 
         public class ExampleFormatter { }
