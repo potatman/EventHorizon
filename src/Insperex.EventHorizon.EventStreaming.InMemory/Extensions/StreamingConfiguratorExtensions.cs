@@ -25,14 +25,10 @@ namespace Insperex.EventHorizon.EventStreaming.InMemory.Extensions
         public static EventHorizonConfigurator AddInMemoryEventStream(this EventHorizonConfigurator configurator)
         {
             AddInMemoryStreamClient(configurator);
-            configurator.Collection.Replace(ServiceDescriptor.Describe(
-                typeof(IStreamFactory),
-                typeof(InMemoryStreamFactory),
-                ServiceLifetime.Singleton));
-            configurator.Collection.Replace(ServiceDescriptor.Describe(
-                typeof(ITopicFormatter),
-                typeof(InMemoryTopicFormatter),
-                ServiceLifetime.Singleton));
+
+            // Pulsar
+            configurator.Collection.AddSingleton(typeof(IStreamFactory), typeof(InMemoryStreamFactory));
+            configurator.Collection.Replace(new ServiceDescriptor(typeof(ITopicFormatter), typeof(InMemoryTopicFormatter), ServiceLifetime.Singleton));
 
             configurator.Collection.AddSingleton<StreamingClient>();
             configurator.Collection.AddSingleton(typeof(PublisherBuilder<>));

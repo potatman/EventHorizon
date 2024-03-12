@@ -4,6 +4,7 @@ using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Testing;
 using Insperex.EventHorizon.Abstractions.Util;
 using Insperex.EventHorizon.EventStreaming.InMemory;
+using Insperex.EventHorizon.EventStreaming.Pulsar;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Xunit;
 

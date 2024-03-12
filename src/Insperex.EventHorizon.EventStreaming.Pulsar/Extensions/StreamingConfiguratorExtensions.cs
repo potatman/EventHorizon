@@ -28,7 +28,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.Extensions
 
             // Pulsar
             configurator.Collection.AddSingleton(typeof(IStreamFactory), typeof(PulsarStreamFactory));
-            configurator.Collection.Replace(new ServiceDescriptor(typeof(ITopicFormatter), typeof(PulsarTopicFormatter)));
+            configurator.Collection.Replace(new ServiceDescriptor(typeof(ITopicFormatter), typeof(PulsarTopicFormatter), ServiceLifetime.Singleton));
 
             // Common
             configurator.Collection.AddSingleton<StreamingClient>();

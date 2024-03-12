@@ -20,7 +20,6 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
 
         public readonly PropertyInfo[] PropertiesWithStates;
         public readonly Type[] SubStates;
-        public readonly StateDetail[] SubStateDetails;
         public readonly Type[] AllStateTypes;
 
         public StateDetail(Type type) : base(type)
@@ -28,7 +27,6 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
             // State Properties
             PropertiesWithStates = type.GetProperties().Where(p => p.PropertyType.GetInterface(nameof(IState)) != null).ToArray();
             SubStates = PropertiesWithStates.Select(s => s.PropertyType).ToArray();
-            SubStateDetails = SubStates.Select(x => new StateDetail(x)).ToArray();
             AllStateTypes = SubStates.Concat([Type]).ToArray();
 
             // Handlers
@@ -47,6 +45,9 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
                 [typeof(Event)] = GetHandlerTypeDict(typeof(IApplyEvent<>)),
                 [typeof(Response)] = GetTypeDictWithGenericArg<IResponse>()
             };
+
+            var d = GetHandlerTypeStates(typeof(IHandleCommand<>), typeof(ICommand<>));
+            var e = GetHandlerTypeStates(typeof(IApplyEvent<>), typeof(IEvent<>));
         }
 
         public string[] Validate<TMessage>(Type typeHandler, string methodName)
@@ -109,6 +110,16 @@ namespace Insperex.EventHorizon.Abstractions.Reflection
                 .Where(i => i.Name == handlerType.Name)
                 .Select(d => d.GetGenericArguments()[0])
                 .ToDictionary(d => d.Name);
+        }
+
+        private Type[] GetHandlerTypeStates(MemberInfo handlerType, Type type)
+        {
+            return Type.GetInterfaces()
+                .Where(i => i.Name == handlerType.Name)
+                .Select(d => d.GetGenericArguments()[0])
+                .SelectMany(x => x.GetInterfaces().Where(i => i.Name == type.Name).Select(i => i.GetGenericArguments()[0]))
+                .Distinct()
+                .ToArray();
         }
 
         private Dictionary<string, Type> GetTypeDictWithGenericArg<T>()
