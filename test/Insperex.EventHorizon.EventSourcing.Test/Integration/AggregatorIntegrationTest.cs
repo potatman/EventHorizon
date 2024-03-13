@@ -8,6 +8,7 @@ using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Testing;
 using Insperex.EventHorizon.EventSourcing.Aggregates;
+using Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Workflows;
 using Insperex.EventHorizon.EventSourcing.Extensions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Actions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
@@ -15,6 +16,7 @@ using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 using Insperex.EventHorizon.EventSourcing.Test.Fakers;
 using Insperex.EventHorizon.EventStore.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
+using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.InMemory.Extensions;
@@ -34,9 +36,11 @@ public class AggregatorIntegrationTest : IAsyncLifetime
     private readonly IHost _host;
     private readonly StreamingClient _streamingClient;
     private Stopwatch _stopwatch;
-    private readonly Aggregator<Snapshot<Account>, Account> _accountAggregator;
     private readonly Aggregator<Snapshot<User>, User> _userAggregator;
     private readonly EventSourcingClient<Account> _eventSourcingClient;
+    private readonly HandleAndApplyEventsWorkflow<Snapshot<User>, User, Command> _userCommandWorkflow;
+    private readonly ApplyEventsWorkflow<View<Account>, Account> _accountApplyEventWorkflow;
+    private readonly ICrudStore<View<Account>> _accountViewStore;
 
     public AggregatorIntegrationTest(ITestOutputHelper output)
     {
@@ -49,9 +53,9 @@ public class AggregatorIntegrationTest : IAsyncLifetime
                     x.AddEventSourcing()
 
                         // Hosts
-                        .ApplyRequestsToSnapshot<Account>()
-                        .ApplyCommandsToSnapshot<User>()
-                        .ApplyEventsToView<SearchAccountView>()
+                        // .HandleRequests<Account>()
+                        // .HandleCommands<User>()
+                        // .ApplyEvents<SearchAccountView>()
 
                         // Stores
                         .AddInMemorySnapshotStore()
@@ -72,8 +76,10 @@ public class AggregatorIntegrationTest : IAsyncLifetime
             .Build();
 
         _eventSourcingClient = _host.Services.GetRequiredService<EventSourcingClient<Account>>();
-        _accountAggregator = _eventSourcingClient.Aggregator().Build();
+        _accountViewStore = _eventSourcingClient.GetViewStore();
         _userAggregator = _host.Services.GetRequiredService<EventSourcingClient<User>>().Aggregator().Build();
+        _userCommandWorkflow = _host.Services.GetRequiredService<EventSourcingClient<User>>().Workflow().HandleCommands();
+        _accountApplyEventWorkflow = _host.Services.GetRequiredService<EventSourcingClient<Account>>().Workflow().ApplyEvents();
 
 
         _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
@@ -88,7 +94,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _output.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
-        await _accountAggregator.DropAllAsync(CancellationToken.None);
+        await _accountViewStore.DropDatabaseAsync(CancellationToken.None);
         await _userAggregator.DropAllAsync(CancellationToken.None);
         await _host.StopAsync();
         _host.Dispose();
@@ -104,7 +110,8 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         await publisher.PublishAsync(streamId, new AccountOpened(100));
 
         // Refresh Snapshots
-        await _eventSourcingClient.Aggregator().Build().RebuildAllAsync(CancellationToken.None);
+        await _eventSourcingClient.Workflow().RebuildAll().StartAsync(CancellationToken.None);
+        await Task.Delay(2000);
 
         // Assert
         var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
@@ -124,8 +131,8 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         var command2 = new Command(streamId, new ChangeUserName("Joe"));
 
         // Act
-        var res1 = await _userAggregator.HandleAsync(command1, CancellationToken.None);
-        var res2 = await _userAggregator.HandleAsync(command2, CancellationToken.None);
+        await _userCommandWorkflow.Handle(command1, CancellationToken.None);
+        await _userCommandWorkflow.Handle(command2, CancellationToken.None);
 
         // Assert Account
         var aggregate1  = await _userAggregator.GetAggregateFromStateAsync(streamId, CancellationToken.None);
@@ -145,10 +152,10 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         var @event = new Event(streamId, 1, new AccountOpened(100));
 
         // Act
-        var res = await _accountAggregator.HandleAsync(@event, CancellationToken.None);
+        await _accountApplyEventWorkflow.Handle(@event, CancellationToken.None);
 
         // Assert Account
-        var aggregate1  = await _accountAggregator.GetAggregateFromStateAsync(streamId, CancellationToken.None);
+        var aggregate1  = await _accountViewStore.GetAsync(streamId, CancellationToken.None);
         Assert.Equal(streamId, aggregate1.State.Id);
         Assert.Equal(streamId, aggregate1.Id);
         Assert.Equal(1, aggregate1.SequenceId);

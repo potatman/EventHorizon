@@ -20,7 +20,7 @@ public class Aggregate<T>
     where T : IState
 {
     private static readonly Type Type = typeof(T);
-    private static readonly StateDetail StateDetail = ReflectionFactory.GetStateDetail(typeof(T));
+    private static readonly StateDetail StateDetail = ReflectionFactory.GetStateDetail(Type);
     private Dictionary<Type, object> AllStates { get; set; }
 
     internal readonly List<Event> Events = new();
@@ -79,6 +79,14 @@ public class Aggregate<T>
         var context = new AggregateContext(Exists());
         var result = StateDetail.TriggerHandler(AllStates, context, request);
         Responses.Add(new Response(request.Id, request.ResponseTopic, Id, result, Error, (int)StatusCode));
+        foreach(var item in context.Events)
+            Apply(new Event(Id, SequenceId, item));
+    }
+
+    public void Handle(Event @event)
+    {
+        var context = new AggregateContext(Exists());
+        StateDetail.TriggerHandler(AllStates, context, @event);
         foreach(var item in context.Events)
             Apply(new Event(Id, SequenceId, item));
     }

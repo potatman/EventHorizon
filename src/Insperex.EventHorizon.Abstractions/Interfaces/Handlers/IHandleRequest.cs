@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
+﻿using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models;
 
 namespace Insperex.EventHorizon.Abstractions.Interfaces.Handlers;

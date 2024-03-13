@@ -4,6 +4,9 @@ using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.EventSourcing.Aggregates;
+using Insperex.EventHorizon.EventSourcing.AggregateWorkflows;
+using Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Interfaces;
+using Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Workflows;
 using Insperex.EventHorizon.EventSourcing.Senders;
 using Insperex.EventHorizon.EventSourcing.Util;
 using Insperex.EventHorizon.EventStore.Models;
@@ -11,6 +14,7 @@ using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 
 namespace Insperex.EventHorizon.EventSourcing.Extensions;
 
@@ -19,86 +23,52 @@ public static class ServiceCollectionExtensions
     public static EventHorizonConfigurator AddEventSourcing(this EventHorizonConfigurator configurator)
     {
         configurator.Collection.TryAddSingleton(typeof(EventSourcingClient<>));
-        configurator.Collection.TryAddSingleton(typeof(AggregateBuilder<,>));
+        configurator.Collection.TryAddSingleton(typeof(AggregatorBuilder<,>));
         configurator.Collection.TryAddSingleton(typeof(SenderBuilder<>));
+        configurator.Collection.TryAddSingleton(typeof(WorkflowFactory<>));
+        configurator.Collection.TryAddSingleton(typeof(WorkflowService<,,>));
         configurator.Collection.TryAddSingleton<SenderSubscriptionTracker>();
         configurator.Collection.TryAddSingleton<ValidationUtil>();
+        configurator.Collection.TryAddSingleton<IHostedService, WorkflowHostedService>();
 
         return configurator;
     }
 
-    public static EventHorizonConfigurator ApplyRequestsToSnapshot<T>(this EventHorizonConfigurator configurator,
-        Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null,
-        Func<SubscriptionBuilder<Request>, SubscriptionBuilder<Request>> onBuildSubscription = null)
-        where T : class, IState
+    public static EventHorizonConfigurator HandleRequests<TState>(this EventHorizonConfigurator configurator,
+        Action<WorkflowConfigurator<TState>> onConfig = null)
+        where TState : class, IState
     {
         configurator.AddEventSourcing();
-        configurator.Collection.AddHostedService(x =>
-        {
-            var streamingClient = x.GetRequiredService<StreamingClient>();
-            var builder = x.GetRequiredService<AggregateBuilder<Snapshot<T>, T>>();
-            onBuild?.Invoke(builder);
-            return new AggregateConsumerHostedService<Snapshot<T>, Request, T>(streamingClient,
-                builder.Build(), onBuildSubscription);
-        });
+        configurator.Collection.AddSingleton<IWorkflow>(x => x.GetRequiredService<WorkflowFactory<TState>>().HandleRequests(onConfig));
 
         return configurator;
     }
 
-    public static EventHorizonConfigurator ApplyCommandsToSnapshot<T>(this EventHorizonConfigurator configurator,
-        Action<AggregateBuilder<Snapshot<T>, T>> onBuild = null,
-        Func<SubscriptionBuilder<Command>, SubscriptionBuilder<Command>> onBuildSubscription = null)
-        where T : class, IState
+    public static EventHorizonConfigurator HandleCommands<TState>(this EventHorizonConfigurator configurator,
+        Action<WorkflowConfigurator<TState>> onConfig = null)
+        where TState : class, IState
     {
         configurator.AddEventSourcing();
-        configurator.Collection.AddHostedService(x =>
-        {
-            var streamingClient = x.GetRequiredService<StreamingClient>();
-            var builder = x.GetRequiredService<AggregateBuilder<Snapshot<T>, T>>();
-            onBuild?.Invoke(builder);
-            return new AggregateConsumerHostedService<Snapshot<T>, Command, T>(streamingClient,
-                builder.Build(), onBuildSubscription);
-        });
+        configurator.Collection.AddSingleton<IWorkflow>(x => x.GetRequiredService<WorkflowFactory<TState>>().HandleCommands(onConfig));
 
         return configurator;
     }
 
-    public static EventHorizonConfigurator ApplyEventsToView<T>(this EventHorizonConfigurator configurator,
-        Action<AggregateBuilder<View<T>, T>> onBuild = null,
-        Func<SubscriptionBuilder<Event>, SubscriptionBuilder<Event>> onBuildSubscription = null)
-        where T : class, IState
+    public static EventHorizonConfigurator HandleEvents<TState>(this EventHorizonConfigurator configurator,
+        Action<WorkflowConfigurator<TState>> onConfig = null)
+        where TState : class, IState
     {
         configurator.AddEventSourcing();
-        configurator.Collection.AddHostedService(x =>
-        {
-            var streamingClient = x.GetRequiredService<StreamingClient>();
-            var builder = x.GetRequiredService<AggregateBuilder<View<T>, T>>();
-            onBuild?.Invoke(builder);
-            var aggregator = builder.Build();
-            return new AggregateConsumerHostedService<View<T>, Event, T>(streamingClient, aggregator,
-                onBuildSubscription);
-        });
+        configurator.Collection.AddSingleton<IWorkflow>(x => x.GetRequiredService<WorkflowFactory<TState>>().HandleEvents(onConfig));
 
         return configurator;
     }
 
-    public static EventHorizonConfigurator AddMigrationHostedService<TSource, TTarget>(this EventHorizonConfigurator configurator,
-        Action<AggregateBuilder<Snapshot<TTarget>, TTarget>> onBuild = null,
-        Func<SubscriptionBuilder<Event>, SubscriptionBuilder<Event>> onBuildSubscription = null)
-        where TSource : class, IState, new()
-        where TTarget : class, IState, new()
+    public static EventHorizonConfigurator ApplyEvents<TState>(this EventHorizonConfigurator configurator, Action<WorkflowConfigurator<TState>> onConfig = null)
+        where TState : class, IState
     {
         configurator.AddEventSourcing();
-
-        configurator.Collection.AddHostedService(x =>
-        {
-            var streamingClient = x.GetRequiredService<StreamingClient>();
-            var builder = x.GetRequiredService<AggregateBuilder<Snapshot<TTarget>, TTarget>>();
-            onBuild?.Invoke(builder);
-            var aggregator = builder.Build();
-            return new AggregateMigrationHostedService<TSource,TTarget>(aggregator, streamingClient,
-                onBuildSubscription);
-        });
+        configurator.Collection.AddSingleton<IWorkflow>(x => x.GetRequiredService<WorkflowFactory<TState>>().ApplyEvents(onConfig));
 
         return configurator;
     }

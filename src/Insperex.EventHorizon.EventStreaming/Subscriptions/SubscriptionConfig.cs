@@ -19,6 +19,7 @@ public class SubscriptionConfig<TMessage> where TMessage : ITopicMessage
     [NotLogged] public bool? IsBeginning { get; set; }
 
     [NotLogged] public bool? IsPreload { get; set; }
+    [NotLogged] public bool StopAtEnd { get; set; }
 
     [NotLogged] public DateTime? StartDateTime { get; set; }
 

@@ -75,10 +75,17 @@ public class Subscription<TMessage> : IAsyncDisposable
             try
             {
                 var batch = await GetNextBatch();
-                if (batch?.Any() == true)
+                if (batch?.Length > 0)
+                {
                     await ProcessBatch(batch);
+                }
                 else
-                    await Task.Delay(_config.NoBatchDelay);
+                {
+                    if (_config.StopAtEnd)
+                        _running = false;
+                    else
+                        await Task.Delay(_config.NoBatchDelay);
+                }
             }
             catch (TaskCanceledException)
             {
