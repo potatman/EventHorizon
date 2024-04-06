@@ -21,7 +21,6 @@ public class Sender<TState> where TState : IState
 {
     private readonly SenderConfig _config;
     private readonly ILogger<Sender<TState>> _logger;
-    private readonly Formatter _formatter;
     private readonly SenderSubscriptionTracker _subscriptionTracker;
     private readonly IServiceProvider _provider;
     private readonly Dictionary<string, object> _publisherDict = new();
@@ -35,9 +34,9 @@ public class Sender<TState> where TState : IState
         SenderConfig config,
         ILogger<Sender<TState>> logger)
     {
-        _formatter = provider.GetRequiredService<Formatter>();
-        _commandTopic = _formatter.GetTopic<Command>(_stateType);
-        _requestTopic = _formatter.GetTopic<Request>(_stateType);
+        var formatter = provider.GetRequiredService<Formatter>();
+        _commandTopic = formatter.GetTopic<Command>(_stateType);
+        _requestTopic = formatter.GetTopic<Request>(_stateType);
         _subscriptionTracker = subscriptionTracker;
         _provider = provider;
         _config = config;
@@ -124,6 +123,7 @@ public class Sender<TState> where TState : IState
         if (!_publisherDict.ContainsKey(topic))
             _publisherDict[topic] = _provider.GetRequiredService<StreamingClient>()
                 .CreatePublisher<TMessage>()
+                .AddCompression(_config.Compression)
                 .AddTopic(topic)
                 .Build();
 

@@ -2,8 +2,7 @@
 using System.Threading;
 using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Interfaces;
-using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
-using Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Interfaces;
+using Insperex.EventHorizon.Abstractions.Serialization.Compression;
 using Insperex.EventHorizon.EventSourcing.Util;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
@@ -27,6 +26,8 @@ public class AggregatorBuilder<TParent, T>
     private bool _isValidationEnabled = true;
     private readonly LockFactory<T> _lockFactory;
     private readonly ILogger<AggregatorBuilder<TParent, T>> _logger;
+    private Compression? _stateCompression;
+    private Compression? _eventCompression;
 
     public AggregatorBuilder(
         IServiceProvider provider,
@@ -50,11 +51,25 @@ public class AggregatorBuilder<TParent, T>
         return this;
     }
 
+    public AggregatorBuilder<TParent, T> StateCompression(Compression? stateCompression)
+    {
+        _stateCompression = stateCompression;
+        return this;
+    }
+
+    public AggregatorBuilder<TParent, T> EventCompression(Compression? eventCompression)
+    {
+        _eventCompression = eventCompression;
+        return this;
+    }
+
     public Aggregator<TParent, T> Build()
     {
-        var config = new AggregateConfig<T>
+        var config = new AggregatorConfig<T>
         {
             IsValidationEnabled = _isValidationEnabled,
+            StateCompression = _stateCompression,
+            EventCompression = _eventCompression
         };
 
         // Create Store
@@ -69,6 +84,6 @@ public class AggregatorBuilder<TParent, T>
             _validationUtil.Validate<TParent, T>();
 
         var logger = _loggerFactory.CreateLogger<Aggregator<TParent, T>>();
-        return new Aggregator<TParent, T>(_crudStore, _streamingClient, _provider.GetRequiredService<Formatter>(), logger);
+        return new Aggregator<TParent, T>(_crudStore, _streamingClient, _provider.GetRequiredService<Formatter>(), config, logger);
     }
 }

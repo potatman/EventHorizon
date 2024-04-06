@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Insperex.EventHorizon.EventStore.ElasticSearch.Stores
 {
-    public class ElasticSnapshotStore<TState> : AbstractElasticCrudStore<Snapshot<TState>>, ISnapshotStore<TState> where TState : IState
+    public class ElasticSnapshotStore<TState> : AbstractElasticCrudStore<Snapshot<TState>>, ISnapshotStore<TState> where TState : class, IState
     {
         private static readonly Type Type = typeof(TState);
         public ElasticSnapshotStore(Formatter formatter, AttributeUtil attributeUtil, ElasticClientResolver clientResolver, ILogger<ElasticSnapshotStore<TState>> logger)

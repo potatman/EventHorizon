@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using IdentityModel.Client;
 using Insperex.EventHorizon.Abstractions.Interfaces;
+using Insperex.EventHorizon.Abstractions.Serialization;
 using Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -26,7 +27,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
 
             // Create File for pulsar client
             _fileName = $"{Directory.GetCurrentDirectory()}{Path.DirectorySeparatorChar}oauth2.txt";
-            var json = JsonConvert.SerializeObject(_options.Value.OAuth2);
+            var json = SerializationConstants.Serializer.Serialize(_options.Value.OAuth2);
 
             if(!File.Exists(_fileName))
                 File.WriteAllText(_fileName, json);
@@ -81,7 +82,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
             webRequest.Method ="GET";
             var webResponse = await webRequest.GetResponseAsync();
             var contents = await new StreamReader(webResponse.GetResponseStream()).ReadToEndAsync();
-            return JsonConvert.DeserializeObject<PulsarOAuthData>(contents);
+            return SerializationConstants.Serializer.Deserialize<PulsarOAuthData>(contents);
         }
 
         private static async Task<string> GetTokenAsync(string tokenAddress, string grantType, string audience, Uri fileUri)

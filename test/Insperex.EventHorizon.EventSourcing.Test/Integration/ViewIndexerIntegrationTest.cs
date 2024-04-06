@@ -99,18 +99,18 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
 
         // Assert Account
         var view = await _accountAggregate.GetAggregateFromStateAsync(streamId, CancellationToken.None);
-        Assert.Equal(streamId, view.State.Id);
+        Assert.Equal(streamId, view.Payload.Id);
         Assert.Equal(streamId, view.Id);
         Assert.NotEqual(DateTime.MinValue, view.CreatedDate);
         Assert.NotEqual(DateTime.MinValue, view.UpdatedDate);
-        Assert.Equal(100, view.State.Amount);
+        Assert.Equal(100, view.Payload.Amount);
 
         // Assert UserAccount
         var view2 = await _userAccountStore.GetAggregateFromStateAsync(streamId, CancellationToken.None);
-        Assert.Equal(streamId, view2.State.Id);
+        Assert.Equal(streamId, view2.Payload.Id);
         Assert.Equal(streamId, view2.Id);
         Assert.NotEqual(DateTime.MinValue, view2.CreatedDate);
         Assert.NotEqual(DateTime.MinValue, view2.UpdatedDate);
-        Assert.Equal(100, view2.State.Account.Amount);
+        Assert.Equal(100, view2.Payload.Account.Amount);
     }
 }

@@ -1,5 +1,4 @@
 using System;
-using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Util;
@@ -9,7 +8,7 @@ using Insperex.EventHorizon.EventStore.MongoDb.Attributes;
 
 namespace Insperex.EventHorizon.EventStore.MongoDb.Stores
 {
-    public class MongoViewStore<T> : AbstractMongoCrudStore<View<T>>, IViewStore<T> where T : IState
+    public class MongoViewStore<T> : AbstractMongoCrudStore<View<T>>, IViewStore<T> where T : class, IState
     {
         private static readonly Type Type = typeof(T);
         public MongoViewStore(Formatter formatter, AttributeUtil attributeUtil, MongoClientResolver clientResolver)

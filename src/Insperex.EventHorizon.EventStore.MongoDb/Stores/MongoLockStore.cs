@@ -1,5 +1,4 @@
 using System;
-using Insperex.EventHorizon.Abstractions.Attributes;
 using Insperex.EventHorizon.Abstractions.Formatters;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Util;

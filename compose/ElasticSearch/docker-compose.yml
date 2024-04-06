@@ -18,8 +18,8 @@ services:
         hard: 65536
     cap_add:
       - IPC_LOCK
-    volumes:
-      - elasticsearch-data:/usr/share/elasticsearch/data
+#    volumes:
+#      - elasticsearch-data:/usr/share/elasticsearch/data
     ports:
       - 9200:9200
       - 9300:9300
@@ -34,6 +34,6 @@ services:
 #    depends_on:
 #      - elasticsearch
 
-volumes:
-  elasticsearch-data:
-    driver: local
+#volumes:
+#  elasticsearch-data:
+#    driver: local

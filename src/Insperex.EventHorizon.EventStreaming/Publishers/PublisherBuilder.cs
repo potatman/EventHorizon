@@ -7,6 +7,7 @@ using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Reflection;
+using Insperex.EventHorizon.Abstractions.Serialization.Compression;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Microsoft.Extensions.Logging;
 
@@ -25,6 +26,7 @@ public class PublisherBuilder<TMessage>
     private int _batchSize = 100;
     private bool _isOrderGuaranteed = true;
     private readonly Type _messageType;
+    private Compression? _compressionType;
 
     public PublisherBuilder(Formatter formatter, IStreamFactory factory, ILoggerFactory loggerFactory)
     {
@@ -67,6 +69,12 @@ public class PublisherBuilder<TMessage>
         return this;
     }
 
+    public PublisherBuilder<TMessage> AddCompression(Compression? compressionType)
+    {
+        _compressionType = compressionType;
+        return this;
+    }
+
     public PublisherBuilder<TMessage> IsGuaranteed(bool isGuaranteed)
     {
         _isGuaranteed = isGuaranteed;
@@ -100,7 +108,8 @@ public class PublisherBuilder<TMessage>
             IsGuaranteed = _isGuaranteed,
             IsOrderGuaranteed = _isOrderGuaranteed,
             SendTimeout = _sendTimeout,
-            BatchSize = _batchSize
+            BatchSize = _batchSize,
+            CompressionType = _compressionType,
         };
         var logger = _loggerFactory.CreateLogger<Publisher<TMessage>>();
 

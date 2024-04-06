@@ -8,7 +8,7 @@ namespace Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Interfaces
     public interface IWorkflowMiddleware { }
 
     public interface IWorkflowMiddleware<T> : IWorkflowMiddleware
-        where T : IState
+        where T : class, IState
     {
         Task OnLoad(Dictionary<string, Aggregate<T>> aggregateDict);
         Task BeforeSave(Dictionary<string, Aggregate<T>> aggregateDict);

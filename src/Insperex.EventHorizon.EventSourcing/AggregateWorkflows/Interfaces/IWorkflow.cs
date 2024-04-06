@@ -15,7 +15,7 @@ namespace Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Interfaces
 
     public interface IWorkflow<TState, in TMessage> : IWorkflow
         where TMessage : ITopicMessage
-        where TState : IState
+        where TState : class, IState
     {
         Task HandleBatch(TMessage[] events, Dictionary<string, Aggregate<TState>> aggregateDict);
     }

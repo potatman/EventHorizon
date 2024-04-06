@@ -42,7 +42,7 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                     try
                     {
                         var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
-                        return response.Exists() ? Results.Ok(response.State) : Results.NotFound();
+                        return response.Exists() ? Results.Ok(response.Payload) : Results.NotFound();
                     }
                     catch (Exception e)
                     {
@@ -58,7 +58,7 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                     try
                     {
                         var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
-                        return response.Exists() ? Results.Ok(response.State) : Results.NotFound();
+                        return response.Exists() ? Results.Ok(response.Payload) : Results.NotFound();
                     }
                     catch (Exception e)
                     {

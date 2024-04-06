@@ -25,21 +25,20 @@ public class WorkflowService<TWrapper, TState, TMessage>
         private readonly ILogger<WorkflowService<TWrapper, TState, TMessage>> _logger;
         private readonly Aggregator<TWrapper, TState> _aggregator;
 
-        public WorkflowService(IServiceProvider serviceProvider, IWorkflowMiddleware<TState> middleware)
+        public WorkflowService(IServiceProvider serviceProvider, Aggregator<TWrapper, TState> aggregator, IWorkflowMiddleware<TState> middleware)
         {
             _middleware = middleware;
             _logger = serviceProvider.GetRequiredService<ILogger<WorkflowService<TWrapper, TState, TMessage>>>();
 
             // Aggregator
-            var aggregatorBuilder = serviceProvider.GetRequiredService<AggregatorBuilder<TWrapper, TState>>();
-            _aggregator = aggregatorBuilder.Build();
+            _aggregator = aggregator;
         }
 
         public async Task<Dictionary<string, Aggregate<TState>>> LoadAsync(TMessage[] messages, CancellationToken ct)
         {
             // Load Aggregate
             var streamIds = messages.Select(x => x.StreamId).Distinct().ToArray();
-            var aggregateDict = await _aggregator.GetAggregatesFromStateAsync(streamIds, ct);
+            var aggregateDict = await _aggregator.GetAggregatesFromStatesAsync(streamIds, ct);
 
             // OnLoad Hook
             SafeHook(() => _middleware?.OnLoad(aggregateDict), aggregateDict);

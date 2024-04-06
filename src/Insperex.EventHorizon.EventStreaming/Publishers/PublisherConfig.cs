@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Insperex.EventHorizon.Abstractions.Serialization.Compression;
 
 namespace Insperex.EventHorizon.EventStreaming.Publishers;
 
@@ -11,4 +12,5 @@ public class PublisherConfig
     public bool IsGuaranteed { get; set; }
     public TimeSpan SendTimeout { get; set; }
     public int BatchSize { get; set; }
+    public Compression? CompressionType { get; set; }
 }

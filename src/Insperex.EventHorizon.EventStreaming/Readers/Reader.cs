@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
+using Insperex.EventHorizon.Abstractions.Serialization.Compression.Extensions;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 
@@ -27,6 +28,10 @@ public class Reader<TMessage> : IAsyncDisposable
             var items = await _reader.GetNextAsync(batchSize, timeout.Value);
             activity?.SetTag(TraceConstants.Tags.Count, items.Length);
             activity?.SetStatus(ActivityStatusCode.Ok);
+
+            // Decompress
+            foreach (var item in items)
+                item.Data.Decompress();
 
             // Upgrade Actions
             foreach (var item in items)

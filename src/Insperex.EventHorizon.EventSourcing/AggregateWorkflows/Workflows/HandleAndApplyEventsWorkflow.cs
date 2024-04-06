@@ -17,7 +17,7 @@ namespace Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Workflows
 
         public HandleAndApplyEventsWorkflow(StreamingClient streamingClient,
             WorkflowService<TWrapper, TState, TMessage> workflowService,
-            WorkflowConfigurator<TState> configurator) : base($"Handle{typeof(TMessage).Name}s", streamingClient, workflowService, configurator)
+            WorkflowConfigurator<TWrapper, TState> configurator) : base($"Handle{typeof(TMessage).Name}s", streamingClient, workflowService, configurator)
         {
             _workflowService = workflowService;
         }

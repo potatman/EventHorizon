@@ -21,9 +21,9 @@ public static class EventHorizonConfiguratorExtensions
 
     public static EventHorizonConfigurator AddMongoDbClient(this EventHorizonConfigurator configurator, Action<MongoConfig> onConfig)
     {
-        configurator.Collection.Configure(onConfig);
         configurator.Collection.AddSingleton(typeof(LockFactory<>));
         configurator.AddClientResolver<MongoClientResolver, MongoClient>();
+        configurator.Collection.Configure(onConfig);
         return configurator;
     }
 

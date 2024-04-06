@@ -9,6 +9,7 @@ using Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Interfaces;
 using Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Workflows;
 using Insperex.EventHorizon.EventSourcing.Senders;
 using Insperex.EventHorizon.EventSourcing.Util;
+using Insperex.EventHorizon.EventStore;
 using Insperex.EventHorizon.EventStore.Models;
 using Insperex.EventHorizon.EventStreaming;
 using Insperex.EventHorizon.EventStreaming.Subscriptions;
@@ -25,6 +26,7 @@ public static class ServiceCollectionExtensions
         configurator.Collection.TryAddSingleton(typeof(EventSourcingClient<>));
         configurator.Collection.TryAddSingleton(typeof(AggregatorBuilder<,>));
         configurator.Collection.TryAddSingleton(typeof(SenderBuilder<>));
+        configurator.Collection.TryAddSingleton(typeof(StoreBuilder<,>));
         configurator.Collection.TryAddSingleton(typeof(WorkflowFactory<>));
         configurator.Collection.TryAddSingleton(typeof(WorkflowService<,,>));
         configurator.Collection.TryAddSingleton<SenderSubscriptionTracker>();
@@ -35,7 +37,7 @@ public static class ServiceCollectionExtensions
     }
 
     public static EventHorizonConfigurator HandleRequests<TState>(this EventHorizonConfigurator configurator,
-        Action<WorkflowConfigurator<TState>> onConfig = null)
+        Action<WorkflowConfigurator<Snapshot<TState>, TState>> onConfig = null)
         where TState : class, IState
     {
         configurator.AddEventSourcing();
@@ -45,7 +47,7 @@ public static class ServiceCollectionExtensions
     }
 
     public static EventHorizonConfigurator HandleCommands<TState>(this EventHorizonConfigurator configurator,
-        Action<WorkflowConfigurator<TState>> onConfig = null)
+        Action<WorkflowConfigurator<Snapshot<TState>, TState>> onConfig = null)
         where TState : class, IState
     {
         configurator.AddEventSourcing();
@@ -55,7 +57,7 @@ public static class ServiceCollectionExtensions
     }
 
     public static EventHorizonConfigurator HandleEvents<TState>(this EventHorizonConfigurator configurator,
-        Action<WorkflowConfigurator<TState>> onConfig = null)
+        Action<WorkflowConfigurator<Snapshot<TState>, TState>> onConfig = null)
         where TState : class, IState
     {
         configurator.AddEventSourcing();
@@ -64,7 +66,7 @@ public static class ServiceCollectionExtensions
         return configurator;
     }
 
-    public static EventHorizonConfigurator ApplyEvents<TState>(this EventHorizonConfigurator configurator, Action<WorkflowConfigurator<TState>> onConfig = null)
+    public static EventHorizonConfigurator ApplyEvents<TState>(this EventHorizonConfigurator configurator, Action<WorkflowConfigurator<View<TState>, TState>> onConfig = null)
         where TState : class, IState
     {
         configurator.AddEventSourcing();

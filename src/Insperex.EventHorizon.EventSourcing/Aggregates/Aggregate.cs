@@ -1,23 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Net;
-using System.Reflection;
-using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
-using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
 using Insperex.EventHorizon.Abstractions.Reflection;
 using Insperex.EventHorizon.EventStore.Interfaces;
-using Insperex.EventHorizon.EventStore.Models;
 
 namespace Insperex.EventHorizon.EventSourcing.Aggregates;
 
 public class Aggregate<T>
-    where T : IState
+    where T : class, IState
 {
     private static readonly Type Type = typeof(T);
     private static readonly StateDetail StateDetail = ReflectionFactory.GetStateDetail(Type);
@@ -30,7 +25,7 @@ public class Aggregate<T>
     public bool IsDirty { get; private set; }
     public string Id { get; set; }
     public long SequenceId { get; set; }
-    public T State { get; set; }
+    public T Payload { get; set; }
     public DateTime CreatedDate { get; set; }
     public DateTime UpdatedDate { get; set; }
 
@@ -45,7 +40,7 @@ public class Aggregate<T>
     {
         Id = model.Id;
         SequenceId = model.SequenceId;
-        State = model.State;
+        Payload = model.Payload;
         CreatedDate = model.CreatedDate;
         UpdatedDate = model.UpdatedDate;
         Setup();
@@ -132,21 +127,21 @@ public class Aggregate<T>
     private void Setup()
     {
         // Initialize Data
-        State ??= Activator.CreateInstance<T>();
-        State.Id = Id;
+        Payload ??= Activator.CreateInstance<T>();
+        Payload.Id = Id;
         var properties = StateDetail.PropertiesWithStates;
         AllStates = properties
             .ToDictionary(x => x.PropertyType, x =>
             {
-                var value = x.GetValue(State);
+                var value = x.GetValue(Payload);
                 if (value != null) return value;
 
                 var state = Activator.CreateInstance(x.PropertyType);
                 ((dynamic)state)!.Id = Id;
-                x.SetValue(State, state);
+                x.SetValue(Payload, state);
                 return state;
             });
-        AllStates[Type] = State;
+        AllStates[Type] = Payload;
     }
 
     public bool Exists() => SequenceId > 0;

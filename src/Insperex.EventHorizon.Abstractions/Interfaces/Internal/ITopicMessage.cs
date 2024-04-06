@@ -1,8 +1,9 @@
-﻿namespace Insperex.EventHorizon.Abstractions.Interfaces.Internal;
+﻿using Insperex.EventHorizon.Abstractions.Serialization.Compression;
 
-public interface ITopicMessage
+namespace Insperex.EventHorizon.Abstractions.Interfaces.Internal;
+
+public interface ITopicMessage : ICompressible<string>
 {
     public string StreamId { get; set; }
     public string Type { get; set; }
-    public string Payload { get; set; }
 }

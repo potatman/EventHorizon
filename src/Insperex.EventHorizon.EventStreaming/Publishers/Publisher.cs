@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
+using Insperex.EventHorizon.Abstractions.Serialization.Compression.Extensions;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 using Microsoft.Extensions.Logging;
@@ -36,6 +37,11 @@ public class Publisher<TMessage> : IAsyncDisposable
     {
         // Defensive
         if (!messages.Any()) return this;
+
+        // Compress
+        if(_config.CompressionType != null)
+            foreach (var message in messages)
+                message.Compress(_config.CompressionType);
 
         // Get topic
         var sw = Stopwatch.StartNew();

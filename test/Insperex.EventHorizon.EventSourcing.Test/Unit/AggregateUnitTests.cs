@@ -36,7 +36,7 @@ public class AggregateUnitTests
 
         Assert.Equal(eventWrappers.Last().StreamId, aggregate.Id);
         Assert.Equal(eventWrappers.Last().SequenceId, aggregate.SequenceId);
-        Assert.Equal(events.Sum(x => x.Amount), aggregate.State.Amount);
+        Assert.Equal(events.Sum(x => x.Amount), aggregate.Payload.Amount);
         Assert.True(aggregate.Exists());
     }
 
@@ -51,7 +51,7 @@ public class AggregateUnitTests
         Assert.Equal(snapshotWrapper.SequenceId, aggregate.SequenceId);
         Assert.Equal(snapshotWrapper.CreatedDate, aggregate.CreatedDate);
         Assert.Equal(snapshotWrapper.UpdatedDate, aggregate.UpdatedDate);
-        Assert.Equal(state.Amount, aggregate.State.Amount);
+        Assert.Equal(state.Amount, aggregate.Payload.Amount);
         Assert.True(aggregate.Exists());
     }
 
@@ -79,9 +79,9 @@ public class AggregateUnitTests
         // Assert State and Agg
         var expected = JsonSerializer.Deserialize<OpenAccount>(@event.Payload);
         Assert.Equal(_streamId, agg.Id);
-        Assert.Equal(_streamId, agg.State.Id);
+        Assert.Equal(_streamId, agg.Payload.Id);
         Assert.Equal(1, agg.SequenceId);
-        Assert.Equal(expected.Amount, agg.State.Amount);
+        Assert.Equal(expected.Amount, agg.Payload.Amount);
 
         // Assert Event
         Assert.Single(agg.Events);
@@ -98,9 +98,9 @@ public class AggregateUnitTests
         // Assert State and Agg
         var expected = JsonSerializer.Deserialize<OpenAccount>(@event.Payload);
         Assert.Equal(_streamId, agg.Id);
-        Assert.Equal(_streamId, agg.State.Id);
+        Assert.Equal(_streamId, agg.Payload.Id);
         Assert.Equal(1, agg.SequenceId);
-        Assert.Equal(expected.Amount, agg.State.Account.Amount);
+        Assert.Equal(expected.Amount, agg.Payload.Account.Amount);
 
         // Assert Event
         Assert.Single(agg.Events);
@@ -117,9 +117,9 @@ public class AggregateUnitTests
         // Assert State and Agg
         var expected = JsonSerializer.Deserialize<ChangeUserName>(command.Payload);
         Assert.Equal(_streamId, agg.Id);
-        Assert.Equal(_streamId, agg.State.Id);
+        Assert.Equal(_streamId, agg.Payload.Id);
         Assert.Equal(1, agg.SequenceId);
-        Assert.Equal(expected.Name, agg.State.Name);
+        Assert.Equal(expected.Name, agg.Payload.Name);
 
         // Assert Event
         var @event = agg.Events.First();
@@ -140,9 +140,9 @@ public class AggregateUnitTests
         // Assert State and Agg
         var expected = JsonSerializer.Deserialize<OpenAccount>(request.Payload);
         Assert.Equal(_streamId, agg.Id);
-        Assert.Equal(_streamId, agg.State.Id);
+        Assert.Equal(_streamId, agg.Payload.Id);
         Assert.Equal(1, agg.SequenceId);
-        Assert.Equal(expected.Amount, agg.State.Amount);
+        Assert.Equal(expected.Amount, agg.Payload.Amount);
 
         // Assert Event
         var @event = agg.Events.First();
@@ -166,9 +166,9 @@ public class AggregateUnitTests
 
         // Assert State and Agg
         Assert.Equal(_streamId, agg.Id);
-        Assert.Equal(_streamId, agg.State.Id);
+        Assert.Equal(_streamId, agg.Payload.Id);
         Assert.Equal(0, agg.SequenceId);
-        Assert.Equal(0, agg.State.Amount);
+        Assert.Equal(0, agg.Payload.Amount);
 
         // Assert Event
         Assert.Empty(agg.Events);
@@ -192,8 +192,8 @@ public class AggregateUnitTests
         var expected = JsonSerializer.Deserialize<OpenAccount>(request.Payload);
         Assert.Equal(_streamId, agg.Id);
         Assert.Equal(1, agg.SequenceId);
-        Assert.Equal(_streamId, agg.State.Account.Id);
-        Assert.Equal(expected.Amount, agg.State.Account.Amount);
+        Assert.Equal(_streamId, agg.Payload.Account.Id);
+        Assert.Equal(expected.Amount, agg.Payload.Account.Amount);
 
         // Assert Event
         var @event = agg.Events.First();

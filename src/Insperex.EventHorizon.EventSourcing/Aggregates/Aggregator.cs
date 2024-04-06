@@ -10,6 +10,8 @@ using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
+using Insperex.EventHorizon.Abstractions.Serialization.Compression.Extensions;
+using Insperex.EventHorizon.EventStore;
 using Insperex.EventHorizon.EventStore.Interfaces;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStreaming;
@@ -21,24 +23,27 @@ namespace Insperex.EventHorizon.EventSourcing.Aggregates;
 
 public class Aggregator<TParent, TState>
     where TParent : IStateParent<TState>, new()
-    where TState : IState
+    where TState : class, IState
 {
     private readonly Type _stateType = typeof(TState);
     private readonly string _stateTypeName = typeof(TState).Name;
-    private readonly ICrudStore<TParent> _crudStore;
     private readonly ILogger<Aggregator<TParent, TState>> _logger;
     private readonly StreamingClient _streamingClient;
+    private readonly AggregatorConfig<TState> _config;
     private readonly Dictionary<string, object> _publisherDict = new();
     private readonly string _eventTopic;
+    private readonly Store<TParent, TState> _store;
 
     public Aggregator(
         ICrudStore<TParent> crudStore,
         StreamingClient streamingClient,
         Formatter formatter,
+        AggregatorConfig<TState> config,
         ILogger<Aggregator<TParent, TState>> logger)
     {
-        _crudStore = crudStore;
+        _store = new StoreBuilder<TParent, TState>(crudStore).AddCompression(config.StateCompression).Build();
         _streamingClient = streamingClient;
+        _config = config;
         _eventTopic = formatter.GetTopic<Event>(_stateType);
         _logger = logger;
     }
@@ -75,7 +80,7 @@ public class Aggregator<TParent, TState>
                 {
                     Id = x.Id,
                     SequenceId = x.SequenceId,
-                    State = x.State,
+                    Payload = x.Payload,
                     CreatedDate = x.CreatedDate,
                     UpdatedDate = x.UpdatedDate
                 })
@@ -84,7 +89,7 @@ public class Aggregator<TParent, TState>
             if (parents.Any() != true)
                 return;
 
-            var results = await _crudStore.UpsertAllAsync(parents, CancellationToken.None);
+            var results = await _store.UpsertAllAsync(parents, CancellationToken.None);
             foreach (var id in results.FailedIds)
                 aggregateDict[id].SetStatus(HttpStatusCode.InternalServerError, "Snapshot Failed to Save");
             foreach (var id in results.PassedIds)
@@ -148,7 +153,7 @@ public class Aggregator<TParent, TState>
         where TMessage : class, ITopicMessage
     {
         if (!_publisherDict.ContainsKey(topic))
-            _publisherDict[topic] = _streamingClient.CreatePublisher<TMessage>().AddTopic(topic).Build();
+            _publisherDict[topic] = _streamingClient.CreatePublisher<TMessage>().AddTopic(topic).AddCompression(_config.EventCompression).Build();
         return _publisherDict[topic] as Publisher<TMessage>;
     }
 
@@ -168,19 +173,23 @@ public class Aggregator<TParent, TState>
 
     public async Task<Aggregate<TState>> GetAggregateFromStateAsync(string streamId, CancellationToken ct)
     {
-        var result = await GetAggregatesFromStateAsync(new[] { streamId }, ct);
+        var result = await GetAggregatesFromStatesAsync(new[] { streamId }, ct);
         return result.Values.FirstOrDefault();
     }
 
-    public async Task<Dictionary<string, Aggregate<TState>>> GetAggregatesFromStateAsync(string[] streamIds, CancellationToken ct)
+    public async Task<Dictionary<string, Aggregate<TState>>> GetAggregatesFromStatesAsync(string[] streamIds, CancellationToken ct)
     {
         try
         {
             // Load Snapshots
             var sw = Stopwatch.StartNew();
             streamIds = streamIds.Distinct().ToArray();
-            var snapshots = await _crudStore.GetAllAsync(streamIds, ct);
+            var snapshots = await _store.GetAllAsync(streamIds, ct);
             var parentDict = snapshots.ToDictionary(x => x.Id);
+
+            // Decompress
+            foreach(var snapshot in snapshots)
+                snapshot.Decompress();
 
             // Build Aggregate Dict
             var aggregateDict = streamIds
@@ -235,7 +244,7 @@ public class Aggregator<TParent, TState>
 
     public async Task DropAllAsync(CancellationToken ct)
     {
-        await _crudStore.DropDatabaseAsync(ct);
+        await _store.DropDatabaseAsync(ct);
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(_stateType, ct: ct);
         await _streamingClient.GetAdmin<Command>().DeleteTopicAsync(_stateType, ct: ct);
         await _streamingClient.GetAdmin<Request>().DeleteTopicAsync(_stateType, ct: ct);

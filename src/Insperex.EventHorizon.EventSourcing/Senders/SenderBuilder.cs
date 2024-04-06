@@ -3,6 +3,7 @@ using System.Net;
 using Insperex.EventHorizon.Abstractions.Interfaces;
 using Insperex.EventHorizon.Abstractions.Interfaces.Actions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
+using Insperex.EventHorizon.Abstractions.Serialization.Compression;
 using Insperex.EventHorizon.EventStreaming;
 using Microsoft.Extensions.Logging;
 
@@ -15,12 +16,19 @@ public class SenderBuilder<TState> where TState : IState
     private readonly ILoggerFactory _loggerFactory;
     private Func<Request, HttpStatusCode, string, IResponse> _getErrorResult;
     private TimeSpan _timeout = TimeSpan.FromSeconds(120);
+    private Compression? _compression;
 
     public SenderBuilder(SenderSubscriptionTracker subscriptionTracker, IServiceProvider provider, ILoggerFactory loggerFactory)
     {
         _subscriptionTracker = subscriptionTracker;
         _provider = provider;
         _loggerFactory = loggerFactory;
+    }
+
+    public SenderBuilder<TState> Compression(Compression compression)
+    {
+        _compression = compression;
+        return this;
     }
 
     public SenderBuilder<TState> Timeout(TimeSpan timeout)
@@ -40,6 +48,7 @@ public class SenderBuilder<TState> where TState : IState
         var config = new SenderConfig
         {
             Timeout = _timeout,
+            Compression = _compression,
             GetErrorResult = _getErrorResult
         };
 

@@ -11,7 +11,7 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
     {
         public static void NackFailedMessagesOnAggregates<TMessage, TState>(this SubscriptionContext<TMessage> batch, Dictionary<string, Aggregate<TState>> aggregateDict)
             where TMessage : ITopicMessage
-            where TState : IState
+            where TState : class, IState
         {
             // Get Failed StreamIds
             var failedIds = aggregateDict.Values

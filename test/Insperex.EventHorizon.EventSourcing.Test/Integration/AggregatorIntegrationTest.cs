@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Destructurama;
 using Insperex.EventHorizon.Abstractions.Extensions;
 using Insperex.EventHorizon.Abstractions.Models.TopicMessages;
+using Insperex.EventHorizon.Abstractions.Serialization.Compression;
 using Insperex.EventHorizon.Abstractions.Testing;
 using Insperex.EventHorizon.EventSourcing.Aggregates;
 using Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Workflows;
@@ -14,6 +15,7 @@ using Insperex.EventHorizon.EventSourcing.Samples.Models.Actions;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.Snapshots;
 using Insperex.EventHorizon.EventSourcing.Samples.Models.View;
 using Insperex.EventHorizon.EventSourcing.Test.Fakers;
+using Insperex.EventHorizon.EventStore;
 using Insperex.EventHorizon.EventStore.Extensions;
 using Insperex.EventHorizon.EventStore.InMemory.Extensions;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
@@ -40,7 +42,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
     private readonly EventSourcingClient<Account> _eventSourcingClient;
     private readonly HandleAndApplyEventsWorkflow<Snapshot<User>, User, Command> _userCommandWorkflow;
     private readonly ApplyEventsWorkflow<View<Account>, Account> _accountApplyEventWorkflow;
-    private readonly ICrudStore<View<Account>> _accountViewStore;
+    private readonly Store<View<Account>, Account> _accountViewStore;
 
     public AggregatorIntegrationTest(ITestOutputHelper output)
     {
@@ -76,10 +78,18 @@ public class AggregatorIntegrationTest : IAsyncLifetime
             .Build();
 
         _eventSourcingClient = _host.Services.GetRequiredService<EventSourcingClient<Account>>();
-        _accountViewStore = _eventSourcingClient.GetViewStore();
-        _userAggregator = _host.Services.GetRequiredService<EventSourcingClient<User>>().Aggregator().Build();
-        _userCommandWorkflow = _host.Services.GetRequiredService<EventSourcingClient<User>>().Workflow().HandleCommands();
-        _accountApplyEventWorkflow = _host.Services.GetRequiredService<EventSourcingClient<Account>>().Workflow().ApplyEvents();
+        _accountViewStore = _eventSourcingClient.GetViewStore().Build();
+        _userAggregator = _host.Services.GetRequiredService<EventSourcingClient<User>>().Aggregator()
+            .Build();
+
+        _userCommandWorkflow = _host.Services.GetRequiredService<EventSourcingClient<User>>().Workflow()
+            .HandleCommands(x =>
+                x.WithAggregate(b => b.StateCompression(Compression.Gzip).EventCompression(Compression.Gzip))
+            );
+        _accountApplyEventWorkflow = _host.Services.GetRequiredService<EventSourcingClient<Account>>().Workflow()
+            .ApplyEvents(x =>
+                x.WithAggregate(b => b.StateCompression(Compression.Gzip).EventCompression(Compression.Gzip))
+            );
 
 
         _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
@@ -114,12 +124,12 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         await Task.Delay(2000);
 
         // Assert
-        var aggregate  = await _eventSourcingClient.GetSnapshotStore().GetAsync(streamId, CancellationToken.None);
-        Assert.Equal(streamId, aggregate.State.Id);
+        var aggregate  = await _eventSourcingClient.Aggregator().Build().GetAggregateFromStateAsync(streamId, CancellationToken.None);
+        Assert.Equal(streamId, aggregate.Payload.Id);
         Assert.Equal(streamId, aggregate.Id);
         Assert.NotEqual(DateTime.MinValue, aggregate.CreatedDate);
         Assert.NotEqual(DateTime.MinValue, aggregate.UpdatedDate);
-        Assert.Equal(100, aggregate.State.Amount);
+        Assert.Equal(100, aggregate.Payload.Amount);
     }
 
     [Fact]
@@ -136,12 +146,12 @@ public class AggregatorIntegrationTest : IAsyncLifetime
 
         // Assert Account
         var aggregate1  = await _userAggregator.GetAggregateFromStateAsync(streamId, CancellationToken.None);
-        Assert.Equal(streamId, aggregate1.State.Id);
+        Assert.Equal(streamId, aggregate1.Payload.Id);
         Assert.Equal(streamId, aggregate1.Id);
         Assert.Equal(2, aggregate1.SequenceId);
         Assert.NotEqual(DateTime.MinValue, aggregate1.CreatedDate);
         Assert.NotEqual(DateTime.MinValue, aggregate1.UpdatedDate);
-        Assert.Equal("Joe", aggregate1.State.Name);
+        Assert.Equal("Joe", aggregate1.Payload.Name);
     }
 
     [Fact]
@@ -156,11 +166,11 @@ public class AggregatorIntegrationTest : IAsyncLifetime
 
         // Assert Account
         var aggregate1  = await _accountViewStore.GetAsync(streamId, CancellationToken.None);
-        Assert.Equal(streamId, aggregate1.State.Id);
+        Assert.Equal(streamId, aggregate1.Payload.Id);
         Assert.Equal(streamId, aggregate1.Id);
         Assert.Equal(1, aggregate1.SequenceId);
         Assert.NotEqual(DateTime.MinValue, aggregate1.CreatedDate);
         Assert.NotEqual(DateTime.MinValue, aggregate1.UpdatedDate);
-        Assert.Equal(100, aggregate1.State.Amount);
+        Assert.Equal(100, aggregate1.Payload.Amount);
     }
 }

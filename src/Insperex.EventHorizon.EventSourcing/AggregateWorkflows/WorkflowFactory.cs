@@ -21,36 +21,47 @@ public class WorkflowFactory<TState> where TState : class, IState
             _provider = provider;
         }
 
-        public HandleAndApplyEventsWorkflow<Snapshot<TState>, TState, Command> HandleCommands(Action<WorkflowConfigurator<TState>> onConfig = null) => Handle<Command>(onConfig);
-        public HandleAndApplyEventsWorkflow<Snapshot<TState>, TState, Request> HandleRequests(Action<WorkflowConfigurator<TState>> onConfig = null) => Handle<Request>(onConfig);
-        public HandleAndApplyEventsWorkflow<Snapshot<TState>, TState, Event> HandleEvents(Action<WorkflowConfigurator<TState>> onConfig = null) => Handle<Event>(onConfig);
+        public HandleAndApplyEventsWorkflow<Snapshot<TState>, TState, Command> HandleCommands(Action<WorkflowConfigurator<Snapshot<TState>, TState>> onConfig = null) => Handle<Command>(onConfig);
+        public HandleAndApplyEventsWorkflow<Snapshot<TState>, TState, Request> HandleRequests(Action<WorkflowConfigurator<Snapshot<TState>, TState>> onConfig = null) => Handle<Request>(onConfig);
+        public HandleAndApplyEventsWorkflow<Snapshot<TState>, TState, Event> HandleEvents(Action<WorkflowConfigurator<Snapshot<TState>, TState>> onConfig = null) => Handle<Event>(onConfig);
 
-        public ApplyEventsWorkflow<View<TState>, TState> ApplyEvents(Action<WorkflowConfigurator<TState>> onConfig = null)
+        public ApplyEventsWorkflow<View<TState>, TState> ApplyEvents(Action<WorkflowConfigurator<View<TState>, TState>> onConfig = null)
         {
-            var config = new WorkflowConfigurator<TState>(_provider);
+            var config = new WorkflowConfigurator<View<TState>, TState>(_provider);
             onConfig?.Invoke(config);
 
-            var workflowService = new WorkflowService<View<TState>, TState, Event>(_provider, config.WorkflowMiddleware);
+            var aggregatorBuilder = _provider.GetRequiredService<AggregatorBuilder<View<TState>, TState>>();
+            config.AggregateConfiguration?.Invoke(aggregatorBuilder);
+            var aggregator = aggregatorBuilder.Build();
+
+            var workflowService = new WorkflowService<View<TState>, TState, Event>(_provider, aggregator, config.WorkflowMiddleware);
             return new ApplyEventsWorkflow<View<TState>, TState>(_streamingClient, workflowService, config);
         }
 
-        public RebuildAllWorkflow<Snapshot<TState>, TState> RebuildAll(Action<WorkflowConfigurator<TState>> onConfig = null)
+        public RebuildAllWorkflow<Snapshot<TState>, TState> RebuildAll(Action<WorkflowConfigurator<Snapshot<TState>, TState>> onConfig = null)
         {
-            var config = new WorkflowConfigurator<TState>(_provider);
+            var config = new WorkflowConfigurator<Snapshot<TState>, TState>(_provider);
             onConfig?.Invoke(config);
 
-            var aggregator = _provider.GetRequiredService<AggregatorBuilder<Snapshot<TState>, TState>>().Build();
-            var workflowService = new WorkflowService<Snapshot<TState>, TState, Event>(_provider, config.WorkflowMiddleware);
+            var aggregatorBuilder = _provider.GetRequiredService<AggregatorBuilder<Snapshot<TState>, TState>>();
+            config.AggregateConfiguration?.Invoke(aggregatorBuilder);
+            var aggregator = aggregatorBuilder.Build();
+
+            var workflowService = new WorkflowService<Snapshot<TState>, TState, Event>(_provider, aggregator, config.WorkflowMiddleware);
             return new RebuildAllWorkflow<Snapshot<TState>, TState>(aggregator, _streamingClient, workflowService, config);
         }
 
-        private HandleAndApplyEventsWorkflow<Snapshot<TState>, TState, TMessage> Handle<TMessage>(Action<WorkflowConfigurator<TState>> onConfig = null)
+        private HandleAndApplyEventsWorkflow<Snapshot<TState>, TState, TMessage> Handle<TMessage>(Action<WorkflowConfigurator<Snapshot<TState>, TState>> onConfig = null)
             where TMessage : class, ITopicMessage, new()
         {
-            var config = new WorkflowConfigurator<TState>(_provider);
+            var config = new WorkflowConfigurator<Snapshot<TState>, TState>(_provider);
             onConfig?.Invoke(config);
 
-            var workflowService = new WorkflowService<Snapshot<TState>, TState, TMessage>(_provider, config.WorkflowMiddleware);
+            var aggregatorBuilder = _provider.GetRequiredService<AggregatorBuilder<Snapshot<TState>, TState>>();
+            config.AggregateConfiguration?.Invoke(aggregatorBuilder);
+            var aggregator = aggregatorBuilder.Build();
+
+            var workflowService = new WorkflowService<Snapshot<TState>, TState, TMessage>(_provider, aggregator, config.WorkflowMiddleware);
             return new HandleAndApplyEventsWorkflow<Snapshot<TState>, TState, TMessage>(_streamingClient, workflowService, config);
         }
     }

@@ -16,7 +16,7 @@ namespace Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Workflows
 
         public RebuildAllWorkflow(Aggregator<TWrapper, TState> aggregator,
             StreamingClient streamingClient, WorkflowService<TWrapper, TState, Event> workflowService,
-            WorkflowConfigurator<TState> configurator) : base("RebuildEvents", streamingClient, workflowService, configurator)
+            WorkflowConfigurator<TWrapper, TState> configurator) : base("RebuildEvents", streamingClient, workflowService, configurator)
         {
             _aggregator = aggregator;
         }

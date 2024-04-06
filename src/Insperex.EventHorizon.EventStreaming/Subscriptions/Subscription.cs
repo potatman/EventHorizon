@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Insperex.EventHorizon.Abstractions.Interfaces.Internal;
 using Insperex.EventHorizon.Abstractions.Models;
+using Insperex.EventHorizon.Abstractions.Serialization.Compression.Extensions;
 using Insperex.EventHorizon.EventStreaming.Interfaces.Streaming;
 using Insperex.EventHorizon.EventStreaming.Tracing;
 using Microsoft.Extensions.Logging;
@@ -118,15 +119,18 @@ public class Subscription<TMessage> : IAsyncDisposable
             activity?.SetTag(TraceConstants.Tags.Count, batch?.Length ?? 0);
             activity?.SetStatus(ActivityStatusCode.Ok);
 
-            // Upgrade Actions
-            if (batch?.Any() == true)
-            {
-                foreach (var item in batch)
-                    item.Data = item.Upgrade();
+            if (batch?.Any() != true) return batch;
 
-                _logger.LogInformation("Subscription - Loaded {Type}(s) {Count} in {Duration} {Subscription}",
-                    typeof(TMessage).Name, batch.Length, sw.ElapsedMilliseconds, _config.SubscriptionName);
-            }
+            // Decompress
+            foreach (var item in batch)
+                item.Data.Decompress();
+
+            // Upgrade
+            foreach (var item in batch)
+                item.Data = item.Upgrade();
+
+            _logger.LogInformation("Subscription - Loaded {Type}(s) {Count} in {Duration} {Subscription}",
+                typeof(TMessage).Name, batch.Length, sw.ElapsedMilliseconds, _config.SubscriptionName);
 
             return batch;
         }

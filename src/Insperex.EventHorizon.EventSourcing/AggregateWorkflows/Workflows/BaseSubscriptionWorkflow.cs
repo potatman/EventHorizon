@@ -21,7 +21,7 @@ namespace Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Workflows
         private readonly WorkflowService<TWrapper, TState, TMessage> _workflowService;
         private readonly Subscription<TMessage> _subscription;
 
-        public BaseSubscriptionWorkflow(string name, StreamingClient streamingClient, WorkflowService<TWrapper, TState, TMessage> workflowService, WorkflowConfigurator<TState> configurator)
+        public BaseSubscriptionWorkflow(string name, StreamingClient streamingClient, WorkflowService<TWrapper, TState, TMessage> workflowService, WorkflowConfigurator<TWrapper, TState> configurator)
         {
             _workflowService = workflowService;
             var subscriptionBuilder = streamingClient.CreateSubscription<TMessage>()

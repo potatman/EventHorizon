@@ -60,8 +60,8 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
         var actual = snapshots.First();
         Assert.Equal(expected.Id, actual.Id);
         Assert.Equal(expected.SequenceId, actual.SequenceId);
-        Assert.Equal(expected.State.Id, actual.State.Id);
-        Assert.Equal(expected.State.Name, actual.State.Name);
+        Assert.Equal(expected.Payload.Id, actual.Payload.Id);
+        Assert.Equal(expected.Payload.Name, actual.Payload.Name);
         Assert.Single(result.PassedIds);
     }
 
