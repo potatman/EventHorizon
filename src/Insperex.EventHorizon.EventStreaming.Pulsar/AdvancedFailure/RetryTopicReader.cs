@@ -51,14 +51,14 @@ public class RetryTopicReader<TMessage>: IAsyncDisposable
 
     public async Task<MessageContext<TMessage>[]> GetNextAsync(TopicStreamState[] topicStreams, int batchSize, CancellationToken ct)
     {
-        var contexts = await InitReaderContexts(topicStreams);
+        var contexts = await InitReaderContextsAsync(topicStreams).ConfigureAwait(false);
         var asOf = DateTime.UtcNow;
         var messages = new List<MessageContext<TMessage>>();
         bool anyMoreMessages;
 
         do
         {
-            var (topic, message) = await GetNextMessage(contexts, ct);
+            var (topic, message) = await GetNextMessage(contexts, ct).ConfigureAwait(false);
             anyMoreMessages = message != null;
 
             if (anyMoreMessages)
@@ -80,7 +80,7 @@ public class RetryTopicReader<TMessage>: IAsyncDisposable
         return messages.ToArray();
     }
 
-    private async Task<Dictionary<string, TopicReaderContext>> InitReaderContexts(TopicStreamState[] topicStreams)
+    private async Task<Dictionary<string, TopicReaderContext>> InitReaderContextsAsync(TopicStreamState[] topicStreams)
     {
         var topicStreamsByTopic = topicStreams.ToLookup(ts => ts.Topic);
 
@@ -90,7 +90,7 @@ public class RetryTopicReader<TMessage>: IAsyncDisposable
                 Topic = tsl.Key,
                 Streams = tsl.ToDictionary(ts => ts.StreamId),
                 MessageQueue = new(),
-                Reader = await GetReader(tsl.Key),
+                Reader = await GetReader(tsl.Key).ConfigureAwait(false),
                 ReaderStartTime = tsl.Min(s => s.LastMessagePublishTime),
                 ContinueReading = true,
             })
@@ -100,7 +100,7 @@ public class RetryTopicReader<TMessage>: IAsyncDisposable
         foreach (var context in contexts.Values)
         {
             var seekTimestamp = PulsarMessageMapper.PublishTimestampFromDate(context.ReaderStartTime);
-            await context.Reader.SeekAsync(seekTimestamp);
+            await context.Reader.SeekAsync(seekTimestamp).ConfigureAwait(false);
         }
 
         return contexts;
@@ -110,7 +110,7 @@ public class RetryTopicReader<TMessage>: IAsyncDisposable
         Dictionary<string, TopicReaderContext> contexts,
         CancellationToken ct)
     {
-        await PrimeTopicQueues(contexts, ct);
+        await PrimeTopicQueuesAsync(contexts, ct).ConfigureAwait(false);
 
         var contextsWithMessages = contexts.Values
             .Where(c => c.MessageQueue.Any())
@@ -124,7 +124,7 @@ public class RetryTopicReader<TMessage>: IAsyncDisposable
         return (selectedContext.Topic, selectedContext.MessageQueue.Dequeue());
     }
 
-    private static async Task PrimeTopicQueues(Dictionary<string, TopicReaderContext> contexts, CancellationToken ct)
+    private static async Task PrimeTopicQueuesAsync(Dictionary<string, TopicReaderContext> contexts, CancellationToken ct)
     {
         foreach (var context in contexts.Values)
         {
@@ -136,14 +136,14 @@ public class RetryTopicReader<TMessage>: IAsyncDisposable
     {
         if (context.ContinueReading && !context.MessageQueue.Any())
         {
-            bool moreMessages = await context.Reader.HasMessageAvailableAsync();
+            bool moreMessages = await context.Reader.HasMessageAvailableAsync().ConfigureAwait(false);
 
             while (context.MessageQueue.Count < BufferSize && moreMessages)
             {
-                var message = await context.Reader.ReadNextAsync(ct);
+                var message = await context.Reader.ReadNextAsync(ct).ConfigureAwait(false);
 
                 context.MessageQueue.Enqueue(message);
-                moreMessages = await context.Reader.HasMessageAvailableAsync();
+                moreMessages = await context.Reader.HasMessageAvailableAsync().ConfigureAwait(false);
             }
 
             if (!moreMessages) context.ContinueReading = false;
@@ -177,7 +177,8 @@ public class RetryTopicReader<TMessage>: IAsyncDisposable
             .ReaderName($"{AssemblyUtil.AssemblyNameWithGuid}_retry_{topic}")
             .ReceiverQueueSize(BufferSize)
             .StartMessageId(MessageId.Earliest)
-            .CreateAsync();
+            .CreateAsync()
+            .ConfigureAwait(false);
 
         _readers.Add(topic, newReader);
         return newReader;
@@ -189,7 +190,7 @@ public class RetryTopicReader<TMessage>: IAsyncDisposable
         {
             foreach (var reader in _readers.Values)
             {
-                await reader.DisposeAsync();
+                await reader.DisposeAsync().ConfigureAwait(false);
             }
 
             _readers.Clear();

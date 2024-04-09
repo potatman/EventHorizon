@@ -35,7 +35,7 @@ public abstract class AbstractElasticCrudStore<TE> : ICrudStore<TE>
 
     public async Task MigrateAsync(CancellationToken ct)
     {
-        var getReq = await _client.Indices.GetAsync(new GetIndexRequest(_dbName), ct);
+        var getReq = await _client.Indices.GetAsync(new GetIndexRequest(_dbName), ct).ConfigureAwait(false);
         if (getReq.IsValidResponse) return;
 
         var createReq = await _client.Indices.CreateAsync(_dbName, cfg =>
@@ -48,7 +48,7 @@ public abstract class AbstractElasticCrudStore<TE> : ICrudStore<TE>
                     if (_elasticAttr?.RefreshIntervalMs > 0) x.RefreshInterval(_elasticAttr?.RefreshIntervalMs);
                     if (_elasticAttr?.MaxResultWindow > 0) x.MaxResultWindow(_elasticAttr?.MaxResultWindow);
                 });
-        }, ct);
+        }, ct).ConfigureAwait(false);
 
         ThrowErrors(createReq);
     }
@@ -64,7 +64,7 @@ public abstract class AbstractElasticCrudStore<TE> : ICrudStore<TE>
             .Index(_dbName)
             .Ids(ids)
             .Refresh(true)
-        , ct);
+        , ct).ConfigureAwait(false);
 
         ThrowErrors(res);
 
@@ -76,7 +76,7 @@ public abstract class AbstractElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.BulkAsync(
             b => b.Index(_dbName)
                 .CreateMany(objs)
-                .Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh())), ct);
+                .Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh())), ct).ConfigureAwait(false);
 
         var result = new DbResult { PassedIds = objs.Select(x => x.Id).ToArray() };
         if (res.Errors)
@@ -94,7 +94,7 @@ public abstract class AbstractElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.BulkAsync(
             b => b.Index(_dbName)
                 .IndexMany(objs)
-                .Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh())), ct);
+                .Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh())), ct).ConfigureAwait(false);
 
         var result = new DbResult { PassedIds = objs.Select(x => x.Id).ToArray(), FailedIds = Array.Empty<string>() };
         if (res.Errors)
@@ -112,7 +112,7 @@ public abstract class AbstractElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.DeleteByQueryAsync<TE>(_dbName, q => q
             .Query(rq => rq
                 .Ids(f => f.Values(ids))
-            ).Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh()).Value == "true"), ct);
+            ).Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh()).Value == "true"), ct).ConfigureAwait(false);
 
         // TODO: contact elastic and figure out why this doesn't work
         // var objs = ids.Select(x => new { Id = x }).ToArray();
@@ -120,7 +120,7 @@ public abstract class AbstractElasticCrudStore<TE> : ICrudStore<TE>
         //     b => b.Index(_dbName)
         //         .DeleteMany(objs)
         //         .Index(_dbName)
-        //         .Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh())), ct);
+        //         .Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh())), ct).ConfigureAwait(false);
 
         ThrowErrors(res);
     }

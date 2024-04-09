@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Insperex.EventHorizon.EventStore.Extensions;
 using Insperex.EventHorizon.EventStore.Interfaces.Stores;
 using Insperex.EventHorizon.EventStore.Models;
 using Microsoft.Extensions.Logging;
@@ -33,12 +34,12 @@ public class LockDisposable : IAsyncDisposable
     public async Task<LockDisposable> WaitForLockAsync()
     {
         _logger.LogInformation("Lock - Try lock {Name} on {Host}", _id, _hostname);
-        
+
         do
         {
-            _ownsLock = await TryLockAsync();
+            _ownsLock = await TryLockAsync().ConfigureAwait(false);
             if (!_ownsLock)
-                await Task.Delay(200);
+                await Task.Delay(200).ConfigureAwait(false);
         } while (!_ownsLock);
 
         _logger.LogInformation("Lock - Acquired lock {Name} on {Host}", _id, _hostname);
@@ -50,7 +51,7 @@ public class LockDisposable : IAsyncDisposable
         try
         {
             var @lock = new Lock { Id = _id, Expiration = DateTime.UtcNow.AddMilliseconds(_timeout.TotalMilliseconds), Owner = _hostname };
-            var result = await _crudStore.InsertAllAsync(new[] { @lock }, CancellationToken.None);
+            var result = await _crudStore.InsertAllAsync(new[] { @lock }, CancellationToken.None).ConfigureAwait(false);
             _ownsLock = result.FailedIds?.Any() != true;
         }
         catch (Exception e)
@@ -60,7 +61,7 @@ public class LockDisposable : IAsyncDisposable
 
         if (!_ownsLock)
         {
-            var current = (await _crudStore.GetAllAsync(new[] { _id }, CancellationToken.None)).FirstOrDefault();
+            var current = await _crudStore.GetOneAsync(_id, CancellationToken.None).ConfigureAwait(false);
             if (current != null)
                 return current.Expiration < DateTime.UtcNow || current.Owner == _hostname;
         }
@@ -76,15 +77,15 @@ public class LockDisposable : IAsyncDisposable
             return this;
 
         _isReleased = true;
-        await _crudStore.DeleteAllAsync(new[] { _id }, CancellationToken.None);
+        await _crudStore.DeleteOneAsync(_id, CancellationToken.None).ConfigureAwait(false);
         _logger.LogInformation("Lock - Released lock {Name} on {Host}", _id, Environment.MachineName);
         return this;
     }
 
     private async void SetTimeout()
     {
-        await Task.Delay(_timeout);
-        await ReleaseAsync();
+        await Task.Delay(_timeout).ConfigureAwait(false);
+        await ReleaseAsync().ConfigureAwait(false);
     }
 
     private void OnExit(object sender, EventArgs e)
@@ -96,6 +97,6 @@ public class LockDisposable : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if(!_isReleased)
-            await ReleaseAsync();
+            await ReleaseAsync().ConfigureAwait(false);
     }
 }

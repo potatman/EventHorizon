@@ -51,8 +51,8 @@ public sealed class FailureStateTopic<TMessage>
         {
             try
             {
-                await _admin.RequireTopicAsync(_topic.ToString(), ct);
-                _tableView = await GetTableViewAsync();
+                await _admin.RequireTopicAsync(_topic.ToString(), ct).ConfigureAwait(false);
+                _tableView = await GetTableViewAsync().ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -62,13 +62,13 @@ public sealed class FailureStateTopic<TMessage>
         }
     }
 
-    public async Task Publish(params TopicStreamState[] updates)
+    public async Task PublishAsync(params TopicStreamState[] updates)
     {
-        var producer = await GetProducerAsync();
+        var producer = await GetProducerAsync().ConfigureAwait(false);
         foreach (var update in updates)
         {
             var message = producer.NewMessage(update, update.Key());
-            await producer.SendAndForgetAsync(message);
+            await producer.SendAndForgetAsync(message).ConfigureAwait(false);
         }
     }
 
@@ -86,7 +86,7 @@ public sealed class FailureStateTopic<TMessage>
             .Intercept(_intercept)
             .Topic(_topic.ToString());
 
-        _producer = await builder.CreateAsync();
+        _producer = await builder.CreateAsync().ConfigureAwait(false);
 
         return _producer;
     }
@@ -127,9 +127,9 @@ public sealed class FailureStateTopic<TMessage>
         return state == null || state.IsResolved ? null : state;
     }
 
-    private async Task<ITableView<TopicStreamState>> GetTableViewAsync()
+    private Task<ITableView<TopicStreamState>> GetTableViewAsync()
     {
-        return await _pulsarClient.NewTableViewBuilder(Schema.JSON<TopicStreamState>())
+        return _pulsarClient.NewTableViewBuilder(Schema.JSON<TopicStreamState>())
             .Topic(_topic.ToString())
             .CreateAsync();
     }

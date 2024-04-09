@@ -57,7 +57,7 @@ public class Sender<TState> where TState : IState
     public async Task<TR> SendAndReceiveAsync<TR>(string streamId, IRequest<TState, TR> obj)
         where TR : IResponse<TState>
     {
-        var results = await SendAndReceiveAsync(streamId, [obj]);
+        var results = await SendAndReceiveAsync(streamId, [obj]).ConfigureAwait(false);
         return results.First();
     }
 
@@ -65,14 +65,14 @@ public class Sender<TState> where TState : IState
         where TR : IResponse<TState>
     {
         var requests = objs.Select(x => new Request(streamId, x)).ToArray();
-        var res = await SendAndReceiveAsync(requests);
+        var res = await SendAndReceiveAsync(requests).ConfigureAwait(false);
         return res.Select(x => JsonSerializer.Deserialize<TR>(x.Payload)).ToArray();
     }
 
     public async Task<Response[]> SendAndReceiveAsync(params Request[] requests)
     {
         // Ensure subscription is ready
-        var topic = await _subscriptionTracker.TrackSubscription<TState>();
+        var topic = await _subscriptionTracker.TrackSubscriptionAsync<TState>().ConfigureAwait(false);
 
         // Sent SenderId to respond to
         foreach (var request in requests)
@@ -80,7 +80,7 @@ public class Sender<TState> where TState : IState
 
         // Send requests
         var requestDict = requests.ToDictionary(x => x.Id);
-        await GetPublisher<Request>(_requestTopic).PublishAsync(requests);
+        await GetPublisher<Request>(_requestTopic).PublishAsync(requests).ConfigureAwait(false);
 
         // Wait for messages
         var sw = Stopwatch.StartNew();
@@ -91,7 +91,7 @@ public class Sender<TState> where TState : IState
             var responses = _subscriptionTracker.GetResponses(requestDict.Values.ToArray(), _config.GetErrorResult);
             foreach (var response in responses)
                 responseDict[response.Id] = response;
-            await Task.Delay(10);
+            await Task.Delay(10).ConfigureAwait(false);
         }
 
         // Add Timed Out Results

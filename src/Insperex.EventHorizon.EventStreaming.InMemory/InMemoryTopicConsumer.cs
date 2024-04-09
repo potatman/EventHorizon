@@ -76,7 +76,7 @@ public class InMemoryTopicConsumer<TMessage> : ITopicConsumer<TMessage>
         var batchSize = _config.BatchSize ?? 1000;
 
         // Ensure Registration is done
-        await Task.Delay(1000, ct);
+        await Task.Delay(1000, ct).ConfigureAwait(false);
 
         // Pull from backlog
         var backlogItems = _failureHandler.GetMessagesForRetry(batchSize);
@@ -113,7 +113,7 @@ public class InMemoryTopicConsumer<TMessage> : ITopicConsumer<TMessage>
             // Delay if no messages
         if (!list.Any())
         {
-            await Task.Delay(_config.NoBatchDelay, ct);
+            await Task.Delay(_config.NoBatchDelay, ct).ConfigureAwait(false);
             return null;
         }
 

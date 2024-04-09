@@ -60,16 +60,16 @@ public abstract class AbstractMongoCrudStore<T> : ICrudStore<T>
         }
 
         if (_mongoAttr?.TimeToLiveMs != null)
-            await AddIndex(CreatedDate1, Builders<T>.IndexKeys.Ascending(x => x.CreatedDate), TimeSpan.FromMilliseconds(_mongoAttr.TimeToLiveMs));
+            await AddIndexAsync(CreatedDate1, Builders<T>.IndexKeys.Ascending(x => x.CreatedDate), TimeSpan.FromMilliseconds(_mongoAttr.TimeToLiveMs)).ConfigureAwait(false);
 
-        await AddIndex(UpdatedDate1, Builders<T>.IndexKeys.Ascending(x => x.UpdatedDate));
+        await AddIndexAsync(UpdatedDate1, Builders<T>.IndexKeys.Ascending(x => x.UpdatedDate)).ConfigureAwait(false);
     }
 
     public async Task<T[]> GetAllAsync(string[] ids, CancellationToken ct)
     {
         var objs = await _collection
             .Find(x => ids.Contains(x.Id))
-            .ToListAsync(ct);
+            .ToListAsync(ct).ConfigureAwait(false);
 
         return objs.ToArray();
     }
@@ -79,7 +79,7 @@ public abstract class AbstractMongoCrudStore<T> : ICrudStore<T>
         var result = new DbResult();
         try
         {
-            await _collection.InsertManyAsync(objs, new InsertManyOptions(), ct);
+            await _collection.InsertManyAsync(objs, new InsertManyOptions(), ct).ConfigureAwait(false);
             result.PassedIds = objs.Select(x => x.Id).ToArray();
             result.FailedIds = Array.Empty<string>();
         }
@@ -118,7 +118,7 @@ public abstract class AbstractMongoCrudStore<T> : ICrudStore<T>
                 ops.Add(new ReplaceOneModel<T>(filter, obj) { IsUpsert = true });
             }
 
-            await _collection.BulkWriteAsync(ops, cancellationToken: ct);
+            await _collection.BulkWriteAsync(ops, cancellationToken: ct).ConfigureAwait(false);
             result.PassedIds = objs.Select(x => x.Id).ToArray();
             result.FailedIds = Array.Empty<string>();
         }
@@ -147,7 +147,7 @@ public abstract class AbstractMongoCrudStore<T> : ICrudStore<T>
 
     public async Task DeleteAllAsync(string[] ids, CancellationToken ct)
     {
-        await _collection.DeleteManyAsync(x => ids.Contains(x.Id), ct);
+        await _collection.DeleteManyAsync(x => ids.Contains(x.Id), ct).ConfigureAwait(false);
     }
 
     public Task DropDatabaseAsync(CancellationToken ct)
@@ -155,15 +155,16 @@ public abstract class AbstractMongoCrudStore<T> : ICrudStore<T>
         return _client.DropDatabaseAsync(_database, ct);
     }
 
-    protected async Task AddIndex(string name, IndexKeysDefinition<T> definition, TimeSpan? timeSpan = null)
+    protected async Task AddIndexAsync(string name, IndexKeysDefinition<T> definition, TimeSpan? timeSpan = null)
     {
         var opts = new CreateIndexOptions { Background = true, ExpireAfter = timeSpan };
-        var names = (await _collection.Indexes.ListAsync()).ToList().Select(x => x[Name.ToLower(CultureInfo.InvariantCulture)]).ToArray();
+        var list = await _collection.Indexes.ListAsync().ConfigureAwait(false);
+        var names = list.ToList().Select(x => x[Name.ToLower(CultureInfo.InvariantCulture)]).ToArray();
         if (!names.Contains(name))
-            await _collection.Indexes.CreateOneAsync(new CreateIndexModel<T>(definition,opts));
+            await _collection.Indexes.CreateOneAsync(new CreateIndexModel<T>(definition,opts)).ConfigureAwait(false);
     }
 
-    protected async Task AddShard(string key)
+    protected async Task AddShardAsync(string key)
     {
         var shardDbResult = _client.GetDatabase("admin").RunCommand<BsonDocument>(new BsonDocument
         {
@@ -173,6 +174,6 @@ public abstract class AbstractMongoCrudStore<T> : ICrudStore<T>
             {"shardCollection", $"{_database}.{_collection.CollectionNamespace.CollectionName}"},
             {"key", new BsonDocument {{key, "hashed"}}}
         };
-        await _db.RunCommandAsync(new BsonDocumentCommand<BsonDocument>(partition));
+        await _db.RunCommandAsync(new BsonDocumentCommand<BsonDocument>(partition)).ConfigureAwait(false);
     }
 }

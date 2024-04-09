@@ -67,22 +67,22 @@ internal sealed class PrimaryTopicConsumer<TMessage>: ITopicConsumer<TMessage>
 
     public bool KeyHashRangeOutlierFound { get; private set; }
 
-    public async Task InitAsync()
+    public Task InitAsync()
     {
-        await GetConsumerAsync();
+        return GetConsumerAsync();
     }
 
     public async Task<MessageContext<TMessage>[]> NextBatchAsync(CancellationToken ct)
     {
         try
         {
-            var messagesToRelay = await NextNormalBatch(ct);
+            var messagesToRelay = await NextNormalBatch(ct).ConfigureAwait(false);
 
             //_logger.LogInformation("Normal batch: {messageCount} messages", messagesToRelay.Length);
 
             if (!messagesToRelay.Any())
             {
-                await Task.Delay(_config.NoBatchDelay, ct);
+                await Task.Delay(_config.NoBatchDelay, ct).ConfigureAwait(false);
                 return Array.Empty<MessageContext<TMessage>>();
             }
 
@@ -109,8 +109,8 @@ internal sealed class PrimaryTopicConsumer<TMessage>: ITopicConsumer<TMessage>
 
     private async Task<(TMessage Data, Message<TMessage> OriginalMessage, string Topic)[]> NextNormalBatch(CancellationToken ct)
     {
-        var consumer = await GetConsumerAsync();
-        var messages = await consumer.BatchReceiveAsync(ct);
+        var consumer = await GetConsumerAsync().ConfigureAwait(false);
+        var messages = await consumer.BatchReceiveAsync(ct).ConfigureAwait(false);
 
         var messageDetails = messages
             .Select(m =>
@@ -150,7 +150,7 @@ internal sealed class PrimaryTopicConsumer<TMessage>: ITopicConsumer<TMessage>
             .Select(ts => ts.Key)
             .ToArray();
 
-        await ResolveUpToDateTopicStreams(topicStreamsToResolve);
+        await ResolveUpToDateTopicStreamsAsync(topicStreamsToResolve).ConfigureAwait(false);
 
         return messagesToRelay;
     }
@@ -166,11 +166,11 @@ internal sealed class PrimaryTopicConsumer<TMessage>: ITopicConsumer<TMessage>
         }
     }
 
-    private async Task ResolveUpToDateTopicStreams((string Topic, string StreamId)[] topicStreams)
+    private async Task ResolveUpToDateTopicStreamsAsync((string Topic, string StreamId)[] topicStreams)
     {
         foreach (var topicStream in topicStreams)
         {
-            await _streamFailureState.TopicStreamResolved(topicStream.Topic, topicStream.StreamId);
+            await _streamFailureState.TopicStreamResolvedAsync(topicStream.Topic, topicStream.StreamId).ConfigureAwait(false);
         }
     }
 
@@ -190,23 +190,23 @@ internal sealed class PrimaryTopicConsumer<TMessage>: ITopicConsumer<TMessage>
 
             if (firstFailedMessage != null)
             {
-                await _streamFailureState.MessageFailed(firstFailedMessage);
+                await _streamFailureState.MessageFailedAsync(firstFailedMessage).ConfigureAwait(false);
             }
         }
 
-        await AckToPulsarAsync();
+        await AckToPulsarAsync().ConfigureAwait(false);
     }
 
     private async Task AckToPulsarAsync()
     {
-        var consumer = await GetConsumerAsync();
+        var consumer = await GetConsumerAsync().ConfigureAwait(false);
         foreach (var messageId in _messageIds)
-            await consumer.AcknowledgeAsync(messageId);
+            await consumer.AcknowledgeAsync(messageId).ConfigureAwait(false);
     }
 
     public async ValueTask DisposeAsync()
     {
-        if(_consumer != null) await _consumer.DisposeAsync();
+        if(_consumer != null) await _consumer.DisposeAsync().ConfigureAwait(false);
         _consumer = null;
     }
 
@@ -218,7 +218,7 @@ internal sealed class PrimaryTopicConsumer<TMessage>: ITopicConsumer<TMessage>
         // Ensure Topic Exists
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         foreach (var topic in _config.Topics)
-            await _admin.RequireTopicAsync(topic, cts.Token);
+            await _admin.RequireTopicAsync(topic, cts.Token).ConfigureAwait(false);
 
         var builder = _pulsarClient.NewConsumer(Schema.JSON<TMessage>())
             .ConsumerName(_consumerName)
@@ -240,10 +240,10 @@ internal sealed class PrimaryTopicConsumer<TMessage>: ITopicConsumer<TMessage>
         if (_config.BatchSize != null)
             builder = builder.ReceiverQueueSize(_config.BatchSize.Value);
 
-        var consumer = await builder.SubscribeAsync();
+        var consumer = await builder.SubscribeAsync().ConfigureAwait(false);
 
         if (_config.StartDateTime != null)
-            await consumer.SeekAsync(_config.StartDateTime.Value.Ticks);
+            await consumer.SeekAsync(_config.StartDateTime.Value.Ticks).ConfigureAwait(false);
 
         // Return
         return _consumer = consumer;

@@ -20,7 +20,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar.HealthCheck
 
         public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = new())
         {
-            var response = await _httpClient.GetAsync("/brokers/health", cancellationToken);
+            var response = await _httpClient.GetAsync("/brokers/health", cancellationToken).ConfigureAwait(false);
             return new HealthCheckResult(response.IsSuccessStatusCode ? HealthStatus.Healthy : HealthStatus.Unhealthy);
         }
     }

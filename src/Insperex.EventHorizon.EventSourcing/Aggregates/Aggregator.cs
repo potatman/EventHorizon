@@ -53,8 +53,8 @@ public class Aggregator<TParent, TState>
     public async Task SaveAllAsync(Dictionary<string, Aggregate<TState>> aggregateDict)
     {
         // Save Snapshots, Events, and Publish Responses for Successful Saves
-        await SaveSnapshotsAsync(aggregateDict);
-        await PublishEventsAsync(aggregateDict);
+        await SaveSnapshotsAsync(aggregateDict).ConfigureAwait(false);
+        await PublishEventsAsync(aggregateDict).ConfigureAwait(false);
 
         // Log Groups of failed snapshots
         var aggStatusLookup = aggregateDict.Values.ToLookup(x => x.Error);
@@ -89,7 +89,7 @@ public class Aggregator<TParent, TState>
             if (parents.Any() != true)
                 return;
 
-            var results = await _store.UpsertAllAsync(parents, CancellationToken.None);
+            var results = await _store.UpsertAllAsync(parents, CancellationToken.None).ConfigureAwait(false);
             foreach (var id in results.FailedIds)
                 aggregateDict[id].SetStatus(HttpStatusCode.InternalServerError, "Snapshot Failed to Save");
             foreach (var id in results.PassedIds)
@@ -121,7 +121,7 @@ public class Aggregator<TParent, TState>
         try
         {
             var publisher = GetPublisher<Event>(_eventTopic);
-            await publisher.PublishAsync(events);
+            await publisher.PublishAsync(events).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -140,7 +140,7 @@ public class Aggregator<TParent, TState>
             foreach (var group in responsesLookup)
             {
                 var publisher = GetPublisher<Response>(group.Key);
-                await publisher.PublishAsync(group.ToArray());
+                await publisher.PublishAsync(group.ToArray()).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -173,7 +173,7 @@ public class Aggregator<TParent, TState>
 
     public async Task<Aggregate<TState>> GetAggregateFromStateAsync(string streamId, CancellationToken ct)
     {
-        var result = await GetAggregatesFromStatesAsync(new[] { streamId }, ct);
+        var result = await GetAggregatesFromStatesAsync(new[] { streamId }, ct).ConfigureAwait(false);
         return result.Values.FirstOrDefault();
     }
 
@@ -184,7 +184,7 @@ public class Aggregator<TParent, TState>
             // Load Snapshots
             var sw = Stopwatch.StartNew();
             streamIds = streamIds.Distinct().ToArray();
-            var snapshots = await _store.GetAllAsync(streamIds, ct);
+            var snapshots = await _store.GetAllAsync(streamIds, ct).ConfigureAwait(false);
             var parentDict = snapshots.ToDictionary(x => x.Id);
 
             // Decompress
@@ -214,14 +214,14 @@ public class Aggregator<TParent, TState>
 
     public async Task<Aggregate<TState>> GetAggregateFromEventsAsync(string streamId, DateTime? endDateTime = null)
     {
-        var results = await GetAggregatesFromEventsAsync(new[] { streamId }, endDateTime);
+        var results = await GetAggregatesFromEventsAsync(new[] { streamId }, endDateTime).ConfigureAwait(false);
         return results[streamId];
     }
 
     public async Task<Dictionary<string, Aggregate<TState>>> GetAggregatesFromEventsAsync(string[] streamIds,
         DateTime? endDateTime = null)
     {
-        var events = await GetEventsAsync(streamIds, endDateTime);
+        var events = await GetEventsAsync(streamIds, endDateTime).ConfigureAwait(false);
         var eventLookup = events.ToLookup(x => x.Data.StreamId);
         return streamIds
             .Select(x =>
@@ -244,10 +244,10 @@ public class Aggregator<TParent, TState>
 
     public async Task DropAllAsync(CancellationToken ct)
     {
-        await _store.DropDatabaseAsync(ct);
-        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(_stateType, ct: ct);
-        await _streamingClient.GetAdmin<Command>().DeleteTopicAsync(_stateType, ct: ct);
-        await _streamingClient.GetAdmin<Request>().DeleteTopicAsync(_stateType, ct: ct);
+        await _store.DropDatabaseAsync(ct).ConfigureAwait(false);
+        await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(_stateType, ct: ct).ConfigureAwait(false);
+        await _streamingClient.GetAdmin<Command>().DeleteTopicAsync(_stateType, ct: ct).ConfigureAwait(false);
+        await _streamingClient.GetAdmin<Request>().DeleteTopicAsync(_stateType, ct: ct).ConfigureAwait(false);
     }
 
     #endregion

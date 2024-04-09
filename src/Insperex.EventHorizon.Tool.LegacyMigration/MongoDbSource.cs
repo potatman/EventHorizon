@@ -41,15 +41,15 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration
 
         public async Task<bool> AnyAsync(CancellationToken ct)
         {
-            var asyncCursor = await GetCursor(ct);
-            await asyncCursor.MoveNextAsync(ct);
+            var asyncCursor = await GetCursor(ct).ConfigureAwait(false);
+            await asyncCursor.MoveNextAsync(ct).ConfigureAwait(false);
             return asyncCursor.Current.Any();
         }
 
         public async IAsyncEnumerable<Event[]> GetAsyncEnumerator([EnumeratorCancellation] CancellationToken ct = default)
         {
-            var asyncCursor = await GetCursor(ct);
-            while (await asyncCursor.MoveNextAsync(ct))
+            var asyncCursor = await GetCursor(ct).ConfigureAwait(false);
+            while (await asyncCursor.MoveNextAsync(ct).ConfigureAwait(false))
             {
                 _currentBatch = asyncCursor.Current.ToArray();
                 _logger.LogInformation("{BucketId} found batch {Count}", _bucketId, _currentBatch.Length);
@@ -109,17 +109,17 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration
         private async Task<IAsyncCursor<BsonDocument>> GetCursor(CancellationToken ct)
         {
             var filter1 = Builders<Cursor>.Filter.Eq("_id", AssemblyUtil.AssemblyName);
-            var cursor = await _cursors.Find(filter1).FirstOrDefaultAsync(ct);
+            var cursor = await _cursors.Find(filter1).FirstOrDefaultAsync(ct).ConfigureAwait(false);
 
             var filter2 = cursor == null ? Builders<BsonDocument>.Filter.Empty :
                 Builders<BsonDocument>.Filter.Gt("EventDateTime", cursor.EventDateTime);
 
-            var session = await _client.StartSessionAsync(cancellationToken: ct);
+            var session = await _client.StartSessionAsync(cancellationToken: ct).ConfigureAwait(false);
             var query = session.Client.GetDatabase(_bucketId).GetCollection<BsonDocument>(nameof(Event))
                 .WithReadPreference(ReadPreference.Nearest)
                 .Find(filter2, _findOptions)
                 .SortBy(x => x["EventDateTime"]);
-            return await query.ToCursorAsync(ct);
+            return await query.ToCursorAsync(ct).ConfigureAwait(false);
         }
 
         public async Task SaveState(CancellationToken ct)
@@ -137,19 +137,19 @@ namespace Insperex.EventHorizon.Tool.LegacyMigration
                     EventDateTime = max,
                     UpdatedDateTime = DateTime.UtcNow
                 };
-                await _cursors.ReplaceOneAsync(filter, cursor, new ReplaceOptions{ IsUpsert = true }, cancellationToken: ct);
+                await _cursors.ReplaceOneAsync(filter, cursor, new ReplaceOptions{ IsUpsert = true }, cancellationToken: ct).ConfigureAwait(false);
             }
             else
             {
                 var update = Builders<Cursor>.Update.Set("IsActive", false);
-                await _cursors.UpdateOneAsync(filter, update, cancellationToken: ct);
+                await _cursors.UpdateOneAsync(filter, update, cancellationToken: ct).ConfigureAwait(false);
             }
         }
 
         public async Task DeleteState(CancellationToken ct)
         {
             var filter = Builders<Cursor>.Filter.Eq("_id", AssemblyUtil.AssemblyName);
-            await _cursors.DeleteOneAsync(filter, ct);
+            await _cursors.DeleteOneAsync(filter, ct).ConfigureAwait(false);
         }
     }
 }

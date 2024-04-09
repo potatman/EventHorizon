@@ -21,14 +21,14 @@ namespace Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Workflows
             _aggregator = aggregator;
         }
 
-        public override async Task HandleBatch(Event[] messages, Dictionary<string, Aggregate<TState>> aggregateDict)
+        public override async Task HandleBatchAsync(Event[] messages, Dictionary<string, Aggregate<TState>> aggregateDict)
         {
             // Apply Events
             foreach (var message in messages)
                 aggregateDict[message.StreamId].Apply(message, false);
 
             // Save Changes
-            await _aggregator.SaveAllAsync(aggregateDict);
+            await _aggregator.SaveAllAsync(aggregateDict).ConfigureAwait(false);
         }
     }
 }

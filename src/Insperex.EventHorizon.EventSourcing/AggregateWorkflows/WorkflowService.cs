@@ -38,7 +38,7 @@ public class WorkflowService<TWrapper, TState, TMessage>
         {
             // Load Aggregate
             var streamIds = messages.Select(x => x.StreamId).Distinct().ToArray();
-            var aggregateDict = await _aggregator.GetAggregatesFromStatesAsync(streamIds, ct);
+            var aggregateDict = await _aggregator.GetAggregatesFromStatesAsync(streamIds, ct).ConfigureAwait(false);
 
             // OnLoad Hook
             SafeHook(() => _middleware?.OnLoad(aggregateDict), aggregateDict);
@@ -104,7 +104,7 @@ public class WorkflowService<TWrapper, TState, TMessage>
             SafeHook(() => _middleware?.BeforeSave(aggregateDict), aggregateDict);
 
             // Save Successful Aggregates and Events
-            await _aggregator.SaveAllAsync(aggregateDict);
+            await _aggregator.SaveAllAsync(aggregateDict).ConfigureAwait(false);
 
             // AfterSave Hook
             SafeHook(() => _middleware?.AfterSave(aggregateDict), aggregateDict);
@@ -114,7 +114,7 @@ public class WorkflowService<TWrapper, TState, TMessage>
         {
             var responses = aggregateDict.Values.SelectMany(x => x.Responses).ToArray();
             if(responses.Any())
-                await _aggregator.PublishResponseAsync(responses);
+                await _aggregator.PublishResponseAsync(responses).ConfigureAwait(false);
         }
 
         private static void SafeHook(Action action, Dictionary<string, Aggregate<TState>> aggregateDict)

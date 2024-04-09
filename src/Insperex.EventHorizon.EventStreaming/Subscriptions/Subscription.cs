@@ -38,12 +38,12 @@ public class Subscription<TMessage> : IAsyncDisposable
         _stopped = false;
 
         // Initialize
-        await _consumer.InitAsync();
+        await _consumer.InitAsync().ConfigureAwait(false);
 
         _logger.LogInformation("Subscription - Started {@Config}", _config);
 
         // Start Loop
-        Task.Run(BasicLoop);
+        Task.Run(BasicLoopAsync);
 
         return this;
     }
@@ -55,7 +55,7 @@ public class Subscription<TMessage> : IAsyncDisposable
         // Cancel
         _running = false;
         // while (!_stopped)
-        //     await Task.Delay(TimeSpan.FromMilliseconds(250));
+        //     await Task.Delay(TimeSpan.FromMilliseconds(250)).ConfigureAwait(false);
 
         // Cleanup
         _logger.LogInformation("Subscription - Stopped {@Config}", _config);
@@ -66,26 +66,26 @@ public class Subscription<TMessage> : IAsyncDisposable
     public async Task DeleteTopicsAsync()
     {
         foreach (var topic in _config.Topics)
-            await _admin.DeleteTopicAsync(topic, CancellationToken.None);
+            await _admin.DeleteTopicAsync(topic, CancellationToken.None).ConfigureAwait(false);
     }
 
-    private async void BasicLoop()
+    private async void BasicLoopAsync()
     {
         while (_running)
         {
             try
             {
-                var batch = await GetNextBatch();
+                var batch = await GetNextBatch().ConfigureAwait(false);
                 if (batch?.Length > 0)
                 {
-                    await ProcessBatch(batch);
+                    await ProcessBatch(batch).ConfigureAwait(false);
                 }
                 else
                 {
                     if (_config.StopAtEnd)
                         _running = false;
                     else
-                        await Task.Delay(_config.NoBatchDelay);
+                        await Task.Delay(_config.NoBatchDelay).ConfigureAwait(false);
                 }
             }
             catch (TaskCanceledException)
@@ -102,9 +102,9 @@ public class Subscription<TMessage> : IAsyncDisposable
 
     public async Task<MessageContext<TMessage>[]> NextBatch()
     {
-            var batch = await GetNextBatch();
+            var batch = await GetNextBatch().ConfigureAwait(false);
             if (batch?.Any() == true)
-                await ProcessBatch(batch);
+                await ProcessBatch(batch).ConfigureAwait(false);
             return batch;
     }
 
@@ -115,7 +115,7 @@ public class Subscription<TMessage> : IAsyncDisposable
         {
             var sw = Stopwatch.StartNew();
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            var batch = await _consumer.NextBatchAsync(cts.Token);
+            var batch = await _consumer.NextBatchAsync(cts.Token).ConfigureAwait(false);
             activity?.SetTag(TraceConstants.Tags.Count, batch?.Length ?? 0);
             activity?.SetStatus(ActivityStatusCode.Ok);
 
@@ -159,13 +159,13 @@ public class Subscription<TMessage> : IAsyncDisposable
         try
         {
             if(_config.OnBatch != null)
-                await _config.OnBatch.Invoke(context);
+                await _config.OnBatch.Invoke(context).ConfigureAwait(false);
 
             // Auto-Ack
             var autoAcks = batch.Except(context.NackList).Except(context.AckList).ToArray();
             context.AckList.AddRange(autoAcks);
 
-            await _consumer.FinalizeBatchAsync(context.AckList.ToArray(), context.NackList.ToArray());
+            await _consumer.FinalizeBatchAsync(context.AckList.ToArray(), context.NackList.ToArray()).ConfigureAwait(false);
 
             // Logging
             var min = batch.Min(x => x.TopicData.CreatedDate);
@@ -181,13 +181,13 @@ public class Subscription<TMessage> : IAsyncDisposable
         {
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _logger.LogError(ex, "Subscription - Failed to process {Message} {Subscription}", ex.Message, _config.SubscriptionName);
-            await _consumer.FinalizeBatchAsync(Array.Empty<MessageContext<TMessage>>(), batch);
+            await _consumer.FinalizeBatchAsync(Array.Empty<MessageContext<TMessage>>(), batch).ConfigureAwait(false);
         }
     }
 
     public async ValueTask DisposeAsync()
     {
         _disposed = true;
-        await StopAsync();
+        await StopAsync().ConfigureAwait(false);
     }
 }

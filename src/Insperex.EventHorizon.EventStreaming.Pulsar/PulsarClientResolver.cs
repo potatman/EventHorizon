@@ -62,7 +62,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
             if (_options.Value.OAuth2 != null)
             {
                 var oauth2 = _options.Value.OAuth2;
-                var token = await GetTokenAsync(oauth2.TokenAddress, oauth2.GrantType, oauth2.Audience, _fileUri);
+                var token = await GetTokenAsync(oauth2.TokenAddress, oauth2.GrantType, oauth2.Audience, _fileUri).ConfigureAwait(false);
                 client.SetBearerToken(token);
             }
 
@@ -80,14 +80,14 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
             var webRequest = WebRequest.Create(fileUri);
             webRequest.Credentials = CredentialCache.DefaultCredentials;
             webRequest.Method ="GET";
-            var webResponse = await webRequest.GetResponseAsync();
-            var contents = await new StreamReader(webResponse.GetResponseStream()).ReadToEndAsync();
+            var webResponse = await webRequest.GetResponseAsync().ConfigureAwait(false);
+            var contents = await new StreamReader(webResponse.GetResponseStream()).ReadToEndAsync().ConfigureAwait(false);
             return SerializationConstants.Serializer.Deserialize<PulsarOAuthData>(contents);
         }
 
         private static async Task<string> GetTokenAsync(string tokenAddress, string grantType, string audience, Uri fileUri)
         {
-            var json = await ReadOAuth2File(fileUri);
+            var json = await ReadOAuth2File(fileUri).ConfigureAwait(false);
             var request = new TokenRequest
             {
                 Address = tokenAddress,
@@ -103,7 +103,7 @@ namespace Insperex.EventHorizon.EventStreaming.Pulsar
 
             // Get Token
             var client = new HttpClient();
-            var response = await client.RequestTokenAsync(request);
+            var response = await client.RequestTokenAsync(request).ConfigureAwait(false);
             return response.AccessToken;
         }
 

@@ -34,7 +34,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
 
     public string GetNodeId() => _nodeId;
 
-    public async Task<string> TrackSubscription<TState>() where TState : IState
+    public async Task<string> TrackSubscriptionAsync<TState>() where TState : IState
     {
         var type = typeof(TState);
         var topic = _formatter.GetTopic<Response>(AssemblyUtil.Assembly, type, _nodeId);
@@ -57,7 +57,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
 
         _subscriptionDict[type] = subscription;
 
-        await subscription.StartAsync();
+        await subscription.StartAsync().ConfigureAwait(false);
 
         return topic;
     }
@@ -86,10 +86,10 @@ public class SenderSubscriptionTracker : IAsyncDisposable
         foreach (var group in _subscriptionDict)
         {
             // Stop Subscription
-            await group.Value.StopAsync();
+            await group.Value.StopAsync().ConfigureAwait(false);
 
             // Delete Topic
-            await _streamingClient.GetAdmin<Response>().DeleteTopicAsync(group.Key);
+            await _streamingClient.GetAdmin<Response>().DeleteTopicAsync(group.Key).ConfigureAwait(false);
         }
         _subscriptionDict.Clear();
     }
@@ -103,6 +103,6 @@ public class SenderSubscriptionTracker : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if(!_cleaning)
-            await CleanupAsync();
+            await CleanupAsync().ConfigureAwait(false);
     }
 }

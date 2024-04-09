@@ -38,7 +38,7 @@ public class PulsarTopicReader<TMessage> : ITopicReader<TMessage>
     public async Task<MessageContext<TMessage>[]> GetNextAsync(int batchSize, TimeSpan timeout)
     {
         var list = new List<MessageContext<TMessage>>();
-        var reader = await GetReaderAsync();
+        var reader = await GetReaderAsync().ConfigureAwait(false);
 
         Message<TMessage> message;
         do
@@ -46,7 +46,7 @@ public class PulsarTopicReader<TMessage> : ITopicReader<TMessage>
             try
             {
                 var cts = new CancellationTokenSource(timeout);
-                message = await reader.ReadNextAsync(cts.Token);
+                message = await reader.ReadNextAsync(cts.Token).ConfigureAwait(false);
             }
             catch (TaskCanceledException)
             {
@@ -69,7 +69,7 @@ public class PulsarTopicReader<TMessage> : ITopicReader<TMessage>
 
             var topicData = PulsarMessageMapper.MapTopicData(list.Count.ToString(CultureInfo.InvariantCulture), message, _config.Topic);
             list.Add(new MessageContext<TMessage>(message.GetValue(), topicData, _config.TypeDict));
-        } while (message != null && list.Count < batchSize && await reader.HasMessageAvailableAsync());
+        } while (message != null && list.Count < batchSize && await reader.HasMessageAvailableAsync().ConfigureAwait(false));
 
         return list.ToArray();
     }
@@ -80,7 +80,7 @@ public class PulsarTopicReader<TMessage> : ITopicReader<TMessage>
             return _reader;
 
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        await _admin.RequireTopicAsync(_config.Topic, cts.Token);
+        await _admin.RequireTopicAsync(_config.Topic, cts.Token).ConfigureAwait(false);
 
         var builder = _pulsarClient.NewReader(Schema.JSON<TMessage>())
             .Topic(_config.Topic)
@@ -99,18 +99,18 @@ public class PulsarTopicReader<TMessage> : ITopicReader<TMessage>
                 .Select(x => new Range(x, x))
                 .ToArray());
 
-        _reader = await builder.CreateAsync();
+        _reader = await builder.CreateAsync().ConfigureAwait(false);
 
         // Move After StartDateTime
         if (_config.StartDateTime != null)
-            await _reader.SeekAsync(_config.StartDateTime.Value.Ticks);
+            await _reader.SeekAsync(_config.StartDateTime.Value.Ticks).ConfigureAwait(false);
 
         return _reader;
     }
 
     public async ValueTask DisposeAsync()
     {
-        if(_reader != null) await _reader.DisposeAsync();
+        if(_reader != null) await _reader.DisposeAsync().ConfigureAwait(false);
         _reader = null;
     }
 }

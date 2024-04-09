@@ -41,9 +41,9 @@ public class StreamFailureState<TMessage>
 
     #region Lifecycle
 
-    public async Task InitializeAsync(CancellationToken ct)
+    public Task InitializeAsync(CancellationToken ct)
     {
-        await _failureStateTopic.InitializeAsync(ct);
+        return _failureStateTopic.InitializeAsync(ct);
     }
 
     #endregion Lifecycle
@@ -106,7 +106,7 @@ public class StreamFailureState<TMessage>
 
     #region Commands
 
-    public async Task TopicStreamUpToDate(string topic, string streamId)
+    public async Task TopicStreamUpToDateAsync(string topic, string streamId)
     {
         //_logger.LogInformation("Up to date: {topic} => {streamId}", topic, streamId);
         _detectedZeroTrackedTopicStreams = false;
@@ -114,11 +114,11 @@ public class StreamFailureState<TMessage>
         if (state != null)
         {
             state.IsUpToDate = true;
-            await _failureStateTopic.Publish(state);
+            await _failureStateTopic.PublishAsync(state).ConfigureAwait(false);
         }
     }
 
-    public async Task TopicStreamResolved(string topic, string streamId)
+    public async Task TopicStreamResolvedAsync(string topic, string streamId)
     {
         //_logger.LogInformation("Resolved: {topic} => {streamId}", topic, streamId);
         _trackedTopicStreamsGuess = Math.Max(0, _trackedTopicStreamsGuess - 1);
@@ -126,11 +126,11 @@ public class StreamFailureState<TMessage>
         if (state != null)
         {
             state.IsResolved = true;
-            await _failureStateTopic.Publish(state);
+            await _failureStateTopic.PublishAsync(state).ConfigureAwait(false);
         }
     }
 
-    public async Task MessageFailed(MessageContext<TMessage> message)
+    public async Task MessageFailedAsync(MessageContext<TMessage> message)
     {
         //_logger.LogInformation("Msg FAIL: {topic} => {streamId} => {id}", message.TopicData.Topic, message.Data.StreamId, message.TopicData.Id);
 
@@ -143,10 +143,10 @@ public class StreamFailureState<TMessage>
         var nextRetryInterval = _backoffStrategy.NextInterval(state.TimesRetried);
         state.NextRetry = DateTime.UtcNow.Add(nextRetryInterval);
 
-        await _failureStateTopic.Publish(state);
+        await _failureStateTopic.PublishAsync(state).ConfigureAwait(false);
     }
 
-    public async Task MessageSucceeded(MessageContext<TMessage> message)
+    public async Task MessageSucceededAsync(MessageContext<TMessage> message)
     {
         //_logger.LogInformation("Msg SUCCEED: {topic} => {streamId} => {id}", message.TopicData.Topic, message.Data.StreamId, message.TopicData.Id);
 
@@ -156,7 +156,7 @@ public class StreamFailureState<TMessage>
         state.TimesRetried = 0;
         state.NextRetry = null;
 
-        await _failureStateTopic.Publish(state);
+        await _failureStateTopic.PublishAsync(state).ConfigureAwait(false);
     }
 
     private TopicStreamState EnsureTopicForStream(MessageContext<TMessage> message)

@@ -8,10 +8,16 @@ namespace Insperex.EventHorizon.EventStore.Extensions;
 
 public static class CrudStoreExtensions
 {
-    public static async Task<T> GetAsync<T>(this ICrudStore<T> crudStore, string id, CancellationToken ct)
+    public static async Task<T> GetOneAsync<T>(this ICrudStore<T> crudStore, string id, CancellationToken ct)
         where T : ICrudEntity
     {
-        var result = await crudStore.GetAllAsync(new[] { id }, ct);
+        var result = await crudStore.GetAllAsync([id], ct).ConfigureAwait(false);
         return result.FirstOrDefault();
+    }
+
+    public static Task DeleteOneAsync<T>(this ICrudStore<T> crudStore, string id, CancellationToken ct)
+        where T : ICrudEntity
+    {
+        return crudStore.DeleteAllAsync([id], ct);
     }
 }

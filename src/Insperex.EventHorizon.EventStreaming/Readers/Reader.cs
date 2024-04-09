@@ -25,7 +25,7 @@ public class Reader<TMessage> : IAsyncDisposable
         try
         {
             timeout ??= TimeSpan.FromSeconds(10);
-            var items = await _reader.GetNextAsync(batchSize, timeout.Value);
+            var items = await _reader.GetNextAsync(batchSize, timeout.Value).ConfigureAwait(false);
             activity?.SetTag(TraceConstants.Tags.Count, items.Length);
             activity?.SetStatus(ActivityStatusCode.Ok);
 
@@ -48,6 +48,6 @@ public class Reader<TMessage> : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        await _reader.DisposeAsync();
+        await _reader.DisposeAsync().ConfigureAwait(false);
     }
 }

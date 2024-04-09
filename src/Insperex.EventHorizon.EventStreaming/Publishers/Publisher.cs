@@ -49,7 +49,7 @@ public class Publisher<TMessage> : IAsyncDisposable
         activity?.SetTag(TraceConstants.Tags.Count, messages.Length);
         try
         {
-            await _producer.SendAsync(messages);
+            await _producer.SendAsync(messages).ConfigureAwait(false);
             _logger.LogInformation("Publisher - Sent {Count} {Type}(s) in {Duration} {Topic} ",
                 messages.Length, _typeName, sw.ElapsedMilliseconds, _config.Topic);
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -62,7 +62,7 @@ public class Publisher<TMessage> : IAsyncDisposable
                 {
                     try
                     {
-                        await _producer.SendAsync(x.ToArray());
+                        await _producer.SendAsync(x.ToArray()).ConfigureAwait(false);
                     }
                     catch (Exception e)
                     {
@@ -78,7 +78,7 @@ public class Publisher<TMessage> : IAsyncDisposable
                     activity?.Dispose();
                 });
 
-            await tcs.Task;
+            await tcs.Task.ConfigureAwait(false);
             */
         }
         catch (Exception ex)
@@ -92,8 +92,8 @@ public class Publisher<TMessage> : IAsyncDisposable
         return this;
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        await _producer.DisposeAsync();
+        return _producer.DisposeAsync();
     }
 }

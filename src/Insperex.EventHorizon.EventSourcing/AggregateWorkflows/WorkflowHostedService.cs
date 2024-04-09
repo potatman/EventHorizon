@@ -19,13 +19,13 @@ namespace Insperex.EventHorizon.EventSourcing.AggregateWorkflows
         public async Task StartAsync(CancellationToken cancellationToken)
         {
             foreach (var workflow in _workflows)
-                await workflow.StartAsync(cancellationToken);
+                await workflow.StartAsync(cancellationToken).ConfigureAwait(false);
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             foreach (var workflow in _workflows)
-                await workflow.StopAsync(cancellationToken);
+                await workflow.StopAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 }

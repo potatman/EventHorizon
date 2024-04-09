@@ -32,9 +32,9 @@ namespace Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Workflows
                 {
                     // Setup
                     var messages = batch.Messages.Select(m => m.Data).ToArray();
-                    var aggregateDict = await workflowService.LoadAsync(messages, batch.CancellationToken);
+                    var aggregateDict = await workflowService.LoadAsync(messages, batch.CancellationToken).ConfigureAwait(false);
 
-                    await HandleBatch(messages, aggregateDict);
+                    await HandleBatchAsync(messages, aggregateDict).ConfigureAwait(false);
 
                     batch.NackFailedMessagesOnAggregates(aggregateDict);
                 });
@@ -42,15 +42,15 @@ namespace Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Workflows
             _subscription = subscriptionBuilder.Build();
         }
 
-        public Task Handle(TMessage message, CancellationToken ct) => HandleBatch([message], ct);
+        public Task Handle(TMessage message, CancellationToken ct) => HandleBatchAsync([message], ct);
 
-        public async Task HandleBatch(TMessage[] messages, CancellationToken ct)
+        public async Task HandleBatchAsync(TMessage[] messages, CancellationToken ct)
         {
-            var aggregateDict = await _workflowService.LoadAsync(messages, ct);
-            await HandleBatch(messages, aggregateDict);
+            var aggregateDict = await _workflowService.LoadAsync(messages, ct).ConfigureAwait(false);
+            await HandleBatchAsync(messages, aggregateDict).ConfigureAwait(false);
         }
 
-        public abstract Task HandleBatch(TMessage[] messages, Dictionary<string, Aggregate<TState>> aggregateDict);
+        public abstract Task HandleBatchAsync(TMessage[] messages, Dictionary<string, Aggregate<TState>> aggregateDict);
 
         public Task StartAsync(CancellationToken cancellationToken) => _subscription.StartAsync();
         public Task StopAsync(CancellationToken cancellationToken) => _subscription.StopAsync();

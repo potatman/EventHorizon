@@ -43,14 +43,14 @@ public class PulsarTopicConsumer<TMessage> : ITopicConsumer<TMessage>
 
     public async Task InitAsync()
     {
-        _consumer = await GetConsumerAsync();
+        _consumer = await GetConsumerAsync().ConfigureAwait(false);
     }
 
     public async Task<MessageContext<TMessage>[]> NextBatchAsync(CancellationToken ct)
     {
         try
         {
-            var messages = await GetNextCustomAsync(ct);
+            var messages = await GetNextCustomAsync(ct).ConfigureAwait(false);
             if (!messages.Any())
                 return null;
 
@@ -86,7 +86,7 @@ public class PulsarTopicConsumer<TMessage> : ITopicConsumer<TMessage>
             while (list.Count < _config.BatchSize && !ct.IsCancellationRequested)
             {
                 var cts = new CancellationTokenSource(25);
-                var message = await _consumer.ReceiveAsync(cts.Token);
+                var message = await _consumer.ReceiveAsync(cts.Token).ConfigureAwait(false);
                 list.Add(message);
             }
         }
@@ -104,7 +104,7 @@ public class PulsarTopicConsumer<TMessage> : ITopicConsumer<TMessage>
 
         while (list.Count < _config.BatchSize && !ct.IsCancellationRequested)
         {
-            var message = await _consumer.BatchReceiveAsync(ct);
+            var message = await _consumer.BatchReceiveAsync(ct).ConfigureAwait(false);
             if (!message.Any())
                 return list.ToArray();
             list.AddRange(message);
@@ -115,8 +115,8 @@ public class PulsarTopicConsumer<TMessage> : ITopicConsumer<TMessage>
 
     public async Task FinalizeBatchAsync(MessageContext<TMessage>[] acks, MessageContext<TMessage>[] nacks)
     {
-        await AckAsync(acks);
-        await NackAsync(nacks);
+        await AckAsync(acks).ConfigureAwait(false);
+        await NackAsync(nacks).ConfigureAwait(false);
     }
 
     private async Task AckAsync(params MessageContext<TMessage>[] messages)
@@ -128,12 +128,12 @@ public class PulsarTopicConsumer<TMessage> : ITopicConsumer<TMessage>
             {
 
                 var unackedMessage = _unackedMessages[message.TopicData.Id];
-                await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
+                await _consumer.AcknowledgeAsync(unackedMessage.MessageId).ConfigureAwait(false);
                 _unackedMessages.Remove(message.TopicData.Id);
             })
             .ToArray();
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     private async Task NackAsync(params MessageContext<TMessage>[] messages)
@@ -146,15 +146,15 @@ public class PulsarTopicConsumer<TMessage> : ITopicConsumer<TMessage>
                 var unackedMessage = _unackedMessages[message.TopicData.Id];
 
                 if (_config.RedeliverFailedMessages)
-                    await _consumer.NegativeAcknowledge(unackedMessage.MessageId);
+                    await _consumer.NegativeAcknowledge(unackedMessage.MessageId).ConfigureAwait(false);
                 else
-                    await _consumer.AcknowledgeAsync(unackedMessage.MessageId);
+                    await _consumer.AcknowledgeAsync(unackedMessage.MessageId).ConfigureAwait(false);
 
                 _unackedMessages.Remove(message.TopicData.Id);
             })
             .ToArray();
 
-        await Task.WhenAll(tasks);
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     private async Task<IConsumer<TMessage>> GetConsumerAsync()
@@ -162,7 +162,7 @@ public class PulsarTopicConsumer<TMessage> : ITopicConsumer<TMessage>
         // Ensure Topic Exists
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         foreach (var topic in _config.Topics)
-            await _admin.RequireTopicAsync(topic, cts.Token);
+            await _admin.RequireTopicAsync(topic, cts.Token).ConfigureAwait(false);
 
         var builder = _pulsarClient.NewConsumer(Schema.JSON<TMessage>())
             .ConsumerName(AssemblyUtil.AssemblyNameWithGuid)
@@ -195,10 +195,10 @@ public class PulsarTopicConsumer<TMessage> : ITopicConsumer<TMessage>
             }
         }
 
-        var consumer = await builder.SubscribeAsync();
+        var consumer = await builder.SubscribeAsync().ConfigureAwait(false);
 
         if (_config.StartDateTime != null)
-            await consumer.SeekAsync(_config.StartDateTime.Value.Ticks);
+            await consumer.SeekAsync(_config.StartDateTime.Value.Ticks).ConfigureAwait(false);
 
         // Return
         return consumer;
@@ -206,7 +206,7 @@ public class PulsarTopicConsumer<TMessage> : ITopicConsumer<TMessage>
 
     public async ValueTask DisposeAsync()
     {
-        if(_consumer != null) await _consumer.DisposeAsync();
+        if(_consumer != null) await _consumer.DisposeAsync().ConfigureAwait(false);
         _consumer = null;
     }
 }

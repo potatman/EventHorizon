@@ -20,12 +20,12 @@ public class SubscriptionHostedService<TMessage> : IHostedService
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         foreach (var subscription in _subscriptions)
-            await subscription.StartAsync();
+            await subscription.StartAsync().ConfigureAwait(false);
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         foreach (var subscription in _subscriptions)
-            await subscription.StopAsync();
+            await subscription.StopAsync().ConfigureAwait(false);
     }
 }

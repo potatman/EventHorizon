@@ -20,13 +20,13 @@ namespace Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Workflows
             _workflowService = workflowService;
         }
 
-        public override async Task HandleBatch(Event[] events, Dictionary<string, Aggregate<TState>> aggregateDict)
+        public override async Task HandleBatchAsync(Event[] events, Dictionary<string, Aggregate<TState>> aggregateDict)
         {
             // Map/Apply Changes
             _workflowService.TriggerApplyEvents(events, aggregateDict, false);
 
             // Save Snapshots and Publish Events
-            await _workflowService.SaveAsync(aggregateDict);
+            await _workflowService.SaveAsync(aggregateDict).ConfigureAwait(false);
         }
     }
 }

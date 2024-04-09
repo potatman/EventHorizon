@@ -41,7 +41,7 @@ public class PulsarTopicProducer<TMessage> : ITopicProducer<TMessage>
 
     public async Task SendAsync(params TMessage[] messages)
     {
-        var producer = await GetProducerAsync();
+        var producer = await GetProducerAsync().ConfigureAwait(false);
 
         if (_config.IsOrderGuaranteed)
         {
@@ -59,14 +59,14 @@ public class PulsarTopicProducer<TMessage> : ITopicProducer<TMessage>
 
                         // Send Message
                         if (_config.IsGuaranteed)
-                            await producer.SendAsync(msg);
+                            await producer.SendAsync(msg).ConfigureAwait(false);
                         else
-                            await producer.SendAndForgetAsync(msg);
+                            await producer.SendAndForgetAsync(msg).ConfigureAwait(false);
                     }
                 })
                 .ToArray();
 
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(tasks).ConfigureAwait(false);
         }
         else
         {
@@ -81,13 +81,13 @@ public class PulsarTopicProducer<TMessage> : ITopicProducer<TMessage>
 
                     // Send Message
                     if (_config.IsGuaranteed)
-                        await producer.SendAsync(msg);
+                        await producer.SendAsync(msg).ConfigureAwait(false);
                     else
-                        await producer.SendAndForgetAsync(msg);
+                        await producer.SendAndForgetAsync(msg).ConfigureAwait(false);
                 })
                 .ToArray();
 
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(tasks).ConfigureAwait(false);
         }
 
     }
@@ -98,14 +98,14 @@ public class PulsarTopicProducer<TMessage> : ITopicProducer<TMessage>
         if (_producer != null) return _producer;
 
         // Lock is for Parallel Requests for some Producer
-        await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(10));
+        await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(10)).ConfigureAwait(false);
 
         // Second Release is if they got past first
         if (_producer != null) return _producer;
 
         // Ensure Topic Exists
         var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        await _admin.RequireTopicAsync(_config.Topic, cts.Token);
+        await _admin.RequireTopicAsync(_config.Topic, cts.Token).ConfigureAwait(false);
 
         var builder = _pulsarClient.NewProducer(Schema.JSON<TMessage>())
             .ProducerName(_publisherName)
@@ -118,7 +118,7 @@ public class PulsarTopicProducer<TMessage> : ITopicProducer<TMessage>
             .Intercept(_intercept)
             .Topic(_config.Topic);
 
-        _producer = await builder.CreateAsync();
+        _producer = await builder.CreateAsync().ConfigureAwait(false);
 
         _semaphoreSlim.Release();
         return _producer;
@@ -126,7 +126,7 @@ public class PulsarTopicProducer<TMessage> : ITopicProducer<TMessage>
 
     public async ValueTask DisposeAsync()
     {
-        if(_producer != null) await _producer.DisposeAsync();
+        if(_producer != null) await _producer.DisposeAsync().ConfigureAwait(false);
         _producer = null;
     }
 }

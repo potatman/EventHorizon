@@ -85,15 +85,15 @@ public class OrderGuaranteedPulsarTopicConsumer<TMessage> : ITopicConsumer<TMess
         };
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        await _primaryTopicConsumer.DisposeAsync();
+        return _primaryTopicConsumer.DisposeAsync();
     }
 
     public async Task InitAsync()
     {
-        await _primaryTopicConsumer.InitAsync();
-        await _streamFailureState.InitializeAsync(CancellationToken.None);
+        await _primaryTopicConsumer.InitAsync().ConfigureAwait(false);
+        await _streamFailureState.InitializeAsync(CancellationToken.None).ConfigureAwait(false);
     }
 
     public async Task<MessageContext<TMessage>[]> NextBatchAsync(CancellationToken ct)
@@ -118,7 +118,7 @@ public class OrderGuaranteedPulsarTopicConsumer<TMessage> : ITopicConsumer<TMess
                 "Reloading key hash ranges for subscription {subscriptionName}, consumer {consumerName}",
                 _config.SubscriptionName, _consumerName);
 
-            _keyHashRanges = await GetSubscriptionHashRanges(ct);
+            _keyHashRanges = await GetSubscriptionHashRangesAsync(ct).ConfigureAwait(false);
             _streamFailureState.KeyHashRanges = _keyHashRanges;
             _primaryTopicConsumer.KeyHashRanges = _keyHashRanges;
         }
@@ -127,7 +127,7 @@ public class OrderGuaranteedPulsarTopicConsumer<TMessage> : ITopicConsumer<TMess
         {
             try
             {
-                var failureRetryMessages = await _failedMessageRetryConsumer.NextBatchAsync(ct);
+                var failureRetryMessages = await _failedMessageRetryConsumer.NextBatchAsync(ct).ConfigureAwait(false);
                 if (failureRetryMessages.Any())
                 {
                     _logger.LogInformation(
@@ -145,7 +145,7 @@ public class OrderGuaranteedPulsarTopicConsumer<TMessage> : ITopicConsumer<TMess
         }
 
         // Normal phase.
-        var messages = await _primaryTopicConsumer.NextBatchAsync(ct);
+        var messages = await _primaryTopicConsumer.NextBatchAsync(ct).ConfigureAwait(false);
         if (messages.Length == 0)
         {
             lock (_batchInProgressLock)
@@ -160,7 +160,7 @@ public class OrderGuaranteedPulsarTopicConsumer<TMessage> : ITopicConsumer<TMess
     {
         try
         {
-            await _phaseHandlers[_phase].FinalizeBatchAsync(acks, nacks);
+            await _phaseHandlers[_phase].FinalizeBatchAsync(acks, nacks).ConfigureAwait(false);
         }
         catch (Exception e)
         {
@@ -186,9 +186,9 @@ public class OrderGuaranteedPulsarTopicConsumer<TMessage> : ITopicConsumer<TMess
     /// <summary>
     /// Query the Pulsar admin API for allotted key hash ranges for this consumer.
     /// </summary>
-    private async Task<PulsarKeyHashRanges> GetSubscriptionHashRanges(CancellationToken ct)
+    private Task<PulsarKeyHashRanges> GetSubscriptionHashRangesAsync(CancellationToken ct)
     {
-        return await _topicAdmin.GetTopicConsumerKeyHashRanges(_config.Topics.First(),
+        return _topicAdmin.GetTopicConsumerKeyHashRangesAsync(_config.Topics.First(),
             _config.SubscriptionName, _consumerName, ct);
     }
 }

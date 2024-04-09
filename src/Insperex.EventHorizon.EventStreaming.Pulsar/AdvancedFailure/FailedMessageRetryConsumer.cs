@@ -51,7 +51,7 @@ public class FailedMessageRetryConsumer<TMessage>: ITopicConsumer<TMessage>
 
         try
         {
-            var messages = await _reader.GetNextAsync(topicStreamsForRetry, _batchSize, ct);
+            var messages = await _reader.GetNextAsync(topicStreamsForRetry, _batchSize, ct).ConfigureAwait(false);
 
             if (messages.Length < _batchSize)
             {
@@ -59,7 +59,7 @@ public class FailedMessageRetryConsumer<TMessage>: ITopicConsumer<TMessage>
                 // Check if any streams didn't get any messages (and aren't still expecting a retry at some stage).
 
                 //_logger.LogInformation("Some topic/streams might be up to date");
-                await MarkQuietTopicStreamsUpToDate(messages, topicStreamsForRetry);
+                await MarkQuietTopicStreamsUpToDateAsync(messages, topicStreamsForRetry).ConfigureAwait(false);
             }
 
             return messages;
@@ -71,7 +71,7 @@ public class FailedMessageRetryConsumer<TMessage>: ITopicConsumer<TMessage>
         }
     }
 
-    private async Task MarkQuietTopicStreamsUpToDate(MessageContext<TMessage>[] messages, TopicStreamState[] topicStreamsForRetry)
+    private async Task MarkQuietTopicStreamsUpToDateAsync(MessageContext<TMessage>[] messages, TopicStreamState[] topicStreamsForRetry)
     {
         var messageTopicStreams = messages
             .Select(m => (m.TopicData.Topic, m.Data.StreamId))
@@ -85,7 +85,7 @@ public class FailedMessageRetryConsumer<TMessage>: ITopicConsumer<TMessage>
 
         foreach (var topicStream in upToDateTopicStreams)
         {
-            await _streamFailureState.TopicStreamUpToDate(topicStream.Topic, topicStream.StreamId);
+            await _streamFailureState.TopicStreamUpToDateAsync(topicStream.Topic, topicStream.StreamId).ConfigureAwait(false);
         }
     }
 
@@ -105,12 +105,12 @@ public class FailedMessageRetryConsumer<TMessage>: ITopicConsumer<TMessage>
 
             if (firstFailedMessage != null)
             {
-                await _streamFailureState.MessageFailed(firstFailedMessage);
+                await _streamFailureState.MessageFailedAsync(firstFailedMessage).ConfigureAwait(false);
             }
             else
             {
                 var lastMessage = topicStreamResults.Last().Message;
-                await _streamFailureState.MessageSucceeded(lastMessage);
+                await _streamFailureState.MessageSucceededAsync(lastMessage).ConfigureAwait(false);
             }
         }
     }

@@ -41,7 +41,7 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                 {
                     try
                     {
-                        var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None);
+                        var response = await aggregator.GetAggregateFromStateAsync(id, CancellationToken.None).ConfigureAwait(false);
                         return response.Exists() ? Results.Ok(response.Payload) : Results.NotFound();
                     }
                     catch (Exception e)
@@ -109,7 +109,7 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
             endpointRouteBuilder.MapGroup("api")
                 .MapPost(typeName + "/{id}/" + reqName, async (string id, TReq req)  =>
                 {
-                    var response = await sender.SendAndReceiveAsync(new Request(id, req));
+                    var response = await sender.SendAndReceiveAsync(new Request(id, req)).ConfigureAwait(false);
                     var first = response.First();
                     var statusCode = (HttpStatusCode)first.StatusCode;
                     if ((int)statusCode > 300)
@@ -141,7 +141,7 @@ namespace Insperex.EventHorizon.EventSourcing.Extensions
                 {
                     try
                     {
-                        await sender.SendAsync(id, cmd);
+                        await sender.SendAsync(id, cmd).ConfigureAwait(false);
                         return Results.Ok();
                     }
                     catch (Exception e)

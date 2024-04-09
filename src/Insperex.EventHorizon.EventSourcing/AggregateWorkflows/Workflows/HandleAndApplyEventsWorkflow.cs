@@ -22,16 +22,16 @@ namespace Insperex.EventHorizon.EventSourcing.AggregateWorkflows.Workflows
             _workflowService = workflowService;
         }
 
-        public override async Task HandleBatch(TMessage[] messages, Dictionary<string, Aggregate<TState>> aggregateDict)
+        public override async Task HandleBatchAsync(TMessage[] messages, Dictionary<string, Aggregate<TState>> aggregateDict)
         {
             // Map/Apply Changes
             _workflowService.TriggerHandle(messages, aggregateDict);
 
             // Save Snapshots and Publish Events
-            await _workflowService.SaveAsync(aggregateDict);
+            await _workflowService.SaveAsync(aggregateDict).ConfigureAwait(false);
 
             // Try to Publish Responses
-            await _workflowService.TryAndPublishResponses(aggregateDict);
+            await _workflowService.TryAndPublishResponses(aggregateDict).ConfigureAwait(false);
         }
     }
 }
