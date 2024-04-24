@@ -1,14 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net7.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <LangVersion>latest</LangVersion>
         <NoWarn>$(NoWarn)</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AspNetCore.HealthChecks.System" Version="7.0.0" />
-        <PackageReference Include="IdentityModel" Version="6.2.0" />
+        <PackageReference Include="AspNetCore.HealthChecks.System" Version="8.0.1" />
+        <PackageReference Include="IdentityModel" Version="7.0.0" />
         <PackageReference Include="Pulsar.Client" Version="2.12.4" />
         <PackageReference Include="Pulsar.Client.Otel" Version="0.1.2" />
         <PackageReference Include="SharpPulsar.Admin" Version="2.13.0" /> <!-- DO NOT UPDATE PAST 2.13 -->

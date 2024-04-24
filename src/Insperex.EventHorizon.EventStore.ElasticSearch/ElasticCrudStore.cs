@@ -83,7 +83,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
                     }))
                     .Query(q =>
                         q.Bool(b =>
-                            b.Filter(f => f.MatchAll())
+                            b.Filter(f => f.MatchAll(_ => { }))
                         )
                     )
                     .Sort(s => s.Field(f => f.UpdatedDate).Doc(d => d.Order(SortOrder.Desc)))
