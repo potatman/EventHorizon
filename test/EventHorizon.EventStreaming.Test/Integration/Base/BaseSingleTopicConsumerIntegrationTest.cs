@@ -21,19 +21,16 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
 {
     protected readonly ITestOutputHelper _outputHelper;
     protected readonly StreamingClient _streamingClient;
-    private Stopwatch _stopwatch;
     protected readonly TimeSpan _timeout;
     protected Event[] _events;
-    private readonly ListStreamConsumer<Event> _handler;
+
+    private Stopwatch _stopwatch;
     private Publisher<Event> _publisher;
+    private readonly ListStreamConsumer<Event> _handler;
     private readonly PartialNackListStreamConsumer _partialNackHandler;
 
     protected BaseSingleTopicConsumerIntegrationTest(ITestOutputHelper outputHelper, IServiceProvider provider)
     {
-        var random = new Random((int)DateTime.UtcNow.Ticks);
-        UniqueTestId = $"{random.Next()}";
-
-        Provider = provider;
         _outputHelper = outputHelper;
         _timeout = TimeSpan.FromSeconds(30);
         _streamingClient = provider.GetRequiredService<StreamingClient>();
@@ -41,10 +38,6 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         _partialNackHandler = new(_outputHelper, 0.03, 3, 2,
             100, false);
     }
-
-    protected string UniqueTestId { get; init; }
-
-    protected IServiceProvider Provider { get; init; }
 
     public async Task InitializeAsync()
     {
