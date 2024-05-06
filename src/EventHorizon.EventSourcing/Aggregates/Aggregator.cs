@@ -10,6 +10,7 @@ using EventHorizon.Abstractions.Interfaces;
 using EventHorizon.Abstractions.Interfaces.Internal;
 using EventHorizon.Abstractions.Models;
 using EventHorizon.Abstractions.Models.TopicMessages;
+using EventHorizon.Abstractions.Reflection;
 using EventHorizon.Abstractions.Serialization.Compression.Extensions;
 using EventHorizon.EventStore;
 using EventHorizon.EventStore.Interfaces;
@@ -30,8 +31,9 @@ public class Aggregator<TParent, TState>
     private readonly StreamingClient _streamingClient;
     private readonly AggregatorConfig<TState> _config;
     private readonly Dictionary<string, object> _publisherDict = new();
-    private readonly string _eventTopic;
     private readonly Store<TParent, TState> _store;
+    private readonly StateDetail _stateDetail;
+    private readonly Publisher<Event> _publisher;
 
     public Aggregator(
         ICrudStore<TParent> crudStore,
@@ -43,7 +45,8 @@ public class Aggregator<TParent, TState>
         _store = new StoreBuilder<TParent, TState>(crudStore).AddCompression(config.StateCompression).Build();
         _streamingClient = streamingClient;
         _config = config;
-        _eventTopic = formatter.GetTopic<Event>(_stateType);
+        _publisher = GetPublisher<Event>(formatter.GetTopic<Event>(_stateType));
+        _stateDetail = ReflectionFactory.GetStateDetail(_stateType);
         _logger = logger;
     }
 
@@ -119,8 +122,7 @@ public class Aggregator<TParent, TState>
 
         try
         {
-            var publisher = GetPublisher<Event>(_eventTopic);
-            await publisher.PublishAsync(events).ConfigureAwait(false);
+            await _publisher.PublishAsync(events).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -181,7 +183,6 @@ public class Aggregator<TParent, TState>
         try
         {
             // Load Snapshots
-            var sw = Stopwatch.StartNew();
             streamIds = streamIds.Distinct().ToArray();
             var snapshots = await _store.GetAllAsync(streamIds, ct).ConfigureAwait(false);
             var parentDict = snapshots.ToDictionary(x => x.Id);
@@ -245,8 +246,12 @@ public class Aggregator<TParent, TState>
     {
         await _store.DropDatabaseAsync(ct).ConfigureAwait(false);
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(_stateType, ct: ct).ConfigureAwait(false);
-        await _streamingClient.GetAdmin<Command>().DeleteTopicAsync(_stateType, ct: ct).ConfigureAwait(false);
-        await _streamingClient.GetAdmin<Request>().DeleteTopicAsync(_stateType, ct: ct).ConfigureAwait(false);
+
+        if(_stateDetail.HandlerDict[typeof(Command)].Count != 0)
+            await _streamingClient.GetAdmin<Command>().DeleteTopicAsync(_stateType, ct: ct).ConfigureAwait(false);
+
+        if(_stateDetail.HandlerDict[typeof(Request)].Count != 0)
+            await _streamingClient.GetAdmin<Request>().DeleteTopicAsync(_stateType, ct: ct).ConfigureAwait(false);
     }
 
     #endregion

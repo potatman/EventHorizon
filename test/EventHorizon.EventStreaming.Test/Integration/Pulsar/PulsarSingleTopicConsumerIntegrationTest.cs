@@ -23,17 +23,6 @@ public class PulsarSingleTopicConsumerIntegrationTest : BaseSingleTopicConsumerI
     {
     }
 
-    public override async Task DisposeAsync()
-    {
-        await base.DisposeAsync();
-
-        var streamFactory = Provider.GetRequiredService<IStreamFactory>();
-        var topicAdmin = (PulsarTopicAdmin<Event>)streamFactory.CreateAdmin<Event>();
-        await topicAdmin.DeleteTopicAsync(
-            $"persistent://test_pricing/Event/subscription__ReSharperTestRunner-Fails_{UniqueTestId}__streamFailureState",
-            CancellationToken.None);
-    }
-
     [Fact]
     public async Task TestSingleConsumerWithNativePulsarFailures()
     {

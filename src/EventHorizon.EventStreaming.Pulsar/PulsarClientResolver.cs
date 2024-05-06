@@ -37,8 +37,7 @@ namespace EventHorizon.EventStreaming.Pulsar
         public PulsarClient GetClient()
         {
             var builder = new PulsarClientBuilder()
-                .ServiceUrl(_options.Value.ServiceUrl)
-                .EnableTransaction(true);
+                .ServiceUrl(_options.Value.ServiceUrl);
 
             if (_options.Value.OAuth2 != null)
             {

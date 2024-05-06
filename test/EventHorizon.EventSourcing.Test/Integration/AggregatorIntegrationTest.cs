@@ -88,7 +88,6 @@ public class AggregatorIntegrationTest : IAsyncLifetime
                 x.WithAggregate(b => b.StateCompression(Compression.Gzip).EventCompression(Compression.Gzip))
             );
 
-
         _streamingClient = _host.Services.GetRequiredService<StreamingClient>();
     }
 

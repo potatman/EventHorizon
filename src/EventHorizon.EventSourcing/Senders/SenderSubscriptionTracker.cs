@@ -89,7 +89,7 @@ public class SenderSubscriptionTracker : IAsyncDisposable
             await group.Value.StopAsync().ConfigureAwait(false);
 
             // Delete Topic
-            await _streamingClient.GetAdmin<Response>().DeleteTopicAsync(group.Key).ConfigureAwait(false);
+            await group.Value.DeleteTopicsAsync();
         }
         _subscriptionDict.Clear();
     }

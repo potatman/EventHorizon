@@ -32,6 +32,12 @@ public class PulsarTopicAdmin<TMessage> : ITopicAdmin<TMessage>
     public async Task RequireTopicAsync(string str, CancellationToken ct)
     {
         var topic = PulsarTopicParser.Parse(str);
+
+        // Check if Exists
+        var topics = await GetTopics(topic, ct).ConfigureAwait(false);
+        if (topics.Contains(topic.ToString()))
+            return;
+
         await RequireTenant(topic.Tenant, ct).ConfigureAwait(false);
         await RequireNamespace(topic, ct).ConfigureAwait(false);
 
@@ -41,13 +47,14 @@ public class PulsarTopicAdmin<TMessage> : ITopicAdmin<TMessage>
                 await _pulsarAdminClient.CreateNonPartitionedTopicAsync(topic.Tenant, topic.Namespace, topic.Topic, true, new Dictionary<string, string>(), ct).ConfigureAwait(false);
             else
                 await _pulsarAdminClient.CreateNonPartitionedTopic2Async(topic.Tenant, topic.Namespace, topic.Topic, true, new Dictionary<string, string>(), ct).ConfigureAwait(false);
+            _logger.LogInformation("Created Topic {Topic}", topic.ToString());
 
             var sw = Stopwatch.StartNew();
             var duration = TimeSpan.FromSeconds(10).TotalMilliseconds;
             while (sw.ElapsedMilliseconds < duration)
             {
-                var topics = await _pulsarAdminClient.GetTopicsAsync(topic.Tenant, topic.Namespace, topic.IsPersisted? Mode.PERSISTENT : Mode.NON_PERSISTENT, false, ct).ConfigureAwait(false);
-                if (topics.Contains(topic.ToString()))
+                var topicCheck = await GetTopics(topic, ct).ConfigureAwait(false);
+                if (topicCheck.Contains(topic.ToString()))
                     break;
 
                 await Task.Delay(100).ConfigureAwait(false);
@@ -57,7 +64,7 @@ public class PulsarTopicAdmin<TMessage> : ITopicAdmin<TMessage>
         {
             // 409 - Topic already exist
             if (ex.StatusCode > 300 && ex.StatusCode != 409)
-                throw;
+                throw new PulsarException($"Failed to Create Topic {topic}", ex);
         }
     }
 
@@ -75,8 +82,8 @@ public class PulsarTopicAdmin<TMessage> : ITopicAdmin<TMessage>
         catch (ApiException ex)
         {
             // 404 - Namespace or topic does not exist
-            if (ex.StatusCode != 404)
-                throw;
+            if (ex.StatusCode >= 400 && ex.StatusCode != 404 && !ex.Message.Contains("TopicDoesNotExistException"))
+                throw new PulsarException($"Failed to Delete Topic {topic}", ex);
         }
     }
 
@@ -175,6 +182,19 @@ public class PulsarTopicAdmin<TMessage> : ITopicAdmin<TMessage>
         return new PulsarKeyHashRanges {Ranges = ranges};
     }
 
+    private async Task<string[]> GetTopics(PulsarTopic topic, CancellationToken ct)
+    {
+        try
+        {
+            var topics = await _pulsarAdminClient.GetTopicsAsync(topic.Tenant, topic.Namespace, topic.IsPersisted? Mode.PERSISTENT : Mode.NON_PERSISTENT, false, ct).ConfigureAwait(false);
+            return topics.ToArray();
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
+    }
+
     private async Task RequireNamespace(PulsarTopic topic, CancellationToken ct)
     {
         // Ensure Namespace Exists
@@ -204,14 +224,14 @@ public class PulsarTopicAdmin<TMessage> : ITopicAdmin<TMessage>
             try
             {
                 await _pulsarAdminClient.CreateNamespaceAsync(topic.Tenant, topic.Namespace, policies, ct).ConfigureAwait(false);
+                _logger.LogInformation("Created Namespace {Namespace}", $"{topic.Tenant}/{topic.Namespace}");
             }
-            catch (Exception)
+            catch (ApiException ex)
             {
-                // Ignore race conditions
+                if (ex.StatusCode >= 400 && ex.StatusCode != 409)
+                    throw new PulsarException($"Failed to Create Namespace for topic {topic}", ex);
             }
         }
-
-
     }
 
     private async Task RequireTenant(string tenant, CancellationToken ct)
@@ -228,10 +248,13 @@ public class PulsarTopicAdmin<TMessage> : ITopicAdmin<TMessage>
             try
             {
                 await _pulsarAdminClient.CreateTenantAsync(tenant, tenantInfo, ct).ConfigureAwait(false);
+                _logger.LogInformation("Created Tenant {Tenant}", tenant);
+
             }
-            catch (Exception)
+            catch (ApiException ex)
             {
-                // Ignore race conditions
+                if (ex.StatusCode >= 400 && ex.StatusCode != 409)
+                    throw new PulsarException($"Failed to Create Tenant {tenant}", ex);
             }
         }
 

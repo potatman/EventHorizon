@@ -10,6 +10,7 @@ using Xunit;
 
 namespace EventHorizon.EventSourcing.Test.Unit
 {
+    [Trait("Category", "Unit")]
     public class FormatterTest
     {
         private readonly Formatter _defaultFormatter;
@@ -65,7 +66,7 @@ namespace EventHorizon.EventSourcing.Test.Unit
         public void TestDefaultDatabase()
         {
             var database = _defaultFormatter.GetDatabase<Snapshot<ExampleFormatter>>(typeof(ExampleFormatter));
-            Assert.Equal("insperex_snapshot_example_formatter", database);
+            Assert.Equal("event_horizon_snapshot_example_formatter", database);
             var database2 = _defaultFormatter.GetDatabase<Snapshot<AttributeFormatter>>(typeof(AttributeFormatter));
             Assert.Equal("TestDatabase", database2);
         }
@@ -74,7 +75,7 @@ namespace EventHorizon.EventSourcing.Test.Unit
         public void TestDefaultDatabaseWithPostfix()
         {
             var database = _testFormatter.GetDatabase<Snapshot<ExampleFormatter>>(typeof(ExampleFormatter));
-            Assert.Equal("insperex_snapshot_example_formatter_abc", database);
+            Assert.Equal("event_horizon_snapshot_example_formatter_abc", database);
             var database2 = _testFormatter.GetDatabase<Snapshot<AttributeFormatter>>(typeof(AttributeFormatter));
             Assert.Equal("TestDatabase_ABC", database2);
         }
