@@ -63,7 +63,7 @@ public class PulsarTopicAdmin<TMessage> : ITopicAdmin<TMessage>
         catch (ApiException ex)
         {
             // 409 - Topic already exist
-            if (ex.StatusCode > 300 && ex.StatusCode != 409)
+            if (ex.StatusCode > 300 && ex.StatusCode != 409 && !ex.Message.Contains("AlreadyExistsException"))
                 throw new PulsarException($"Failed to Create Topic {topic}", ex);
         }
     }
@@ -228,7 +228,7 @@ public class PulsarTopicAdmin<TMessage> : ITopicAdmin<TMessage>
             }
             catch (ApiException ex)
             {
-                if (ex.StatusCode >= 400 && ex.StatusCode != 409)
+                if (ex.StatusCode >= 400 && ex.StatusCode != 409 && !ex.Message.Contains("AlreadyExistsException"))
                     throw new PulsarException($"Failed to Create Namespace for topic {topic}", ex);
             }
         }
@@ -253,7 +253,7 @@ public class PulsarTopicAdmin<TMessage> : ITopicAdmin<TMessage>
             }
             catch (ApiException ex)
             {
-                if (ex.StatusCode >= 400 && ex.StatusCode != 409)
+                if (ex.StatusCode >= 400 && ex.StatusCode != 409 && !ex.Message.Contains("AlreadyExistsException"))
                     throw new PulsarException($"Failed to Create Tenant {tenant}", ex);
             }
         }
