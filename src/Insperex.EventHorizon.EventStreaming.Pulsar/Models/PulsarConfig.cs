@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 
 namespace Insperex.EventHorizon.EventStreaming.Pulsar.Models;
 
@@ -27,12 +27,12 @@ public class PulsarOAuth2Config
     [JsonProperty("issuer_url")]
     public string IssuerUrl { get; set; }
 
-    [JsonIgnore]
+    [JsonProperty("audience")]
     public string Audience { get; set; }
 
-    [JsonIgnore]
+    [JsonProperty("token_address")]
     public string TokenAddress { get; set; }
 
-    [JsonIgnore]
+    [JsonProperty("grant_type")]
     public string GrantType { get; set; }
 }
