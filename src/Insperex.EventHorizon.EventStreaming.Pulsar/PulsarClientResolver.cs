@@ -96,7 +96,7 @@ public class PulsarClientResolver : IDisposable
     {
         if (!disposed)
         {
-            if (disposing)
+            if (disposing && _client != null)
             {
                 _client.CloseAsync();
             }
