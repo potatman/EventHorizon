@@ -30,8 +30,7 @@ public class PulsarClientResolver : IDisposable
             return _client;
 
         var builder = new PulsarClientBuilder()
-            .ServiceUrl(_options.Value.ServiceUrl)
-            .EnableTransaction(true);
+            .ServiceUrl(_options.Value.ServiceUrl);
 
         if (_options.Value.OAuth2 != null)
         {
