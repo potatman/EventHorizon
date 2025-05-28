@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <NoWarn>$(NoWarn)</NoWarn>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="NBench" Version="2.0.1" />
+      <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\EventHorizon.EventStore.Ignite\EventHorizon.EventStore.Ignite.csproj" />
+      <ProjectReference Include="..\..\src\EventHorizon.EventStore.InMemory\EventHorizon.EventStore.InMemory.csproj" />
+      <ProjectReference Include="..\..\src\EventHorizon.EventStore.MongoDb\EventHorizon.EventStore.MongoDb.csproj" />
+      <ProjectReference Include="..\..\test\EventHorizon.EventStore.Test\EventHorizon.EventStore.Test.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="appsettings.test.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
+</Project>
