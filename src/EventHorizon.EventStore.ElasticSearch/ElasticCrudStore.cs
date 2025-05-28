@@ -99,7 +99,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.BulkAsync(
             b => b.Index(_dbName)
                 .CreateMany(objs)
-                .Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh())), ct);
+                .Refresh(GetRefresh()), ct);
 
         var result = new DbResult { PassedIds = objs.Select(x => x.Id).ToArray() };
         if (res.Errors)
@@ -117,7 +117,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.BulkAsync(
             b => b.Index(_dbName)
                 .IndexMany(objs)
-                .Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh())), ct);
+                .Refresh(GetRefresh()), ct);
 
         var result = new DbResult { PassedIds = objs.Select(x => x.Id).ToArray(), FailedIds = Array.Empty<string>() };
         if (res.Errors)
@@ -135,7 +135,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         var res = await _client.DeleteByQueryAsync<TE>(_dbName, q => q
             .Query(rq => rq
                 .Ids(f => f.Values(ids))
-            ).Refresh(ElasticIndexAttribute.GetRefresh(GetRefresh()).Value == "true"), ct);
+            ).Refresh(GetRefresh() == Refresh.True), ct);
 
         // TODO: contact elastic and figure out why this doesn't work
         // var objs = ids.Select(x => new { Id = x }).ToArray();
@@ -153,7 +153,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         return _client.Indices.DeleteAsync(_dbName, ct);
     }
 
-    private string GetRefresh() => typeof(TE) == typeof(Lock)? Refresh.True.Value : _elasticAttr?.Refresh;
+    private Refresh GetRefresh() => typeof(TE) == typeof(Lock) ? Refresh.True : _elasticAttr?.Refresh ?? Refresh.False;
 
     private void ThrowErrors(BulkResponse res)
     {

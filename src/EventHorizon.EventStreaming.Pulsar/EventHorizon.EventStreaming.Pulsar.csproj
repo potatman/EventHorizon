@@ -7,9 +7,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AspNetCore.HealthChecks.System" Version="8.0.1" />
-        <PackageReference Include="IdentityModel" Version="7.0.0" />
-        <PackageReference Include="Pulsar.Client" Version="3.5.1" />
+        <PackageReference Include="AspNetCore.HealthChecks.System" Version="9.0.0" />
+        <PackageReference Include="Duende.IdentityModel" Version="7.0.0" />
+        <PackageReference Include="Pulsar.Client" Version="3.9.4" />
         <PackageReference Include="Pulsar.Client.Otel" Version="0.1.2" />
         <PackageReference Include="SharpPulsar.Admin" Version="2.15.1" /> <!-- DO NOT UPDATE PAST 2.13 -->
     </ItemGroup>

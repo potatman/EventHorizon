@@ -1,7 +1,7 @@
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
-using IdentityModel.Client;
+using Duende.IdentityModel.Client;
 using EventHorizon.EventStreaming.Pulsar.Extensions;
 using EventHorizon.EventStreaming.Pulsar.Models;
 using Microsoft.Extensions.Options;
