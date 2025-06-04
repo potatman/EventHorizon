@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <NoWarn>$(NoWarn)</NoWarn>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Bogus" Version="35.6.3" />
+      <PackageReference Include="NBench" Version="2.0.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\EventHorizon.EventStreaming.Pulsar\EventHorizon.EventStreaming.Pulsar.csproj" />
+      <ProjectReference Include="..\..\test\EventHorizon.EventStreaming.Test\EventHorizon.EventStreaming.Test.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="appsettings.test.json">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
+</Project>

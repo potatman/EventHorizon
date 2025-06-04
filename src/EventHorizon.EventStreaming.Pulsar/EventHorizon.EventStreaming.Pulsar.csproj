@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <NoWarn>$(NoWarn)</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AspNetCore.HealthChecks.System" Version="9.0.0" />
+        <PackageReference Include="Duende.IdentityModel" Version="7.0.0" />
+        <PackageReference Include="Pulsar.Client" Version="3.9.4" />
+        <PackageReference Include="Pulsar.Client.Otel" Version="0.1.2" />
+        <PackageReference Include="SharpPulsar.Admin" Version="2.15.1" /> <!-- DO NOT UPDATE PAST 2.13 -->
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\EventHorizon.EventStreaming\EventHorizon.EventStreaming.csproj" />
+    </ItemGroup>
+
+</Project>
