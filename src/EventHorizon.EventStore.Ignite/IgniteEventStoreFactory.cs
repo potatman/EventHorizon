@@ -1,6 +1,5 @@
 ﻿using System;
-using Apache.Ignite.Core;
-using Apache.Ignite.Core.Client;
+using Apache.Ignite;
 using EventHorizon.Abstractions.Attributes;
 using EventHorizon.Abstractions.Interfaces;
 using EventHorizon.Abstractions.Util;
@@ -24,10 +23,7 @@ public class IgniteEventStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFa
     public IgniteEventStoreFactory(IOptions<IgniteConfig> options, AttributeUtil attributeUtil, ILoggerFactory loggerFactory)
     {
         _type = typeof(T);
-        _client = Ignition.StartClient(new IgniteClientConfiguration
-        {
-            Endpoints = options.Value.Endpoints
-        });
+        _client = IgniteClient.StartAsync(new IgniteClientConfiguration(options.Value.Endpoints)).Result;
         _attributeUtil = attributeUtil;
         _loggerFactory = loggerFactory;
     }

@@ -8,8 +8,8 @@
 
     <ItemGroup>
         <PackageReference Include="Destructurama.Attributed" Version="5.1.0" />
-        <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="9.0.5" />
-        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.5" />
+        <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="9.0.7" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.7" />
         <PackageReference Include="OpenTelemetry.Api" Version="1.12.0" />
         <PackageReference Include="System.Reactive" Version="6.0.1" />
     </ItemGroup>

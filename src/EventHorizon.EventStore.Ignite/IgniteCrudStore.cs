@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Apache.Ignite.Core.Client;
-using Apache.Ignite.Core.Client.Cache;
-using Apache.Ignite.Core.Transactions;
+using Apache.Ignite;
+using Apache.Ignite.Table;
 using EventHorizon.EventStore.Interfaces;
 using EventHorizon.EventStore.Interfaces.Stores;
 using EventHorizon.EventStore.Models;
@@ -15,13 +14,15 @@ namespace EventHorizon.EventStore.Ignite;
 public class IgniteCrudStore<T> : ICrudStore<T>
     where T : ICrudEntity
 {
-    private readonly ICacheClient<string, T> _cache;
+    private readonly ITable _table;
     private readonly IIgniteClient _client;
+    private readonly string _tableName;
 
     public IgniteCrudStore(IIgniteClient client, string bucketId)
     {
         _client = client;
-        _cache = client.GetOrCreateCache<string, T>($"{bucketId}-{typeof(T).Name}");
+        _tableName = $"{bucketId}_{typeof(T).Name}";
+        _table = client.Tables.GetTableAsync(_tableName).Result;
     }
 
     public Task SetupAsync(CancellationToken ct)
@@ -31,9 +32,21 @@ public class IgniteCrudStore<T> : ICrudStore<T>
 
     public async Task<T[]> GetAllAsync(string[] ids, CancellationToken ct)
     {
-        var keys = ids.Select(x => x).ToArray();
-        var result = await _cache.GetAllAsync(keys);
-        return result.Select(x => x.Value).ToArray();
+        var result = new List<T>();
+        var keyValueView = _table.GetRecordView<T>();
+
+        foreach (var id in ids)
+        {
+            // Create a key object with the Id property
+            var key = Activator.CreateInstance<T>();
+            key.Id = id;
+
+            var record = await keyValueView.GetAsync(null, key);
+            if (record.HasValue)
+                result.Add(record.Value);
+        }
+
+        return result.ToArray();
     }
 
     public Task<DateTime> GetLastUpdatedDateAsync(CancellationToken ct)
@@ -44,17 +57,10 @@ public class IgniteCrudStore<T> : ICrudStore<T>
     public async Task<DbResult> InsertAsync(T[] objs, CancellationToken ct)
     {
         var result = new DbResult();
-
-        // Check Get First
-        var ids = objs.Select(x => x.Id).ToArray();
-        var entries = await _cache.GetAllAsync(ids);
-        var existing = entries.Select(x => x.Key).ToArray();
+        var keyValueView = _table.GetRecordView<T>();
 
         // Try Insert with transaction
-        using var transaction = _client.GetTransactions().TxStart(
-            TransactionConcurrency.Pessimistic,
-            TransactionIsolation.ReadCommitted,
-            TimeSpan.FromMilliseconds(300));
+        var transaction = await _client.Transactions.BeginAsync();
 
         try
         {
@@ -63,8 +69,8 @@ public class IgniteCrudStore<T> : ICrudStore<T>
 
             foreach (var obj in objs)
             {
-                var exists = await _cache.PutIfAbsentAsync(obj.Id, obj);
-                if (!exists)
+                var inserted = await keyValueView.InsertAsync(transaction, obj);
+                if (!inserted)
                     failedIds.Add(obj.Id);
                 else
                     passedIds.Add(obj.Id);
@@ -72,11 +78,11 @@ public class IgniteCrudStore<T> : ICrudStore<T>
 
             result.FailedIds = failedIds.ToArray();
             result.PassedIds = passedIds.ToArray();
-            transaction.Commit();
+            await transaction.CommitAsync();
         }
         catch
         {
-            transaction.Rollback();
+            await transaction.RollbackAsync();
             result.FailedIds = objs.Select(x => x.Id).ToArray();
         }
 
@@ -86,38 +92,46 @@ public class IgniteCrudStore<T> : ICrudStore<T>
     public async Task<DbResult> UpsertAsync(T[] objs, CancellationToken ct)
     {
         var result = new DbResult();
-        var req = objs.ToDictionary(x => x.Id);
+        var keyValueView = _table.GetRecordView<T>();
 
         // Try Insert with transaction
-        using var transaction = _client.GetTransactions().TxStart(
-            TransactionConcurrency.Pessimistic,
-            TransactionIsolation.ReadCommitted,
-            TimeSpan.FromMilliseconds(300));
+        var transaction = await _client.Transactions.BeginAsync();
 
         try
         {
-            await _cache.PutAllAsync(req);
-            transaction.Commit();
+            foreach (var obj in objs)
+            {
+                await keyValueView.UpsertAsync(transaction, obj);
+            }
+
+            await transaction.CommitAsync();
             result.PassedIds = objs.Select(x => x.Id).ToArray();
         }
         catch
         {
-            transaction.Rollback();
+            await transaction.RollbackAsync();
             result.FailedIds = objs.Select(x => x.Id).ToArray();
         }
 
         return result;
     }
 
-    public Task DeleteAsync(string[] ids, CancellationToken ct)
+    public async Task DeleteAsync(string[] ids, CancellationToken ct)
     {
-        var keys = ids.Select(x => x).ToArray();
-        return _cache.RemoveAllAsync(keys);
+        var keyValueView = _table.GetRecordView<T>();
+
+        foreach (var id in ids)
+        {
+            // Create a key object with the Id property
+            var key = Activator.CreateInstance<T>();
+            key.Id = id;
+
+            await keyValueView.DeleteAsync(null, key);
+        }
     }
 
-    public Task DropDatabaseAsync(CancellationToken ct)
+    public async Task DropDatabaseAsync(CancellationToken ct)
     {
-        _client.DestroyCache(_cache.Name);
-        return Task.CompletedTask;
+        await _client.Sql.ExecuteAsync(null, $"DROP TABLE IF EXISTS {_tableName}");
     }
 }

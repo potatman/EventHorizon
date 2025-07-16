@@ -1,14 +1,10 @@
 ﻿using System;
-using Apache.Ignite.Core;
-using Apache.Ignite.Core.Client;
 using EventHorizon.Abstractions;
 using EventHorizon.Abstractions.Util;
 using EventHorizon.EventStore.Ignite.Models;
 using EventHorizon.EventStore.Interfaces.Factory;
 using EventHorizon.EventStore.Locks;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace EventHorizon.EventStore.Ignite.Extensions;
 
