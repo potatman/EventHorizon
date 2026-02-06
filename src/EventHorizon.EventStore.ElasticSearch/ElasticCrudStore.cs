@@ -15,6 +15,7 @@ using EventHorizon.EventStore.Interfaces;
 using EventHorizon.EventStore.Interfaces.Stores;
 using EventHorizon.EventStore.Models;
 using Microsoft.Extensions.Logging;
+using Lock = EventHorizon.EventStore.Models.Lock;
 
 namespace EventHorizon.EventStore.ElasticSearch;
 

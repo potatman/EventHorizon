@@ -13,6 +13,7 @@ using EventHorizon.EventStore.Interfaces.Stores;
 using EventHorizon.EventStore.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Lock = EventHorizon.EventStore.Models.Lock;
 
 namespace EventHorizon.EventStore.ElasticSearch;
 

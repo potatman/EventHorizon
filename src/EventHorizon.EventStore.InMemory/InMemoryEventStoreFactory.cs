@@ -4,6 +4,7 @@ using EventHorizon.EventStore.Interfaces.Factory;
 using EventHorizon.EventStore.Interfaces.Stores;
 using EventHorizon.EventStore.Models;
 using Microsoft.Extensions.Logging;
+using Lock = EventHorizon.EventStore.Models.Lock;
 
 namespace EventHorizon.EventStore.InMemory;
 

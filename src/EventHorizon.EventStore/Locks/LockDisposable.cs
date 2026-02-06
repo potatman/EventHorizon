@@ -6,6 +6,9 @@ using EventHorizon.EventStore.Interfaces.Stores;
 using EventHorizon.EventStore.Models;
 using Microsoft.Extensions.Logging;
 
+// Alias to disambiguate from System.Threading.Lock introduced in .NET 9+
+using Lock = EventHorizon.EventStore.Models.Lock;
+
 namespace EventHorizon.EventStore.Locks;
 
 public class LockDisposable : IAsyncDisposable

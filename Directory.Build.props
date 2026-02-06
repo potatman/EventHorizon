@@ -3,4 +3,21 @@
   <PropertyGroup>
     <NoWarn>$(NoWarn);1591;1701;1702;NU5105;CA1300;CA1301;CA1303;CA1306;CA1307;CA1308;CA1309;CA2007;</NoWarn>
   </PropertyGroup>
+
+  <!-- NuGet packaging properties for src projects -->
+  <PropertyGroup Condition="$(MSBuildProjectDirectory.Contains('src'))">
+    <Authors>potatman</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/potatman/EventHorizon</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/potatman/EventHorizon</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Description>EventHorizon - Event Sourcing and Event Streaming framework for .NET</Description>
+    <PackageTags>eventsourcing;eventstreaming;cqrs;eventdriven;dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$(MSBuildProjectDirectory.Contains('src'))">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>

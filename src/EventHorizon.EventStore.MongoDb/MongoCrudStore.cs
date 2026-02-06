@@ -68,8 +68,9 @@ public class MongoCrudStore<T> : ICrudStore<T>
 
     public async Task<T[]> GetAllAsync(string[] ids, CancellationToken ct)
     {
+        var filter = Builders<T>.Filter.In(Id, ids);
         var objs = await _collection
-            .Find(x => ids.Contains(x.Id))
+            .Find(filter)
             .ToListAsync(ct);
 
         return objs.ToArray();
@@ -77,7 +78,7 @@ public class MongoCrudStore<T> : ICrudStore<T>
 
     public async Task<DateTime> GetLastUpdatedDateAsync(CancellationToken ct)
     {
-        var result = await _collection.Find(x => true)
+        var result = await _collection.Find(Builders<T>.Filter.Empty)
             .Project(x => x.UpdatedDate)
             .SortByDescending(x => x.UpdatedDate)
             .FirstOrDefaultAsync(cancellationToken: ct);
@@ -158,7 +159,8 @@ public class MongoCrudStore<T> : ICrudStore<T>
 
     public async Task DeleteAsync(string[] ids, CancellationToken ct)
     {
-        await _collection.DeleteManyAsync(x => ids.Contains(x.Id), ct);
+        var filter = Builders<T>.Filter.In(Id, ids);
+        await _collection.DeleteManyAsync(filter, ct);
     }
 
     public Task DropDatabaseAsync(CancellationToken ct)

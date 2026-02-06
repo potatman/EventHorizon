@@ -8,6 +8,7 @@ using EventHorizon.EventStore.Models;
 using EventHorizon.EventStore.MongoDb.Models;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using Lock = EventHorizon.EventStore.Models.Lock;
 
 namespace EventHorizon.EventStore.MongoDb;
 
