@@ -1,0 +1,47 @@
+workflow: GitFlow/v1
+mode: ContinuousDeployment
+next-version: 1.3.0
+
+branches:
+  main:
+    label: ''
+    increment: Patch
+    regex: ^master$|^main$
+    is-main-branch: true
+
+  develop:
+    label: preview
+    increment: Minor
+    regex: ^dev(elop)?(ment)?$
+    source-branches: [main]
+    tracks-release-branches: true
+
+  release:
+    mode: ContinuousDeployment
+    label: rc
+    increment: Minor
+    regex: ^releases?[/-](?<BranchName>.+)
+    source-branches: [main, develop, support]
+    is-release-branch: true
+
+  hotfix:
+    mode: ContinuousDeployment
+    label: hf
+    increment: Inherit
+    regex: ^hotfix(es)?[/-](?<BranchName>.+)
+    source-branches: [main, support]
+    is-release-branch: true
+
+  feature:
+    mode: ContinuousDeployment
+    label: '{BranchName}'
+    increment: Inherit
+    regex: ^features?[/-](?<BranchName>.+)
+    source-branches: [develop, main, release, support, hotfix]
+
+  pull-request:
+    mode: ContinuousDelivery
+    label: PullRequest{Number}
+    increment: Inherit
+    regex: ^(pull-requests|pull|pr)[/-](?<Number>\d*)
+    source-branches: [develop, main, release, feature, support, hotfix]

@@ -369,24 +369,31 @@ Integration tests use `[Collection("Integration")]` and require running Docker C
 
 ## CI/CD
 
-This project uses **GitHub Actions** (`.github/workflows/ci.yml`):
+This project uses **GitHub Actions** (`.github/workflows/ci.yml`) with **[GitVersion](https://gitversion.net/)** for automatic semantic versioning based on the GitFlow branching model.
 
-| Branch/Tag | Version Format | NuGet Feed |
+Versions are derived from git history and tags — no manual version bumping required after initial setup.
+
+| Branch/Tag | Pre-release Label | Example Version |
 |---|---|---|
-| `v*` tag | `{tag}` (e.g., `1.3.0`) | nuget.org (stable) |
-| `master` / `main` | `{BASE_VERSION}` | nuget.org (stable) |
-| `release/*` | `{BASE_VERSION}-rc.{run}` | nuget.org (pre-release) |
-| `hotfix/*` | `{BASE_VERSION}-hf.{run}` | nuget.org (pre-release) |
-| `develop` | `{BASE_VERSION}-preview.{run}` | nuget.org (pre-release) |
-| `feature/*` | `{BASE_VERSION}-{branch}.{run}` | nuget.org (pre-release) |
+| `v*` tag | _(stable)_ | `1.3.0` |
+| `master` / `main` | _(stable)_ | `1.3.0` |
+| `release/*` | `rc` | `1.3.0-rc.3` |
+| `hotfix/*` | `hf` | `1.3.1-hf.1` |
+| `develop` | `preview` | `1.4.0-preview.12` |
+| `feature/*` | `{branch}` | `1.4.0-my-feature.1` |
+
+### How versioning works
+
+- **Tag a release** on `main`/`master` (e.g., `v1.3.0`) to set the version baseline
+- All subsequent commits on branches derive their version from git tags and merge history
+- Commit messages with `+semver: major`, `+semver: minor`, or `+semver: fix` control version increments
+- Configuration lives in `GitVersion.yml` at the repo root
 
 All packages are published with the `Cts.*` prefix (e.g., `Cts.EventHorizon.Abstractions`).
 
-### Secrets
+### Trusted Publishing
 
-| Secret | Purpose |
-|---|---|
-| `NUGET_API_KEY` | API key for publishing to nuget.org |
+NuGet packages are published using [trusted publishing](https://devblogs.microsoft.com/nuget/introducing-trusted-publishers/) via GitHub's OIDC tokens — no API keys or secrets required. The trusted publisher is configured on nuget.org to trust the `ci.yml` workflow in this repository.
 
 ## Samples
 
