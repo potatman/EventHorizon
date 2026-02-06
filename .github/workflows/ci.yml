@@ -84,7 +84,7 @@ jobs:
           VERSION="${{ steps.version.outputs.semVer }}"
           for proj in src/EventHorizon.*/EventHorizon.*.csproj; do
             ASSEMBLY_NAME=$(basename "$(dirname "$proj")")
-            PACKAGE_ID="Cts.${ASSEMBLY_NAME}"
+            PACKAGE_ID="${ASSEMBLY_NAME}"
             echo "Packing ${PACKAGE_ID} v${VERSION}"
             dotnet pack "$proj" \
               --configuration ${{ env.CONFIGURATION }} \
