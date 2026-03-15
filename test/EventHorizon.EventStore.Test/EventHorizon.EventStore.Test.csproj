@@ -9,8 +9,8 @@
 
     <ItemGroup>
         <PackageReference Include="Bogus" Version="35.6.5" />
-        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.2" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
         <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
         <PackageReference Include="Serilog.Sinks.XUnit" Version="3.0.19" />
         <PackageReference Include="xunit" Version="2.9.3" />
@@ -18,7 +18,7 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="coverlet.collector" Version="6.0.4">
+        <PackageReference Include="coverlet.collector" Version="8.0.0">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
@@ -38,6 +38,11 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="Elastic.Clients.Elasticsearch" Version="9.3.2" />
+      <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="10.0.5" />
+    <PackageReference Include="MongoDB.Driver" Version="3.7.0" />
       <Reference Include="Destructurama.Attributed">
         <HintPath>..\..\..\..\..\.nuget\packages\destructurama.attributed\3.1.0\lib\netstandard2.0\Destructurama.Attributed.dll</HintPath>
       </Reference>
