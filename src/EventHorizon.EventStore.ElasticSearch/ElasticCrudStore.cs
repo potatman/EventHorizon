@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.Core.Search;
-using Elastic.Clients.Elasticsearch.IndexManagement;
 using Elastic.Clients.Elasticsearch.Mapping;
 using Elastic.Clients.Elasticsearch.QueryDsl;
 using Elastic.Transport;
@@ -37,8 +36,8 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
 
     public async Task SetupAsync(CancellationToken ct)
     {
-        var getReq = await _client.Indices.GetAsync(new GetIndexRequest(_dbName), ct);
-        if (getReq.IsValidResponse) return;
+        var existsResp = await _client.Indices.ExistsAsync(_dbName, ct);
+        if (existsResp.Exists) return;
 
         var createReq = await _client.Indices.CreateAsync(_dbName, cfg =>
         {
