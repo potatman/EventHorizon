@@ -1,6 +1,6 @@
 workflow: GitFlow/v1
 mode: ContinuousDeployment
-next-version: 1.3.0
+next-version: 1.5.0
 
 branches:
   main:
