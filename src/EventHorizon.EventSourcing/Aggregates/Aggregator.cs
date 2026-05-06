@@ -95,7 +95,7 @@ public class Aggregator<TParent, T>
         var aggregateDict = await GetAggregatesFromStatesAsync(streamIds, ct);
 
         // Map/Apply Changes
-        TriggerHandle(messages, aggregateDict);
+        await TriggerHandleAsync(messages, aggregateDict);
 
         // Save Successful Aggregates and Events
         await SaveAllAsync(aggregateDict);
@@ -103,7 +103,7 @@ public class Aggregator<TParent, T>
         return  aggregateDict.Values.SelectMany(x => x.Responses).ToArray();
     }
 
-    private void TriggerHandle<TM>(TM[] messages, Dictionary<string, Aggregate<T>> aggregateDict) where TM : ITopicMessage
+    private async Task TriggerHandleAsync<TM>(TM[] messages, Dictionary<string, Aggregate<T>> aggregateDict) where TM : ITopicMessage
     {
         var sw = Stopwatch.StartNew();
         foreach (var message in messages)
@@ -130,7 +130,8 @@ public class Aggregator<TParent, T>
         var passed = aggregateDict.Values.Where(x => x.Error == null).ToArray();
         try
         {
-            _config.Middleware?.BeforeSave(passed);
+            if (_config.Middleware != null)
+                await _config.Middleware.BeforeSave(passed);
         }
         catch (Exception e)
         {
@@ -163,7 +164,8 @@ public class Aggregator<TParent, T>
         var messages = aggregateDict.Values.ToArray();
         try
         {
-            _config.Middleware?.AfterSave(messages);
+            if (_config.Middleware != null)
+                await _config.Middleware.AfterSave(messages);
         }
         catch (Exception e)
         {
@@ -302,7 +304,8 @@ public class Aggregator<TParent, T>
             var passed = aggregateDict.Values.Where(x => x.Error == null).ToArray();
             try
             {
-                _config.Middleware?.OnLoad(passed);
+                if (_config.Middleware != null)
+                    await _config.Middleware.OnLoad(passed);
             }
             catch (Exception e)
             {
