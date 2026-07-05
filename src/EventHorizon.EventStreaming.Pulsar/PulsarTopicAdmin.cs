@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -130,6 +132,34 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         } while (++attempt < attempts);
 
         return null;
+    }
+
+    public async Task<bool> SubscriptionExistsAsync(string[] topics, string subscriptionName, CancellationToken ct)
+    {
+        var exists = false;
+        foreach (var topic in topics)
+            exists |= await SubscriptionExistsAsync(topic, subscriptionName, ct);
+
+        _logger.LogInformation("Subscription {SubscriptionName} exists: {Exists}", subscriptionName, exists);
+
+        return exists;
+    }
+
+    public async Task<bool> SubscriptionExistsAsync(string topic, string subscriptionName, CancellationToken ct)
+    {
+        JsonElement stats;
+        try
+        {
+            stats = await GetTopicStatsJson(topic, ct, subscriptionBacklogSize: false);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            // Topic doesn't exist yet, so neither does the subscription.
+            return false;
+        }
+
+        return stats.TryGetProperty("subscriptions", out var subscriptions)
+               && subscriptions.TryGetProperty(subscriptionName, out _);
     }
 
     private async Task<PulsarKeyHashRanges> TryTopicConsumerKeyHashRanges(string topic, string subscriptionName, string consumerName,

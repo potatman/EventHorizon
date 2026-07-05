@@ -103,6 +103,27 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
             _batchInProgress = true;
         }
 
+        // Any exception (or empty batch) must release the in-progress flag, or the
+        // subscription would permanently return empty batches after a transient error.
+        try
+        {
+            var messages = await NextBatchInternalAsync(ct);
+            if (messages == null || messages.Length == 0)
+            {
+                ReleaseBatchInProgress();
+                return Array.Empty<MessageContext<T>>();
+            }
+            return messages;
+        }
+        catch
+        {
+            ReleaseBatchInProgress();
+            throw;
+        }
+    }
+
+    private async Task<MessageContext<T>[]> NextBatchInternalAsync(CancellationToken ct)
+    {
         _phase = _phase switch
         {
             BatchPhase.FailureRetry => BatchPhase.Normal,
@@ -143,15 +164,15 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         }
 
         // Normal phase.
-        var messages = await _primaryTopicConsumer.NextBatchAsync(ct);
-        if (messages.Length == 0)
+        return await _primaryTopicConsumer.NextBatchAsync(ct);
+    }
+
+    private void ReleaseBatchInProgress()
+    {
+        lock (_batchInProgressLock)
         {
-            lock (_batchInProgressLock)
-            {
-                _batchInProgress = false;
-            }
+            _batchInProgress = false;
         }
-        return messages;
     }
 
     public async Task FinalizeBatchAsync(MessageContext<T>[] acks, MessageContext<T>[] nacks)
@@ -167,10 +188,7 @@ public class OrderGuaranteedPulsarTopicConsumer<T> : ITopicConsumer<T> where T :
         }
         finally
         {
-            lock (_batchInProgressLock)
-            {
-                _batchInProgress = false;
-            }
+            ReleaseBatchInProgress();
         }
     }
 

@@ -86,7 +86,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
                             b.Filter(f => f.MatchAll(_ => { }))
                         )
                     )
-                    .Sort(s => s.Field(f => f.UpdatedDate).Doc(d => d.Order(SortOrder.Desc)))
+                    .Sort(s => s.Field(f => f.UpdatedDate, fs => fs.Order(SortOrder.Desc)))
             , ct);
 
         ThrowErrors(res);
@@ -101,15 +101,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
                 .CreateMany(objs)
                 .Refresh(GetRefresh()), ct);
 
-        var result = new DbResult { PassedIds = objs.Select(x => x.Id).ToArray() };
-        if (res.Errors)
-        {
-            var failedIds = res.ItemsWithErrors.Select(x => x.Id).ToArray();
-            result.FailedIds = objs.Where(x => failedIds.Contains(x.Id)).Select(x => x.Id).ToArray();
-            result.PassedIds = objs.Where(x => !failedIds.Contains(x.Id)).Select(x => x.Id).ToArray();
-        }
-
-        return result;
+        return GetBulkResult(res, objs);
     }
 
     public async Task<DbResult> UpsertAsync(TE[] objs, CancellationToken ct)
@@ -119,15 +111,31 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
                 .IndexMany(objs)
                 .Refresh(GetRefresh()), ct);
 
-        var result = new DbResult { PassedIds = objs.Select(x => x.Id).ToArray(), FailedIds = Array.Empty<string>() };
+        return GetBulkResult(res, objs);
+    }
+
+    private DbResult GetBulkResult(BulkResponse res, TE[] objs)
+    {
+        // Per-item errors (e.g. duplicate ids on create) are reported via FailedIds.
         if (res.Errors)
         {
-            var failedIds = res.ItemsWithErrors.Select(x => x.Id).ToArray();
-            result.FailedIds = objs.Where(x => failedIds.Contains(x.Id)).Select(x => x.Id).ToArray();
-            result.PassedIds = objs.Where(x => !failedIds.Contains(x.Id)).Select(x => x.Id).ToArray();
+            var failedIds = res.ItemsWithErrors.Select(x => x.Id).ToHashSet();
+            return new DbResult
+            {
+                FailedIds = objs.Where(x => failedIds.Contains(x.Id)).Select(x => x.Id).ToArray(),
+                PassedIds = objs.Where(x => !failedIds.Contains(x.Id)).Select(x => x.Id).ToArray()
+            };
         }
 
-        return result;
+        // A transport/server failure (timeout, 5xx, connection refused) is not a per-item
+        // error; reporting it as success would silently lose writes.
+        ThrowErrors(res);
+
+        return new DbResult
+        {
+            PassedIds = objs.Select(x => x.Id).ToArray(),
+            FailedIds = Array.Empty<string>()
+        };
     }
 
     public async Task DeleteAsync(string[] ids, CancellationToken ct)
@@ -154,23 +162,6 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
     }
 
     private Refresh GetRefresh() => typeof(TE) == typeof(Lock) ? Refresh.True : _elasticAttr?.Refresh ?? Refresh.False;
-
-    private void ThrowErrors(BulkResponse res)
-    {
-        if (res.IsValidResponse) return;
-
-        var failedHits = res.ItemsWithErrors.ToArray();
-        if (failedHits.Any())
-        {
-            var first = failedHits.First();
-            if (first.Error.Type == "index_not_found_exception")
-                return;
-            else
-                throw new TransportException(first.Error.Type);
-        }
-
-        ThrowErrors(res as ElasticsearchResponse);
-    }
 
     private void ThrowErrors(ElasticsearchResponse res)
     {

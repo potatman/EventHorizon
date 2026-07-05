@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Duende.IdentityModel.Client;
 using EventHorizon.EventStreaming.Pulsar.Extensions;
@@ -10,8 +11,9 @@ using SharpPulsar.Admin.v2;
 
 namespace EventHorizon.EventStreaming.Pulsar;
 
-public class PulsarClientResolver : IDisposable
+public class PulsarClientResolver : IDisposable, IAsyncDisposable
 {
+    private readonly SemaphoreSlim _clientSemaphore = new(1, 1);
     private IOptions<PulsarConfig> _options;
     private PulsarAdminRESTAPIClient _admin;
     private PulsarClient _client;
@@ -29,16 +31,27 @@ public class PulsarClientResolver : IDisposable
         if (_client != null)
             return _client;
 
-        var builder = new PulsarClientBuilder()
-            .ServiceUrl(_options.Value.ServiceUrl);
-
-        if (_options.Value.OAuth2 != null)
+        await _clientSemaphore.WaitAsync();
+        try
         {
-            var audience = _options.Value.OAuth2.Audience;
-            builder = builder.Authentication(AuthenticationFactoryOAuth2.ClientCredentials(new Uri(_options.Value.OAuth2.IssuerUrl), audience, _credentials));
-        }
+            if (_client != null)
+                return _client;
 
-        return await builder.BuildAsync();
+            var builder = new PulsarClientBuilder()
+                .ServiceUrl(_options.Value.ServiceUrl);
+
+            if (_options.Value.OAuth2 != null)
+            {
+                var audience = _options.Value.OAuth2.Audience;
+                builder = builder.Authentication(AuthenticationFactoryOAuth2.ClientCredentials(new Uri(_options.Value.OAuth2.IssuerUrl), audience, _credentials));
+            }
+
+            return _client = await builder.BuildAsync();
+        }
+        finally
+        {
+            _clientSemaphore.Release();
+        }
     }
 
     public async Task<IPulsarAdminRESTAPIClient> GetAdminClientAsync()
@@ -91,13 +104,44 @@ public class PulsarClientResolver : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    public async ValueTask DisposeAsync()
+    {
+        if (disposed) return;
+
+        var client = _client;
+        _client = null;
+        if (client != null)
+        {
+            try
+            {
+                await client.CloseAsync();
+            }
+            catch (Exception)
+            {
+                // Best effort close; broker may already be unreachable.
+            }
+        }
+
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
     protected virtual void Dispose(bool disposing)
     {
         if (!disposed)
         {
-            if (disposing && _client != null)
+            var client = _client;
+            _client = null;
+            if (disposing && client != null)
             {
-                _client.CloseAsync();
+                try
+                {
+                    client.CloseAsync().GetAwaiter().GetResult();
+                }
+                catch (Exception)
+                {
+                    // Best effort close; broker may already be unreachable.
+                }
             }
 
             // Large fields to null;
