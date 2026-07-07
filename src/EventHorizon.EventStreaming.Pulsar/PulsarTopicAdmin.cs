@@ -62,7 +62,8 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         catch (ApiException ex)
         {
             // 409 - Topic already exist
-            if (ex.StatusCode > 300 && ex.StatusCode != 409)
+            // Concurrent creates can also surface AlreadyExistsException as a 500
+            if (ex.StatusCode > 300 && ex.StatusCode != 409 && !ex.Message.Contains("AlreadyExistsException"))
                 throw;
         }
     }

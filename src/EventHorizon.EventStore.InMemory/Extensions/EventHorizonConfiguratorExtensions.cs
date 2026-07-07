@@ -1,5 +1,6 @@
 ﻿using EventHorizon.Abstractions;
 using EventHorizon.Abstractions.Util;
+using EventHorizon.EventStore.InMemory.Databases;
 using EventHorizon.EventStore.Interfaces.Factory;
 using EventHorizon.EventStore.Locks;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,6 +36,8 @@ public static class EventHorizonConfiguratorExtensions
 
     private static void AddInMemoryStore(EventHorizonConfigurator configurator)
     {
+        // Single shared database so snapshot/view/lock stores see the same data across state types
+        configurator.Collection.TryAddSingleton<CrudDatabase>();
         configurator.Collection.AddSingleton(typeof(LockFactory<>));
         configurator.Collection.AddSingleton<AttributeUtil>();
     }
