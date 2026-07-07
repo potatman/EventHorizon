@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Text.Json;
 using EventHorizon.Abstractions.Interfaces.Internal;
 using EventHorizon.Abstractions.Util;
@@ -17,15 +16,30 @@ public static class TopicMessageExtensions
         where T : class, ITopicMessage
     {
         var payload = message.GetPayload();
-        var upgrade = AssemblyUtil.ActionDict[message.Type]
-            .GetInterfaces()
-            .FirstOrDefault(x => x.Name == typeof(IUpgradeTo<>).Name)?.GetMethod("Upgrade");
+        var upgraded = false;
+
+        // Walk the whole chain (V1 -> V2 -> V3): handlers are only required for the
+        // latest version (ValidationUtil skips IUpgradeTo types)
+        while (true)
+        {
+            var upgrade = payload.GetType()
+                .GetInterfaces()
+                .FirstOrDefault(x => x.Name == typeof(IUpgradeTo<>).Name)?.GetMethod("Upgrade");
+
+            var newPayload = upgrade?.Invoke(payload, null);
+            if (newPayload == null || newPayload.GetType() == payload.GetType())
+                break;
+
+            payload = newPayload;
+            upgraded = true;
+        }
 
         // If no upgrade return original message
-        if (upgrade == null) return message;
+        if (!upgraded) return message;
 
-        upgrade?.Invoke(payload, null);
-        return Activator.CreateInstance(typeof(T), message.StreamId, payload) as T;
-
+        // Update in place to preserve envelope fields (e.g. Event.SequenceId)
+        message.Type = payload.GetType().Name;
+        message.Payload = JsonSerializer.Serialize(payload);
+        return message;
     }
 }
