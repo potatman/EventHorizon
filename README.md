@@ -320,6 +320,63 @@ Best suited for unit/integration testing. No external dependencies required.
 | `[ViewStore("database")]` | Class | Configures the view store database/index name |
 | `[Stream("topic")]` | Class | Maps a type to a streaming topic |
 | `[StreamPartitionKey]` | Property | Designates the property used for stream partitioning |
+| `[StoreField(FieldIntent...)]` | Property | Declares how a state field is queried so the store can map/index it efficiently |
+
+### Field Mapping Intents
+
+States and views can declare *how their fields are queried* without coupling to any specific
+store. Each store translates the intent into its native mapping or indexing; stores with no
+equivalent ignore it, so state classes stay swappable between backends.
+
+```csharp
+[ViewStore("my_app_search_products")]
+public class ProductSearchView : IState
+{
+    public string Id { get; set; }
+
+    [StoreField(FieldIntent.FullText)]      // Elastic: text field. Mongo: text index.
+    public string Description { get; set; }
+
+    [StoreField(FieldIntent.ExactMatch)]    // Elastic: keyword. Mongo: secondary index.
+    public string Sku { get; set; }
+
+    [StoreField(FieldIntent.Sortable)]      // Elastic: native type. Mongo: secondary index.
+    public decimal Price { get; set; }
+
+    [StoreField(FieldIntent.NotQueried)]    // Elastic: not indexed. Mongo: no index.
+    public ProductDetails Details { get; set; }
+}
+```
+
+| Intent | Elasticsearch | MongoDB |
+|---|---|---|
+| `ExactMatch` | `keyword` | ascending index |
+| `FullText` | `text` | text index (all FullText fields combined) |
+| `Sortable` | `keyword`/native type | ascending index |
+| `NotQueried` | `index: false` / `enabled: false` | none |
+| *(none)* | inferred from CLR type (strings become `keyword`) | none |
+
+For Elasticsearch, declaring any intent switches the index from dynamic mapping to a static
+mapping generated from the state's CLR shape when the index is first created (existing indices
+are never altered — reindex to apply a new mapping). The behavior can be forced either way with
+`[ElasticIndex(Mapping = MappingBehavior.Static)]` or `MappingBehavior.Dynamic`. Unmapped fields
+still index dynamically, so adding properties stays safe.
+
+`[StoreField(Store = false)]` additionally excludes a field from the Elasticsearch `_source`:
+it remains queryable per its intent, but reads return it as null.
+
+When a store's native features are needed, an escape hatch is available at registration —
+it runs after intent translation, so anything set there wins:
+
+```csharp
+x.AddElasticViewStore(cfg =>
+{
+    config.GetSection("ElasticSearch").Bind(cfg);
+    cfg.ConfigureIndex<ProductSearchView>(create => create
+        .Mappings(m => /* full fluent control */ m)
+        .Settings(s => s.NumberOfShards(4)));
+});
+```
 
 ### Docker Compose
 

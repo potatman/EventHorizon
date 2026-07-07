@@ -4,6 +4,7 @@ using EventHorizon.Abstractions.Util;
 using EventHorizon.EventStore.Interfaces.Factory;
 using EventHorizon.EventStore.Locks;
 using EventHorizon.EventStore.MongoDb.Models;
+using EventHorizon.EventStore.Schema;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -41,5 +42,6 @@ public static class EventHorizonConfiguratorExtensions
         configurator.Collection.Configure(onConfig);
         configurator.Collection.AddSingleton(typeof(LockFactory<>));
         configurator.Collection.AddSingleton<AttributeUtil>();
+        configurator.Collection.AddSingleton<StoreSchemaFactory>();
     }
 }

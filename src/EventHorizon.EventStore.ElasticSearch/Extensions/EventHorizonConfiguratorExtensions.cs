@@ -4,6 +4,7 @@ using EventHorizon.Abstractions.Util;
 using EventHorizon.EventStore.ElasticSearch.Models;
 using EventHorizon.EventStore.Interfaces.Factory;
 using EventHorizon.EventStore.Locks;
+using EventHorizon.EventStore.Schema;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EventHorizon.EventStore.ElasticSearch.Extensions;
@@ -30,5 +31,6 @@ public static class EventHorizonConfiguratorExtensions
         configurator.Collection.Configure(onConfig);
         configurator.Collection.AddSingleton(typeof(LockFactory<>));
         configurator.Collection.AddSingleton<AttributeUtil>();
+        configurator.Collection.AddSingleton<StoreSchemaFactory>();
     }
 }

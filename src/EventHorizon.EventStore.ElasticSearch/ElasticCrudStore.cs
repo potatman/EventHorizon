@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.Core.Search;
+using Elastic.Clients.Elasticsearch.IndexManagement;
 using Elastic.Clients.Elasticsearch.Mapping;
 using Elastic.Clients.Elasticsearch.QueryDsl;
 using Elastic.Transport;
@@ -13,6 +14,7 @@ using EventHorizon.EventStore.ElasticSearch.Attributes;
 using EventHorizon.EventStore.Interfaces;
 using EventHorizon.EventStore.Interfaces.Stores;
 using EventHorizon.EventStore.Models;
+using EventHorizon.EventStore.Schema;
 using Microsoft.Extensions.Logging;
 using Lock = EventHorizon.EventStore.Models.Lock;
 
@@ -25,12 +27,17 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
     private readonly ElasticsearchClient _client;
     private readonly ILogger<ElasticCrudStore<TE>> _logger;
     private readonly string _dbName;
+    private readonly StoreFieldSchema _schema;
+    private readonly Action<CreateIndexRequestDescriptor> _configureIndex;
 
-    public ElasticCrudStore(ElasticIndexAttribute elasticAttr, ElasticsearchClient client, string bucketId, ILogger<ElasticCrudStore<TE>> logger)
+    public ElasticCrudStore(ElasticIndexAttribute elasticAttr, ElasticsearchClient client, string bucketId, ILogger<ElasticCrudStore<TE>> logger,
+        StoreFieldSchema schema = null, Action<CreateIndexRequestDescriptor> configureIndex = null)
     {
         _elasticAttr = elasticAttr;
         _client = client;
         _logger = logger;
+        _schema = schema;
+        _configureIndex = configureIndex;
         _dbName = bucketId + "_" + typeof(TE).Name.Replace("`1", string.Empty).ToLower(CultureInfo.InvariantCulture);
     }
 
@@ -41,7 +48,19 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
 
         var createReq = await _client.Indices.CreateAsync(_dbName, cfg =>
         {
-            cfg.Mappings(x => x.Dynamic(DynamicMapping.True));
+            cfg.Mappings(m =>
+            {
+                // Unmapped fields still index dynamically so a renamed property degrades to
+                // the legacy behavior instead of losing data.
+                m.Dynamic(DynamicMapping.True);
+                if (UseStaticMapping())
+                {
+                    m.Properties(ElasticMappingBuilder.BuildProperties(_schema));
+                    var excludes = ElasticMappingBuilder.GetSourceExcludes(_schema);
+                    if (excludes.Count > 0)
+                        m.Source(new SourceField { Excludes = excludes });
+                }
+            });
             cfg.Settings(x =>
                 {
                     if (_elasticAttr?.Shards > 0) x.NumberOfShards(_elasticAttr?.Shards);
@@ -49,10 +68,19 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
                     if (_elasticAttr?.RefreshIntervalMs > 0) x.RefreshInterval(_elasticAttr?.RefreshIntervalMs);
                     if (_elasticAttr?.MaxResultWindow > 0) x.MaxResultWindow(_elasticAttr?.MaxResultWindow);
                 });
+            _configureIndex?.Invoke(cfg);
         }, ct);
 
         ThrowErrors(createReq);
     }
+
+    private bool UseStaticMapping() => (_elasticAttr?.Mapping ?? MappingBehavior.Auto) switch
+    {
+        MappingBehavior.Static => _schema != null,
+        MappingBehavior.Dynamic => false,
+        // Auto: only states that opted in via StoreField intents change mapping behavior
+        _ => _schema?.HasExplicitIntents == true
+    };
 
     public async Task<TE[]> GetAllAsync(string[] ids, CancellationToken ct)
     {
