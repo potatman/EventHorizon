@@ -19,6 +19,8 @@ public class User : IState,
     IApplyEvent<UserNameChangedV2>
 {
     public string Id { get; set; }
+
+    [StoreField(FieldIntent.FullText)]
     public string Name { get; set; }
 
     public void Handle(ChangeUserName command, AggregateContext context)

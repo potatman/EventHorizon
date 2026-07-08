@@ -6,6 +6,7 @@ using EventHorizon.EventStore.Interfaces.Factory;
 using EventHorizon.EventStore.Interfaces.Stores;
 using EventHorizon.EventStore.Models;
 using EventHorizon.EventStore.MongoDb.Models;
+using EventHorizon.EventStore.Schema;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using Lock = EventHorizon.EventStore.Models.Lock;
@@ -17,12 +18,14 @@ public class MongoStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactory<
 {
     private readonly IMongoClient _client;
     private readonly AttributeUtil _attributeUtil;
+    private readonly StoreSchemaFactory _schemaFactory;
     private readonly Type _type;
 
-    public MongoStoreFactory(IOptions<MongoConfig> mongoConfig, AttributeUtil attributeUtil)
+    public MongoStoreFactory(IOptions<MongoConfig> mongoConfig, AttributeUtil attributeUtil, StoreSchemaFactory schemaFactory)
     {
         _type = typeof(T);
         _attributeUtil = attributeUtil;
+        _schemaFactory = schemaFactory;
 
         // https://www.mongodb.com/docs/drivers/csharp/current/fundamentals/connection/connection-options/
         var clientSettings = new MongoClientSettings()
@@ -53,16 +56,19 @@ public class MongoStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactory<
 
     public ICrudStore<Lock> GetLockStore()
     {
-        return new MongoCrudStore<Lock>(_client, _attributeUtil, _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId);
+        return new MongoCrudStore<Lock>(_client, _attributeUtil, _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId,
+            _schemaFactory.GetSchema(typeof(Lock)));
     }
 
     public ICrudStore<Snapshot<T>> GetSnapshotStore()
     {
-        return new MongoCrudStore<Snapshot<T>>(_client, _attributeUtil, _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId);
+        return new MongoCrudStore<Snapshot<T>>(_client, _attributeUtil, _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId,
+            _schemaFactory.GetSchema(typeof(Snapshot<T>)));
     }
 
     public ICrudStore<View<T>> GetViewStore()
     {
-        return new MongoCrudStore<View<T>>(_client, _attributeUtil, _attributeUtil.GetOne<ViewStoreAttribute>(_type).Database);
+        return new MongoCrudStore<View<T>>(_client, _attributeUtil, _attributeUtil.GetOne<ViewStoreAttribute>(_type).Database,
+            _schemaFactory.GetSchema(typeof(View<T>)));
     }
 }

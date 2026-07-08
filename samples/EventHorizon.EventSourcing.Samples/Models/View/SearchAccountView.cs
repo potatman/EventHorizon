@@ -11,6 +11,11 @@ namespace EventHorizon.EventSourcing.Samples.Models.View;
 public class SearchAccountView : IState
 {
     public string Id { get; set; }
+
+    // User.Name declares FieldIntent.FullText, so this subtree is searchable text
     public User User { get; set; }
+
+    // Returned with search results but never queried directly
+    [StoreField(FieldIntent.NotQueried)]
     public AccountView Account { get; set; }
 }
