@@ -18,4 +18,10 @@
         <ProjectReference Include="..\EventHorizon.Abstractions\EventHorizon.Abstractions.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="EventHorizon.EventStore.ElasticSearch" />
+        <InternalsVisibleTo Include="EventHorizon.EventStore.MongoDb" />
+        <InternalsVisibleTo Include="EventHorizon.EventStore.Test" />
+    </ItemGroup>
+
 </Project>

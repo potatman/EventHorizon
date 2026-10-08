@@ -9,7 +9,7 @@ namespace EventHorizon.EventStore.Schema;
 /// represents the entity itself (e.g. Snapshot&lt;T&gt;); children represent its properties.
 /// Store implementations translate this model into their native mapping/indexing.
 /// </summary>
-public sealed record StoreFieldSchema
+internal sealed record StoreFieldSchema
 {
     /// <summary>Property this node maps; null for the root entity node.</summary>
     public PropertyInfo Property { get; init; }
@@ -19,20 +19,20 @@ public sealed record StoreFieldSchema
 
     public FieldIntent Intent { get; init; }
 
-    /// <summary>False when the value should be queryable but not retrievable (see <see cref="StoreFieldAttribute.Store"/>).</summary>
-    public bool Store { get; init; } = true;
+    /// <summary>True when the property carries a <see cref="StoreFieldAttribute"/>, even with <see cref="FieldIntent.Default"/>.</summary>
+    public bool IsAnnotated { get; init; }
 
     public bool IsCollection { get; init; }
 
     /// <summary>
-    /// True when the shape is not statically knowable (dictionaries, type cycles, depth cap)
-    /// and the field should be stored as a schemaless object.
+    /// True when the shape is not statically knowable (dictionaries, <c>object</c>, framework and
+    /// driver types, nested collections, type cycles, depth cap); stores leave such fields schemaless.
     /// </summary>
     public bool IsOpaque { get; init; }
 
     /// <summary>Child fields for complex objects; null for leaf and opaque nodes.</summary>
     public StoreFieldSchema[] Children { get; init; }
 
-    /// <summary>True when this node or any descendant declares an explicit <see cref="StoreFieldAttribute"/>.</summary>
+    /// <summary>True when this node or any descendant is <see cref="IsAnnotated"/>.</summary>
     public bool HasExplicitIntents { get; init; }
 }

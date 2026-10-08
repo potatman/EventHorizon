@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -10,61 +9,98 @@ using EventHorizon.EventStore.Schema;
 namespace EventHorizon.EventStore.ElasticSearch;
 
 /// <summary>
-/// Translates the store-agnostic <see cref="StoreFieldSchema"/> into an ElasticSearch static
-/// mapping. Field names follow the client's source serializer (camelCase, honoring
+/// Translates the store-agnostic <see cref="StoreFieldSchema"/> into ElasticSearch static
+/// mapping properties. Field names follow the client's source serializer (camelCase, honoring
 /// <see cref="JsonPropertyNameAttribute"/>), so the mapping lines up with indexed documents.
+/// Fields left out of the result are mapped dynamically (or by index templates) at first use.
 /// </summary>
-public static class ElasticMappingBuilder
+internal static class ElasticMappingBuilder
 {
     /// <summary>
-    /// Dynamic mapping indexes strings as text plus a keyword subfield; conventions here use a
-    /// plain keyword instead. Values longer than this are not indexed (Lucene caps terms at
-    /// 32766 bytes) but remain in _source.
+    /// Matches dynamic mapping's keyword limit. Longer values are not indexed but remain in
+    /// _source; without it a value over Lucene's 32766-byte term cap rejects the whole document.
     /// </summary>
-    private const int DefaultIgnoreAbove = 8191;
+    internal const int DefaultIgnoreAbove = 8191;
 
-    public static Properties BuildProperties(StoreFieldSchema node)
+    /// <summary>Keyword sub-field name, matching dynamic mapping so <c>field.keyword</c> queries keep working.</summary>
+    internal const string KeywordSubField = "keyword";
+
+    /// <summary>
+    /// Builds mapping properties for <paramref name="node"/>'s children.
+    /// </summary>
+    /// <param name="node">Schema node whose children are mapped.</param>
+    /// <param name="mapUnannotated">
+    /// True maps every statically knowable field by CLR-type conventions; false maps only fields
+    /// annotated with <see cref="StoreFieldAttribute"/> (and the objects containing them).
+    /// </param>
+    public static Properties BuildProperties(StoreFieldSchema node, bool mapUnannotated)
     {
         var properties = new Properties();
         foreach (var child in node.Children ?? Array.Empty<StoreFieldSchema>())
         {
             if (IsIgnored(child.Property)) continue;
-            properties.Add(GetFieldName(child.Property), CreateProperty(child));
+
+            var name = GetFieldName(child.Property);
+            if (properties.TryGetProperty(name, out IProperty _)) continue;
+
+            var property = CreateProperty(child, mapUnannotated);
+            if (property is not null)
+                properties.Add(name, property);
         }
 
         return properties;
     }
 
-    public static ICollection<string> GetSourceExcludes(StoreFieldSchema root)
+    private static IProperty CreateProperty(StoreFieldSchema node, bool mapUnannotated)
     {
-        var excludes = new List<string>();
-        CollectExcludes(root, string.Empty, excludes);
-        return excludes;
-    }
+        if (!mapUnannotated && !node.HasExplicitIntents)
+            return null;
 
-    private static IProperty CreateProperty(StoreFieldSchema node)
-    {
-        // Objects: map known children statically, let unknown shapes stay dynamic
-        if (node.Children != null || node.IsOpaque)
+        var isObject = node.Children is not null || node.IsOpaque;
+
+        // enabled:false skips parsing entirely, so it also accepts scalars written to unknown shapes
+        if (node.Intent == FieldIntent.NotQueried)
+            return isObject ? new ObjectProperty { Enabled = false } : CreateNotQueriedLeaf(node.ClrType);
+
+        if (isObject)
         {
-            if (node.Intent == FieldIntent.NotQueried)
-                return new ObjectProperty { Enabled = false };
+            // Unknown shapes (object, framework types, custom converters) may serialize as scalars
+            if (node.IsOpaque || HasCustomConverter(node))
+                return null;
 
-            return new ObjectProperty
-            {
-                Dynamic = DynamicMapping.True,
-                Properties = node.Children != null ? BuildProperties(node) : null
-            };
+            return new ObjectProperty { Properties = BuildProperties(node, mapUnannotated) };
         }
 
-        return node.Intent switch
-        {
-            FieldIntent.NotQueried => CreateNotQueriedLeaf(node.ClrType),
-            FieldIntent.FullText when node.ClrType == typeof(string) => new TextProperty(),
-            FieldIntent.ExactMatch or FieldIntent.Sortable when IsKeywordType(node.ClrType) => new KeywordProperty(),
-            _ => CreateDefaultLeaf(node.ClrType)
-        };
+        if (node.IsAnnotated)
+            return CreateIntentLeaf(node);
+
+        // Numeric arrays are often vectors; index templates or dynamic mapping decide their type
+        if (node.IsCollection && IsNumeric(node.ClrType))
+            return null;
+
+        return CreateDefaultLeaf(node.ClrType);
     }
+
+    private static IProperty CreateIntentLeaf(StoreFieldSchema node)
+    {
+        var exact = (node.Intent & (FieldIntent.ExactMatch | FieldIntent.Sortable)) != 0;
+        var fullText = node.Intent.HasFlag(FieldIntent.FullText);
+
+        if (fullText && node.ClrType == typeof(string))
+        {
+            var text = new TextProperty();
+            if (exact)
+                text.Fields = new Properties { { KeywordSubField, CreateKeyword() } };
+            return text;
+        }
+
+        if (exact && IsKeywordType(node.ClrType))
+            return CreateKeyword();
+
+        return CreateDefaultLeaf(node.ClrType);
+    }
+
+    private static KeywordProperty CreateKeyword() => new() { IgnoreAbove = DefaultIgnoreAbove };
 
     private static IProperty CreateDefaultLeaf(Type type)
     {
@@ -80,7 +116,7 @@ public static class ElasticMappingBuilder
         if (type == typeof(double) || type == typeof(decimal)) return new DoubleNumberProperty();
 
         // string, Guid, char, enum, TimeSpan, TimeOnly, Uri and unknown scalars
-        return new KeywordProperty { IgnoreAbove = DefaultIgnoreAbove };
+        return CreateKeyword();
     }
 
     private static IProperty CreateNotQueriedLeaf(Type type)
@@ -99,8 +135,7 @@ public static class ElasticMappingBuilder
             return new DoubleNumberProperty { Index = false, DocValues = false };
         if (type == typeof(ulong))
             return new UnsignedLongNumberProperty { Index = false, DocValues = false };
-        if (type == typeof(int) || type == typeof(long) || type == typeof(short) || type == typeof(byte)
-            || type == typeof(sbyte) || type == typeof(ushort) || type == typeof(uint))
+        if (IsNumeric(type))
             return new LongNumberProperty { Index = false, DocValues = false };
 
         return new TextProperty { Index = false, Norms = false };
@@ -115,24 +150,14 @@ public static class ElasticMappingBuilder
         || type == typeof(Uri)
         || type.IsEnum;
 
-    private static void CollectExcludes(StoreFieldSchema node, string prefix, List<string> excludes)
-    {
-        foreach (var child in node.Children ?? Array.Empty<StoreFieldSchema>())
-        {
-            if (IsIgnored(child.Property)) continue;
-            var path = prefix.Length == 0
-                ? GetFieldName(child.Property)
-                : prefix + "." + GetFieldName(child.Property);
+    private static bool IsNumeric(Type type) =>
+        type == typeof(int) || type == typeof(long) || type == typeof(short) || type == typeof(byte)
+        || type == typeof(sbyte) || type == typeof(ushort) || type == typeof(uint) || type == typeof(ulong)
+        || type == typeof(float) || type == typeof(double) || type == typeof(decimal);
 
-            if (!child.Store)
-            {
-                excludes.Add(path);
-                continue;
-            }
-
-            CollectExcludes(child, path, excludes);
-        }
-    }
+    private static bool HasCustomConverter(StoreFieldSchema node) =>
+        node.Property?.GetCustomAttribute<JsonConverterAttribute>(true) is not null
+        || node.ClrType.GetCustomAttribute<JsonConverterAttribute>(true) is not null;
 
     public static string GetFieldName(PropertyInfo property) =>
         property.GetCustomAttribute<JsonPropertyNameAttribute>(true)?.Name

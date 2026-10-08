@@ -10,13 +10,11 @@ namespace EventHorizon.Abstractions.Attributes;
 [AttributeUsage(AttributeTargets.Property, Inherited = true, AllowMultiple = false)]
 public sealed class StoreFieldAttribute : Attribute
 {
-    public FieldIntent Intent { get; set; } = FieldIntent.Default;
-
     /// <summary>
-    /// When false the value is indexed per its intent but not persisted retrievably
-    /// (e.g. excluded from the ElasticSearch _source). Reads return the field as null.
+    /// How the field is queried. Intents can be combined as flags, except
+    /// <see cref="FieldIntent.NotQueried"/>, which must stand alone.
     /// </summary>
-    public bool Store { get; set; } = true;
+    public FieldIntent Intent { get; set; } = FieldIntent.Default;
 
     public StoreFieldAttribute()
     {

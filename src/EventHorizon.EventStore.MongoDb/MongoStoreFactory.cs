@@ -6,7 +6,8 @@ using EventHorizon.EventStore.Interfaces.Factory;
 using EventHorizon.EventStore.Interfaces.Stores;
 using EventHorizon.EventStore.Models;
 using EventHorizon.EventStore.MongoDb.Models;
-using EventHorizon.EventStore.Schema;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using Lock = EventHorizon.EventStore.Models.Lock;
@@ -18,14 +19,19 @@ public class MongoStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactory<
 {
     private readonly IMongoClient _client;
     private readonly AttributeUtil _attributeUtil;
-    private readonly StoreSchemaFactory _schemaFactory;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly Type _type;
 
-    public MongoStoreFactory(IOptions<MongoConfig> mongoConfig, AttributeUtil attributeUtil, StoreSchemaFactory schemaFactory)
+    public MongoStoreFactory(IOptions<MongoConfig> mongoConfig, AttributeUtil attributeUtil)
+        : this(mongoConfig, attributeUtil, NullLoggerFactory.Instance)
+    {
+    }
+
+    public MongoStoreFactory(IOptions<MongoConfig> mongoConfig, AttributeUtil attributeUtil, ILoggerFactory loggerFactory)
     {
         _type = typeof(T);
         _attributeUtil = attributeUtil;
-        _schemaFactory = schemaFactory;
+        _loggerFactory = loggerFactory ?? NullLoggerFactory.Instance;
 
         // https://www.mongodb.com/docs/drivers/csharp/current/fundamentals/connection/connection-options/
         var clientSettings = new MongoClientSettings()
@@ -57,18 +63,18 @@ public class MongoStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactory<
     public ICrudStore<Lock> GetLockStore()
     {
         return new MongoCrudStore<Lock>(_client, _attributeUtil, _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId,
-            _schemaFactory.GetSchema(typeof(Lock)));
+            _loggerFactory.CreateLogger<MongoCrudStore<Lock>>());
     }
 
     public ICrudStore<Snapshot<T>> GetSnapshotStore()
     {
         return new MongoCrudStore<Snapshot<T>>(_client, _attributeUtil, _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId,
-            _schemaFactory.GetSchema(typeof(Snapshot<T>)));
+            _loggerFactory.CreateLogger<MongoCrudStore<Snapshot<T>>>());
     }
 
     public ICrudStore<View<T>> GetViewStore()
     {
         return new MongoCrudStore<View<T>>(_client, _attributeUtil, _attributeUtil.GetOne<ViewStoreAttribute>(_type).Database,
-            _schemaFactory.GetSchema(typeof(View<T>)));
+            _loggerFactory.CreateLogger<MongoCrudStore<View<T>>>());
     }
 }

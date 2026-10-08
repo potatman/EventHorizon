@@ -7,13 +7,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.IndexManagement;
+using Elastic.Clients.Elasticsearch.Mapping;
 using Elastic.Transport;
 using EventHorizon.Abstractions.Attributes;
 using EventHorizon.EventStore.ElasticSearch;
 using EventHorizon.EventStore.ElasticSearch.Attributes;
 using EventHorizon.EventStore.Interfaces;
 using EventHorizon.EventStore.Models;
-using EventHorizon.EventStore.Schema;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -22,7 +22,7 @@ namespace EventHorizon.EventStore.Test.Unit;
 [Trait("Category", "Unit")]
 public class ElasticCrudStoreUnitTest
 {
-    private class TestEntity : ICrudEntity
+    private sealed class TestEntity : ICrudEntity
     {
         public string Id { get; set; }
         public DateTime UpdatedDate { get; set; }
@@ -172,18 +172,19 @@ public class ElasticCrudStoreUnitTest
 
     #region SetupAsync mapping
 
-    private class SetupMappedState
+    private sealed class SetupMappedState
     {
         public string Id { get; set; }
+        public string Name { get; set; }
 
         [StoreField(FieldIntent.FullText)]
         public string Description { get; set; }
 
-        [StoreField(Store = false)]
-        public string Hidden { get; set; }
+        [StoreField(FieldIntent.FullText | FieldIntent.ExactMatch)]
+        public string Title { get; set; }
     }
 
-    private class SetupPlainState
+    private sealed class SetupPlainState
     {
         public string Id { get; set; }
         public string Name { get; set; }
@@ -231,7 +232,7 @@ public class ElasticCrudStoreUnitTest
 
     private static async Task<JsonDocument> RunSetupAsync<T>(
         ElasticIndexAttribute attr = null,
-        Action<CreateIndexRequestDescriptor> configureIndex = null)
+        Action<CreateIndexRequest> configureIndex = null)
         where T : class, ICrudEntity
     {
         string requestBody = null;
@@ -245,9 +246,8 @@ public class ElasticCrudStoreUnitTest
                     requestBody = Encoding.UTF8.GetString(details.RequestBodyInBytes);
             });
         var client = new ElasticsearchClient(settings);
-        var schema = new StoreSchemaFactory().GetSchema(typeof(T));
         var store = new ElasticCrudStore<T>(attr, client, "test_bucket",
-            NullLogger<ElasticCrudStore<T>>.Instance, schema, configureIndex);
+            NullLogger<ElasticCrudStore<T>>.Instance, configureIndex);
 
         await store.SetupAsync(CancellationToken.None);
 
@@ -256,27 +256,31 @@ public class ElasticCrudStoreUnitTest
     }
 
     [Fact]
-    public async Task SetupCreatesStaticMappingWhenIntentsArePresent()
+    public async Task SetupMapsOnlyAnnotatedFieldsByDefault()
     {
         using var doc = await RunSetupAsync<Snapshot<SetupMappedState>>();
         var mappings = doc.RootElement.GetProperty("mappings");
 
         Assert.True(mappings.GetProperty("dynamic").GetBoolean());
+        Assert.False(mappings.TryGetProperty("_source", out _));
 
         var props = mappings.GetProperty("properties");
-        Assert.Equal("keyword", props.GetProperty("id").GetProperty("type").GetString());
-        Assert.Equal("long", props.GetProperty("sequenceId").GetProperty("type").GetString());
-        Assert.Equal("date", props.GetProperty("updatedDate").GetProperty("type").GetString());
+        Assert.False(props.TryGetProperty("id", out _));
+        Assert.False(props.TryGetProperty("updatedDate", out _));
 
-        var state = props.GetProperty("state");
-        Assert.Equal("text", state.GetProperty("properties").GetProperty("description").GetProperty("type").GetString());
+        var state = props.GetProperty("state").GetProperty("properties");
+        Assert.Equal("text", state.GetProperty("description").GetProperty("type").GetString());
+        Assert.False(state.TryGetProperty("name", out _));
 
-        var excludes = mappings.GetProperty("_source").GetProperty("excludes");
-        Assert.Equal("state.hidden", excludes[0].GetString());
+        var title = state.GetProperty("title");
+        Assert.Equal("text", title.GetProperty("type").GetString());
+        var titleKeyword = title.GetProperty("fields").GetProperty("keyword");
+        Assert.Equal("keyword", titleKeyword.GetProperty("type").GetString());
+        Assert.Equal(8191, titleKeyword.GetProperty("ignore_above").GetInt32());
     }
 
     [Fact]
-    public async Task SetupKeepsLegacyDynamicMappingWithoutIntents()
+    public async Task SetupKeepsDynamicMappingWithoutIntents()
     {
         using var doc = await RunSetupAsync<Snapshot<SetupPlainState>>();
         var mappings = doc.RootElement.GetProperty("mappings");
@@ -302,16 +306,47 @@ public class ElasticCrudStoreUnitTest
 
         var props = doc.RootElement.GetProperty("mappings").GetProperty("properties");
         Assert.Equal("keyword", props.GetProperty("id").GetProperty("type").GetString());
+        var name = props.GetProperty("state").GetProperty("properties").GetProperty("name");
+        Assert.Equal("keyword", name.GetProperty("type").GetString());
+        Assert.Equal(8191, name.GetProperty("ignore_above").GetInt32());
     }
 
     [Fact]
-    public async Task SetupAppliesConfigureIndexEscapeHatch()
+    public async Task SetupAppliesAttributeSettings()
     {
-        using var doc = await RunSetupAsync<Snapshot<SetupMappedState>>(
-            configureIndex: cfg => cfg.Settings(s => s.NumberOfShards(4)));
+        var attr = new ElasticIndexAttribute { Shards = 2, Replicas = 1, RefreshIntervalMs = 500, MaxResultWindow = 20000 };
+        using var doc = await RunSetupAsync<Snapshot<SetupPlainState>>(attr);
 
         var settings = doc.RootElement.GetProperty("settings");
+        Assert.Equal(2, settings.GetProperty("number_of_shards").GetInt32());
+        Assert.Equal(1, settings.GetProperty("number_of_replicas").GetInt32());
+        Assert.Equal(20000, settings.GetProperty("max_result_window").GetInt32());
+        Assert.Equal("500ms", settings.GetProperty("refresh_interval").GetString());
+    }
+
+    [Fact]
+    public async Task SetupConfigureIndexAdjustsGeneratedRequest()
+    {
+        var attr = new ElasticIndexAttribute { Replicas = 2, MaxResultWindow = 20000 };
+        using var doc = await RunSetupAsync<Snapshot<SetupMappedState>>(attr, request =>
+        {
+            request.Settings.NumberOfShards = 4;
+            request.Mappings.Properties.Add("extra", new KeywordProperty());
+        });
+
+        // The hook's changes
+        var settings = doc.RootElement.GetProperty("settings");
         Assert.Equal(4, settings.GetProperty("number_of_shards").GetInt32());
+        var mappings = doc.RootElement.GetProperty("mappings");
+        var props = mappings.GetProperty("properties");
+        Assert.Equal("keyword", props.GetProperty("extra").GetProperty("type").GetString());
+
+        // ...alongside the attribute settings and generated mapping
+        Assert.Equal(2, settings.GetProperty("number_of_replicas").GetInt32());
+        Assert.Equal(20000, settings.GetProperty("max_result_window").GetInt32());
+        Assert.True(mappings.GetProperty("dynamic").GetBoolean());
+        Assert.Equal("text", props.GetProperty("state").GetProperty("properties")
+            .GetProperty("description").GetProperty("type").GetString());
     }
 
     #endregion

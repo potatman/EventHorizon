@@ -27,16 +27,19 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
     private readonly ElasticsearchClient _client;
     private readonly ILogger<ElasticCrudStore<TE>> _logger;
     private readonly string _dbName;
-    private readonly StoreFieldSchema _schema;
-    private readonly Action<CreateIndexRequestDescriptor> _configureIndex;
+    private readonly Action<CreateIndexRequest> _configureIndex;
 
-    public ElasticCrudStore(ElasticIndexAttribute elasticAttr, ElasticsearchClient client, string bucketId, ILogger<ElasticCrudStore<TE>> logger,
-        StoreFieldSchema schema = null, Action<CreateIndexRequestDescriptor> configureIndex = null)
+    public ElasticCrudStore(ElasticIndexAttribute elasticAttr, ElasticsearchClient client, string bucketId, ILogger<ElasticCrudStore<TE>> logger)
+        : this(elasticAttr, client, bucketId, logger, null)
+    {
+    }
+
+    internal ElasticCrudStore(ElasticIndexAttribute elasticAttr, ElasticsearchClient client, string bucketId, ILogger<ElasticCrudStore<TE>> logger,
+        Action<CreateIndexRequest> configureIndex)
     {
         _elasticAttr = elasticAttr;
         _client = client;
         _logger = logger;
-        _schema = schema;
         _configureIndex = configureIndex;
         _dbName = bucketId + "_" + typeof(TE).Name.Replace("`1", string.Empty).ToLower(CultureInfo.InvariantCulture);
     }
@@ -46,41 +49,60 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
         var existsResp = await _client.Indices.ExistsAsync(_dbName, ct);
         if (existsResp.Exists) return;
 
-        var createReq = await _client.Indices.CreateAsync(_dbName, cfg =>
-        {
-            cfg.Mappings(m =>
-            {
-                // Unmapped fields still index dynamically so a renamed property degrades to
-                // the legacy behavior instead of losing data.
-                m.Dynamic(DynamicMapping.True);
-                if (UseStaticMapping())
-                {
-                    m.Properties(ElasticMappingBuilder.BuildProperties(_schema));
-                    var excludes = ElasticMappingBuilder.GetSourceExcludes(_schema);
-                    if (excludes.Count > 0)
-                        m.Source(new SourceField { Excludes = excludes });
-                }
-            });
-            cfg.Settings(x =>
-                {
-                    if (_elasticAttr?.Shards > 0) x.NumberOfShards(_elasticAttr?.Shards);
-                    if (_elasticAttr?.Replicas > 0) x.NumberOfReplicas(_elasticAttr?.Replicas);
-                    if (_elasticAttr?.RefreshIntervalMs > 0) x.RefreshInterval(_elasticAttr?.RefreshIntervalMs);
-                    if (_elasticAttr?.MaxResultWindow > 0) x.MaxResultWindow(_elasticAttr?.MaxResultWindow);
-                });
-            _configureIndex?.Invoke(cfg);
-        }, ct);
+        var createReq = await _client.Indices.CreateAsync(BuildCreateIndexRequest(), ct);
 
         ThrowErrors(createReq);
     }
 
-    private bool UseStaticMapping() => (_elasticAttr?.Mapping ?? MappingBehavior.Auto) switch
+    /// <summary>
+    /// Generated mapping and attribute settings, then the configured index hook, which mutates
+    /// the populated request rather than replacing it.
+    /// </summary>
+    internal CreateIndexRequest BuildCreateIndexRequest()
     {
-        MappingBehavior.Static => _schema != null,
-        MappingBehavior.Dynamic => false,
-        // Auto: only states that opted in via StoreField intents change mapping behavior
-        _ => _schema?.HasExplicitIntents == true
-    };
+        var settings = new IndexSettings();
+        if (_elasticAttr?.Shards > 0) settings.NumberOfShards = _elasticAttr.Shards;
+        if (_elasticAttr?.Replicas > 0) settings.NumberOfReplicas = _elasticAttr.Replicas;
+        if (_elasticAttr?.RefreshIntervalMs > 0) settings.RefreshInterval = TimeSpan.FromMilliseconds(_elasticAttr.RefreshIntervalMs);
+        if (_elasticAttr?.MaxResultWindow > 0) settings.MaxResultWindow = _elasticAttr.MaxResultWindow;
+
+        var request = new CreateIndexRequest(_dbName)
+        {
+            // Unmapped fields still index dynamically so a renamed property degrades to
+            // dynamic mapping instead of losing data.
+            Mappings = new TypeMapping
+            {
+                Dynamic = DynamicMapping.True,
+                Properties = BuildMappingProperties()
+            },
+            Settings = settings
+        };
+
+        _configureIndex?.Invoke(request);
+        return request;
+    }
+
+    private Properties BuildMappingProperties()
+    {
+        var behavior = _elasticAttr?.Mapping ?? MappingBehavior.Auto;
+        if (behavior == MappingBehavior.Dynamic) return null;
+
+        StoreFieldSchema schema;
+        try
+        {
+            schema = StoreSchemaFactory.GetSchema(typeof(TE));
+        }
+        catch (StoreSchemaLimitException ex) when (behavior == MappingBehavior.Auto)
+        {
+            _logger.LogWarning(ex, "Index {Index} uses dynamic mapping: {Reason}", _dbName, ex.Message);
+            return null;
+        }
+
+        // Auto maps only StoreField-annotated fields; everything else keeps dynamic mapping
+        if (behavior == MappingBehavior.Auto && !schema.HasExplicitIntents) return null;
+
+        return ElasticMappingBuilder.BuildProperties(schema, mapUnannotated: behavior == MappingBehavior.Static);
+    }
 
     public async Task<TE[]> GetAllAsync(string[] ids, CancellationToken ct)
     {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Elastic.Clients.Elasticsearch.Mapping;
@@ -6,6 +7,7 @@ using EventHorizon.Abstractions.Attributes;
 using EventHorizon.EventStore.ElasticSearch;
 using EventHorizon.EventStore.Models;
 using EventHorizon.EventStore.Schema;
+using MongoDB.Bson;
 using Xunit;
 
 namespace EventHorizon.EventStore.Test.Unit;
@@ -13,14 +15,15 @@ namespace EventHorizon.EventStore.Test.Unit;
 [Trait("Category", "Unit")]
 public class ElasticMappingBuilderUnitTest
 {
-    private readonly StoreSchemaFactory _factory = new();
-
-    private class Nested
+    private sealed class Nested
     {
         public string Name { get; set; }
+
+        [StoreField(FieldIntent.ExactMatch)]
+        public string Code { get; set; }
     }
 
-    private class MappedState
+    private sealed class MappedState
     {
         public string Id { get; set; }
 
@@ -30,19 +33,30 @@ public class ElasticMappingBuilderUnitTest
         [StoreField(FieldIntent.ExactMatch)]
         public string Sku { get; set; }
 
+        [StoreField(FieldIntent.Sortable)]
+        public string SortKey { get; set; }
+
+        [StoreField(FieldIntent.FullText | FieldIntent.ExactMatch)]
+        public string Title { get; set; }
+
+        [StoreField(FieldIntent.Sortable)]
+        public int Rank { get; set; }
+
         [StoreField(FieldIntent.NotQueried)]
         public Nested Payload { get; set; }
 
         [StoreField(FieldIntent.NotQueried)]
         public string RawText { get; set; }
 
-        [StoreField(Store = false)]
-        public string Hidden { get; set; }
+        [StoreField(FieldIntent.NotQueried)]
+        public object Blob { get; set; }
 
         [JsonPropertyName("custom_name")]
+        [StoreField(FieldIntent.ExactMatch)]
         public string Renamed { get; set; }
 
         [JsonIgnore]
+        [StoreField(FieldIntent.ExactMatch)]
         public string Skipped { get; set; }
 
         public Nested Child { get; set; }
@@ -53,6 +67,30 @@ public class ElasticMappingBuilderUnitTest
         public bool Active { get; set; }
         public DateTime When { get; set; }
         public Guid Key { get; set; }
+
+        public object Anything { get; set; }
+        public IEnumerable Untyped { get; set; }
+        public BsonDocument Document { get; set; }
+        public Type Kind { get; set; }
+
+        public float[] Embedding { get; set; }
+        public List<double> Scores { get; set; }
+
+        [StoreField]
+        public float[] Weights { get; set; }
+
+        public string[] Labels { get; set; }
+    }
+
+    private class BaseState
+    {
+        public string Name { get; set; }
+    }
+
+    private sealed class HidingState : BaseState
+    {
+        [StoreField(FieldIntent.Sortable)]
+        public new int Name { get; set; }
     }
 
     private static T GetProperty<T>(Properties properties, string name) where T : class, IProperty
@@ -63,91 +101,151 @@ public class ElasticMappingBuilderUnitTest
         return typed;
     }
 
-    private Properties BuildStateProperties()
+    private static void AssertAbsent(Properties properties, params string[] names)
     {
-        var schema = _factory.GetSchema(typeof(Snapshot<MappedState>));
-        var props = ElasticMappingBuilder.BuildProperties(schema);
-        var state = GetProperty<ObjectProperty>(props, "state");
-        return state.Properties;
+        foreach (var name in names)
+            Assert.False(properties.TryGetProperty(name, out IProperty _), $"unexpected property '{name}'");
+    }
+
+    private static Properties BuildStateProperties(bool mapUnannotated)
+    {
+        var schema = StoreSchemaFactory.GetSchema(typeof(Snapshot<MappedState>));
+        var props = ElasticMappingBuilder.BuildProperties(schema, mapUnannotated);
+        return GetProperty<ObjectProperty>(props, "state").Properties;
     }
 
     [Fact]
-    public void EnvelopeMapsToNativeTypes()
+    public void AnnotatedOnlyMapsJustAnnotatedFields()
     {
-        var schema = _factory.GetSchema(typeof(Snapshot<MappedState>));
-        var props = ElasticMappingBuilder.BuildProperties(schema);
+        var schema = StoreSchemaFactory.GetSchema(typeof(Snapshot<MappedState>));
+        var props = ElasticMappingBuilder.BuildProperties(schema, mapUnannotated: false);
 
-        Assert.IsType<KeywordProperty>(GetProperty<KeywordProperty>(props, "id"));
-        Assert.IsType<LongNumberProperty>(GetProperty<LongNumberProperty>(props, "sequenceId"));
-        Assert.IsType<DateProperty>(GetProperty<DateProperty>(props, "createdDate"));
-        Assert.IsType<DateProperty>(GetProperty<DateProperty>(props, "updatedDate"));
+        // Envelope fields are unannotated and stay dynamic
+        AssertAbsent(props, "id", "sequenceId", "createdDate", "updatedDate");
 
-        var state = GetProperty<ObjectProperty>(props, "state");
-        Assert.Equal(DynamicMapping.True, state.Dynamic);
+        var state = GetProperty<ObjectProperty>(props, "state").Properties;
+        GetProperty<TextProperty>(state, "description");
+        GetProperty<KeywordProperty>(state, "sku");
+        AssertAbsent(state, "id", "count", "big", "price", "active", "when", "key", "tags", "labels", "embedding");
+
+        // Objects appear only for annotated descendants
+        var child = GetProperty<ObjectProperty>(state, "child");
+        GetProperty<KeywordProperty>(child.Properties, "code");
+        AssertAbsent(child.Properties, "name");
     }
 
     [Fact]
-    public void ConventionsMapClrTypesToEfficientDefaults()
+    public void StaticMapsEnvelopeToNativeTypes()
     {
-        var state = BuildStateProperties();
+        var schema = StoreSchemaFactory.GetSchema(typeof(Snapshot<MappedState>));
+        var props = ElasticMappingBuilder.BuildProperties(schema, mapUnannotated: true);
+
+        GetProperty<KeywordProperty>(props, "id");
+        GetProperty<LongNumberProperty>(props, "sequenceId");
+        GetProperty<DateProperty>(props, "createdDate");
+        GetProperty<DateProperty>(props, "updatedDate");
+
+        // Nested objects inherit the root's dynamic setting
+        var state = GetProperty<ObjectProperty>(props, "state");
+        Assert.Null(state.Dynamic);
+    }
+
+    [Fact]
+    public void StaticConventionsMapClrTypesToEfficientDefaults()
+    {
+        var state = BuildStateProperties(mapUnannotated: true);
 
         var id = GetProperty<KeywordProperty>(state, "id");
-        Assert.Equal(8191, id.IgnoreAbove);
-        Assert.IsType<IntegerNumberProperty>(GetProperty<IntegerNumberProperty>(state, "count"));
-        Assert.IsType<LongNumberProperty>(GetProperty<LongNumberProperty>(state, "big"));
-        Assert.IsType<DoubleNumberProperty>(GetProperty<DoubleNumberProperty>(state, "price"));
-        Assert.IsType<BooleanProperty>(GetProperty<BooleanProperty>(state, "active"));
-        Assert.IsType<DateProperty>(GetProperty<DateProperty>(state, "when"));
-        Assert.IsType<KeywordProperty>(GetProperty<KeywordProperty>(state, "key"));
+        Assert.Equal(ElasticMappingBuilder.DefaultIgnoreAbove, id.IgnoreAbove);
+        GetProperty<IntegerNumberProperty>(state, "count");
+        GetProperty<LongNumberProperty>(state, "big");
+        GetProperty<DoubleNumberProperty>(state, "price");
+        GetProperty<BooleanProperty>(state, "active");
+        GetProperty<DateProperty>(state, "when");
+        GetProperty<KeywordProperty>(state, "key");
+        GetProperty<KeywordProperty>(state, "labels");
+
+        var child = GetProperty<ObjectProperty>(state, "child");
+        GetProperty<KeywordProperty>(child.Properties, "name");
     }
 
-    [Fact]
-    public void IntentsTranslateToElasticTypes()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void IntentsTranslateToElasticTypes(bool mapUnannotated)
     {
-        var state = BuildStateProperties();
+        var state = BuildStateProperties(mapUnannotated);
 
-        Assert.IsType<TextProperty>(GetProperty<TextProperty>(state, "description"));
+        var description = GetProperty<TextProperty>(state, "description");
+        Assert.Null(description.Fields);
 
         var sku = GetProperty<KeywordProperty>(state, "sku");
-        Assert.Null(sku.IgnoreAbove);
+        Assert.Equal(ElasticMappingBuilder.DefaultIgnoreAbove, sku.IgnoreAbove);
+
+        var sortKey = GetProperty<KeywordProperty>(state, "sortKey");
+        Assert.Equal(ElasticMappingBuilder.DefaultIgnoreAbove, sortKey.IgnoreAbove);
+
+        // Sortable on a number keeps its native type
+        GetProperty<IntegerNumberProperty>(state, "rank");
 
         var payload = GetProperty<ObjectProperty>(state, "payload");
         Assert.False(payload.Enabled);
 
         var rawText = GetProperty<TextProperty>(state, "rawText");
         Assert.False(rawText.Index);
+
+        var blob = GetProperty<ObjectProperty>(state, "blob");
+        Assert.False(blob.Enabled);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CombinedFullTextAndExactMatchAddsKeywordSubField(bool mapUnannotated)
+    {
+        var state = BuildStateProperties(mapUnannotated);
+
+        var title = GetProperty<TextProperty>(state, "title");
+        var keyword = GetProperty<KeywordProperty>(title.Fields, ElasticMappingBuilder.KeywordSubField);
+        Assert.Equal("keyword", ElasticMappingBuilder.KeywordSubField);
+        Assert.Equal(ElasticMappingBuilder.DefaultIgnoreAbove, keyword.IgnoreAbove);
     }
 
     [Fact]
-    public void ObjectsRecurseAndUnknownShapesStayDynamic()
+    public void UnknownShapesStayDynamic()
     {
-        var state = BuildStateProperties();
+        var state = BuildStateProperties(mapUnannotated: true);
 
-        var child = GetProperty<ObjectProperty>(state, "child");
-        Assert.Equal(DynamicMapping.True, child.Dynamic);
-        Assert.IsType<KeywordProperty>(GetProperty<KeywordProperty>(child.Properties, "name"));
+        // object, non-generic IEnumerable, driver and framework types may serialize as scalars
+        AssertAbsent(state, "anything", "untyped", "document", "kind", "tags");
+    }
 
-        var tags = GetProperty<ObjectProperty>(state, "tags");
-        Assert.Equal(DynamicMapping.True, tags.Dynamic);
-        Assert.Null(tags.Properties);
+    [Fact]
+    public void NumericArraysStayDynamicUnlessAnnotated()
+    {
+        var state = BuildStateProperties(mapUnannotated: true);
+
+        AssertAbsent(state, "embedding", "scores");
+        GetProperty<FloatNumberProperty>(state, "weights");
     }
 
     [Fact]
     public void NamingFollowsSerializer()
     {
-        var state = BuildStateProperties();
+        var state = BuildStateProperties(mapUnannotated: true);
 
-        Assert.True(state.TryGetProperty("custom_name", out IProperty _));
-        Assert.False(state.TryGetProperty("renamed", out IProperty _));
-        Assert.False(state.TryGetProperty("skipped", out IProperty _));
+        GetProperty<KeywordProperty>(state, "custom_name");
+        AssertAbsent(state, "renamed", "skipped");
     }
 
-    [Fact]
-    public void StoreFalseBecomesSourceExclude()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HiddenPropertyMapsMostDerivedDeclaration(bool mapUnannotated)
     {
-        var schema = _factory.GetSchema(typeof(Snapshot<MappedState>));
-        var excludes = ElasticMappingBuilder.GetSourceExcludes(schema);
+        var schema = StoreSchemaFactory.GetSchema(typeof(HidingState));
+        var props = ElasticMappingBuilder.BuildProperties(schema, mapUnannotated);
 
-        Assert.Equal(new[] { "state.hidden" }, excludes);
+        GetProperty<IntegerNumberProperty>(props, "name");
     }
 }

@@ -334,13 +334,16 @@ public class ProductSearchView : IState
 {
     public string Id { get; set; }
 
-    [StoreField(FieldIntent.FullText)]      // Elastic: text field. Mongo: text index.
+    [StoreField(FieldIntent.FullText)]      // Elastic: text. Mongo: text index.
     public string Description { get; set; }
 
-    [StoreField(FieldIntent.ExactMatch)]    // Elastic: keyword. Mongo: secondary index.
+    [StoreField(FieldIntent.FullText | FieldIntent.ExactMatch)]  // Elastic: text + .keyword. Mongo: text + ascending index.
+    public string Name { get; set; }
+
+    [StoreField(FieldIntent.ExactMatch)]    // Elastic: keyword. Mongo: ascending index.
     public string Sku { get; set; }
 
-    [StoreField(FieldIntent.Sortable)]      // Elastic: native type. Mongo: secondary index.
+    [StoreField(FieldIntent.Sortable)]      // Elastic: native type. Mongo: ascending index.
     public decimal Price { get; set; }
 
     [StoreField(FieldIntent.NotQueried)]    // Elastic: not indexed. Mongo: no index.
@@ -348,33 +351,65 @@ public class ProductSearchView : IState
 }
 ```
 
-| Intent | Elasticsearch | MongoDB |
+| Intent | Elasticsearch | MongoDB (view stores only) |
 |---|---|---|
-| `ExactMatch` | `keyword` | ascending index |
+| `ExactMatch` | `keyword` (`ignore_above: 8191`) | ascending index |
 | `FullText` | `text` | text index (all FullText fields combined) |
-| `Sortable` | `keyword`/native type | ascending index |
+| `Sortable` | `keyword` for strings/enums/Guids, native type otherwise | ascending index |
+| `FullText \| ExactMatch` (or `\| Sortable`) | `text` with a `keyword` sub-field named `keyword` | text index + ascending index |
 | `NotQueried` | `index: false` / `enabled: false` | none |
-| *(none)* | inferred from CLR type (strings become `keyword`) | none |
+| `[StoreField]` without an intent | inferred from the CLR type | none |
+| *(not annotated)* | dynamic mapping (see below) | none |
 
-For Elasticsearch, declaring any intent switches the index from dynamic mapping to a static
-mapping generated from the state's CLR shape when the index is first created (existing indices
-are never altered — reindex to apply a new mapping). The behavior can be forced either way with
-`[ElasticIndex(Mapping = MappingBehavior.Static)]` or `MappingBehavior.Dynamic`. Unmapped fields
-still index dynamically, so adding properties stays safe.
+Intents are flags and can be combined, except `NotQueried`, which must stand alone. The combined
+`FullText | ExactMatch` mapping matches Elasticsearch's dynamic mapping for strings, so queries,
+sorts and aggregations on `field.keyword` keep working.
 
-`[StoreField(Store = false)]` additionally excludes a field from the Elasticsearch `_source`:
-it remains queryable per its intent, but reads return it as null.
+**Elasticsearch.** Mappings are generated when an index is first created; existing indices are
+never altered (reindex to apply a new mapping). The `Mapping` property of `[ElasticIndex]` selects
+the behavior:
 
-When a store's native features are needed, an escape hatch is available at registration —
-it runs after intent translation, so anything set there wins:
+- `MappingBehavior.Auto` (default): only annotated fields (and the objects containing them) are
+  mapped statically. Every other field keeps dynamic mapping, so an unannotated string is still
+  `text` with a `.keyword` sub-field. A state without annotations gets a fully dynamic index.
+- `MappingBehavior.Static`: every statically knowable field is mapped from the CLR type using
+  conventions (strings become `keyword` with `ignore_above: 8191`, numbers and dates their
+  native types), with intents applied where declared.
+- `MappingBehavior.Dynamic`: intents are ignored and Elasticsearch infers everything.
+
+In every mode, fields whose shape is not statically knowable stay dynamic: `object`-typed and
+interface-typed properties, non-generic collections, dictionaries, framework and driver types
+(`System.*`, `Microsoft.*`, `MongoDB.*`, `Elastic.*`, e.g. `BsonDocument`, `JsonElement`),
+types with a `[JsonConverter]`, and recursive or very deep object graphs. Unannotated numeric
+arrays (`float[]`, `List<double>`, ...) are left to index templates or dynamic mapping, so a
+template can still map them as `dense_vector`. Note that a create-index request's mappings take
+precedence over composable index templates for the fields it maps.
+
+**MongoDB.** Intents become indexes on **view** collections only. Snapshot collections are
+write-heavy and read by id, so secondary indexes there would cost writes without serving queries.
+Element names are resolved through the driver's class maps, so `[BsonElement]`, registered class
+maps and conventions are honored (register custom class maps before stores are set up). Existing
+indexes are compared by key specification rather than name: an equivalent index under another
+name is reused, and conflicts (an index name reused for different keys, an existing text index
+over different fields, a changed TTL) are logged as warnings instead of failing setup. MongoDB
+allows one text index per collection, so changing the set of `FullText` fields requires dropping
+the old text index.
+
+When a store's native features are needed, an escape hatch is available at registration. The hook
+receives the create-index request already populated with the generated mapping and the
+`[ElasticIndex]` settings; adjust them in place (assigning a new `Mappings` or `Settings` object
+discards the generated one):
 
 ```csharp
 x.AddElasticViewStore(cfg =>
 {
     config.GetSection("ElasticSearch").Bind(cfg);
-    cfg.ConfigureIndex<ProductSearchView>(create => create
-        .Mappings(m => /* full fluent control */ m)
-        .Settings(s => s.NumberOfShards(4)));
+    cfg.ConfigureIndex<ProductSearchView>(request =>
+    {
+        request.Settings.NumberOfShards = 4;
+        (request.Mappings.Properties ??= new Properties())
+            .Add("embedding", new DenseVectorProperty { Dims = 384 });
+    });
 });
 ```
 

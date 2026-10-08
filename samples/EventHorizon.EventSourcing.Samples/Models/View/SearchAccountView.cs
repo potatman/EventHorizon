@@ -12,7 +12,7 @@ public class SearchAccountView : IState
 {
     public string Id { get; set; }
 
-    // User.Name declares FieldIntent.FullText, so this subtree is searchable text
+    // User.Name declares FieldIntent.FullText, so it is mapped as text here too; other User fields stay dynamic
     public User User { get; set; }
 
     // Returned with search results but never queried directly
