@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -13,16 +14,11 @@ namespace EventHorizon.EventStore.InMemory;
 public class InMemoryCrudStore<T> : ICrudStore<T>
     where T : class, ICrudEntity
 {
-    private readonly Dictionary<string, ICrudEntity> _table;
+    private readonly ConcurrentDictionary<string, ICrudEntity> _table;
 
     public InMemoryCrudStore(CrudDatabase crudDb)
     {
-        var typeArgs = typeof(T).GetGenericArguments();
-        var typeName = typeArgs.Any()?  typeArgs.First().Name : typeof(T).Name;
-        if (!crudDb.CrudEntities.ContainsKey(typeName))
-            crudDb.CrudEntities[typeName] = new Dictionary<string, ICrudEntity>();
-
-        _table = crudDb.CrudEntities[typeName];
+        _table = crudDb.CrudEntities.GetOrAdd(typeof(T).ToString(), _ => new ConcurrentDictionary<string, ICrudEntity>());
     }
 
     public Task SetupAsync(CancellationToken ct)
@@ -33,9 +29,8 @@ public class InMemoryCrudStore<T> : ICrudStore<T>
     public Task<T[]> GetAllAsync(string[] ids, CancellationToken ct)
     {
         var objs = ids
-            .Where(x => _table.ContainsKey(x))
-            .Select(x => _table[x])
-            .Cast<T>()
+            .Select(x => _table.TryGetValue(x, out var value) ? value : null)
+            .OfType<T>()
             .ToArray();
 
         return Task.FromResult(objs);
@@ -53,11 +48,9 @@ public class InMemoryCrudStore<T> : ICrudStore<T>
 
     public Task<DbResult> InsertAsync(T[] objs, CancellationToken ct)
     {
-        var failed = objs.Where(obj => _table.ContainsKey(obj.Id)).ToArray();
-        var passed = objs.Where(x => !failed.Contains(x)).ToArray();
-
-        foreach (var obj in passed)
-            _table[obj.Id] = obj;
+        // TryAdd keeps insert-if-absent atomic, which the lock store relies on.
+        var passed = objs.Where(obj => _table.TryAdd(obj.Id, obj)).ToArray();
+        var failed = objs.Except(passed).ToArray();
 
         return Task.FromResult(new DbResult
         {
@@ -92,7 +85,7 @@ public class InMemoryCrudStore<T> : ICrudStore<T>
     public Task DeleteAsync(string[] ids, CancellationToken ct)
     {
         foreach (var id in ids)
-            _table.Remove(id);
+            _table.TryRemove(id, out _);
 
         return Task.CompletedTask;
     }
