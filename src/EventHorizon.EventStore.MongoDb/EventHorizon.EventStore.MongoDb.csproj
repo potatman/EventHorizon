@@ -18,4 +18,8 @@
         <ProjectReference Include="..\EventHorizon.EventStore\EventHorizon.EventStore.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="EventHorizon.EventStore.Test" />
+    </ItemGroup>
+
 </Project>

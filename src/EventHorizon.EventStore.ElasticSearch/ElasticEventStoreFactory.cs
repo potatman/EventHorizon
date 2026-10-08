@@ -25,6 +25,7 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
     private readonly ILoggerFactory _loggerFactory;
     private readonly Type _type;
     private readonly ElasticIndexAttribute _elasticAttr;
+    private readonly ElasticConfig _config;
 
     internal ElasticsearchClient Client => _client;
 
@@ -34,6 +35,7 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
         _attributeUtil = attributeUtil;
         _loggerFactory = loggerFactory;
         _elasticAttr = _attributeUtil.GetOne<ElasticIndexAttribute>(_type);
+        _config = options.Value;
 
         _client = ElasticClientCache.Get(options.Value);
     }
@@ -50,7 +52,8 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
     {
         var store = new ElasticCrudStore<Snapshot<T>>(_elasticAttr, _client,
             _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId,
-            _loggerFactory.CreateLogger<ElasticCrudStore<Snapshot<T>>>());
+            _loggerFactory.CreateLogger<ElasticCrudStore<Snapshot<T>>>(),
+            _config.GetIndexOverride(_type));
 
         return store;
     }
@@ -59,6 +62,7 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
     {
         return new ElasticCrudStore<View<T>>(_elasticAttr, _client,
             _attributeUtil.GetOne<ViewStoreAttribute>(_type).Database,
-            _loggerFactory.CreateLogger<ElasticCrudStore<View<T>>>());
+            _loggerFactory.CreateLogger<ElasticCrudStore<View<T>>>(),
+            _config.GetIndexOverride(_type));
     }
 }

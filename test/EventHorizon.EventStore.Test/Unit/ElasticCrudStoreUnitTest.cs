@@ -6,8 +6,12 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Elastic.Clients.Elasticsearch;
+using Elastic.Clients.Elasticsearch.IndexManagement;
+using Elastic.Clients.Elasticsearch.Mapping;
 using Elastic.Transport;
+using EventHorizon.Abstractions.Attributes;
 using EventHorizon.EventStore.ElasticSearch;
+using EventHorizon.EventStore.ElasticSearch.Attributes;
 using EventHorizon.EventStore.Interfaces;
 using EventHorizon.EventStore.Models;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -18,7 +22,7 @@ namespace EventHorizon.EventStore.Test.Unit;
 [Trait("Category", "Unit")]
 public class ElasticCrudStoreUnitTest
 {
-    private class TestEntity : ICrudEntity
+    private sealed class TestEntity : ICrudEntity
     {
         public string Id { get; set; }
         public DateTime UpdatedDate { get; set; }
@@ -165,4 +169,185 @@ public class ElasticCrudStoreUnitTest
         var order = fieldSort.GetProperty("updatedDate").GetProperty("order").GetString();
         Assert.Equal("desc", order);
     }
+
+    #region SetupAsync mapping
+
+    private sealed class SetupMappedState
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+
+        [StoreField(FieldIntent.FullText)]
+        public string Description { get; set; }
+
+        [StoreField(FieldIntent.FullText | FieldIntent.ExactMatch)]
+        public string Title { get; set; }
+    }
+
+    private sealed class SetupPlainState
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+    }
+
+    /// <summary>
+    /// Routes the index-exists HEAD probe to a 404 so SetupAsync proceeds to create the index,
+    /// while every other call gets the canned success response.
+    /// </summary>
+    private sealed class RoutingRequestInvoker : IRequestInvoker
+    {
+        private readonly InMemoryRequestInvoker _headInvoker;
+        private readonly InMemoryRequestInvoker _bodyInvoker;
+
+        public RoutingRequestInvoker(string responseJson)
+        {
+            var headers = new Dictionary<string, IEnumerable<string>>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["x-elastic-product"] = new[] { "Elasticsearch" }
+            };
+            _headInvoker = new InMemoryRequestInvoker(null, 404, null, "application/json", headers);
+            _bodyInvoker = new InMemoryRequestInvoker(Encoding.UTF8.GetBytes(responseJson), 200, null, "application/json", headers);
+        }
+
+        public ResponseFactory ResponseFactory => _bodyInvoker.ResponseFactory;
+
+        public TResponse Request<TResponse>(Endpoint endpoint, BoundConfiguration boundConfiguration, PostData postData)
+            where TResponse : TransportResponse, new() =>
+            Pick(endpoint).Request<TResponse>(endpoint, boundConfiguration, postData);
+
+        public Task<TResponse> RequestAsync<TResponse>(Endpoint endpoint, BoundConfiguration boundConfiguration, PostData postData, CancellationToken cancellationToken)
+            where TResponse : TransportResponse, new() =>
+            Pick(endpoint).RequestAsync<TResponse>(endpoint, boundConfiguration, postData, cancellationToken);
+
+        public void Dispose()
+        {
+        }
+
+        private IRequestInvoker Pick(Endpoint endpoint) =>
+            endpoint.Method == HttpMethod.HEAD ? _headInvoker : _bodyInvoker;
+    }
+
+    private const string CreateIndexResponseJson =
+        """{"acknowledged":true,"shards_acknowledged":true,"index":"test"}""";
+
+    private static async Task<JsonDocument> RunSetupAsync<T>(
+        ElasticIndexAttribute attr = null,
+        Action<CreateIndexRequest> configureIndex = null)
+        where T : class, ICrudEntity
+    {
+        string requestBody = null;
+        var settings = new ElasticsearchClientSettings(
+                new SingleNodePool(new Uri("http://localhost:9200")),
+                new RoutingRequestInvoker(CreateIndexResponseJson))
+            .DisableDirectStreaming()
+            .OnRequestCompleted(details =>
+            {
+                if (details.RequestBodyInBytes != null)
+                    requestBody = Encoding.UTF8.GetString(details.RequestBodyInBytes);
+            });
+        var client = new ElasticsearchClient(settings);
+        var store = new ElasticCrudStore<T>(attr, client, "test_bucket",
+            NullLogger<ElasticCrudStore<T>>.Instance, configureIndex);
+
+        await store.SetupAsync(CancellationToken.None);
+
+        Assert.NotNull(requestBody);
+        return JsonDocument.Parse(requestBody);
+    }
+
+    [Fact]
+    public async Task SetupMapsOnlyAnnotatedFieldsByDefault()
+    {
+        using var doc = await RunSetupAsync<Snapshot<SetupMappedState>>();
+        var mappings = doc.RootElement.GetProperty("mappings");
+
+        Assert.True(mappings.GetProperty("dynamic").GetBoolean());
+        Assert.False(mappings.TryGetProperty("_source", out _));
+
+        var props = mappings.GetProperty("properties");
+        Assert.False(props.TryGetProperty("id", out _));
+        Assert.False(props.TryGetProperty("updatedDate", out _));
+
+        var state = props.GetProperty("state").GetProperty("properties");
+        Assert.Equal("text", state.GetProperty("description").GetProperty("type").GetString());
+        Assert.False(state.TryGetProperty("name", out _));
+
+        var title = state.GetProperty("title");
+        Assert.Equal("text", title.GetProperty("type").GetString());
+        var titleKeyword = title.GetProperty("fields").GetProperty("keyword");
+        Assert.Equal("keyword", titleKeyword.GetProperty("type").GetString());
+        Assert.Equal(8191, titleKeyword.GetProperty("ignore_above").GetInt32());
+    }
+
+    [Fact]
+    public async Task SetupKeepsDynamicMappingWithoutIntents()
+    {
+        using var doc = await RunSetupAsync<Snapshot<SetupPlainState>>();
+        var mappings = doc.RootElement.GetProperty("mappings");
+
+        Assert.True(mappings.GetProperty("dynamic").GetBoolean());
+        Assert.False(mappings.TryGetProperty("properties", out _));
+    }
+
+    [Fact]
+    public async Task SetupHonorsDynamicMappingOverride()
+    {
+        var attr = new ElasticIndexAttribute { Mapping = MappingBehavior.Dynamic };
+        using var doc = await RunSetupAsync<Snapshot<SetupMappedState>>(attr);
+
+        Assert.False(doc.RootElement.GetProperty("mappings").TryGetProperty("properties", out _));
+    }
+
+    [Fact]
+    public async Task SetupHonorsStaticMappingOverride()
+    {
+        var attr = new ElasticIndexAttribute { Mapping = MappingBehavior.Static };
+        using var doc = await RunSetupAsync<Snapshot<SetupPlainState>>(attr);
+
+        var props = doc.RootElement.GetProperty("mappings").GetProperty("properties");
+        Assert.Equal("keyword", props.GetProperty("id").GetProperty("type").GetString());
+        var name = props.GetProperty("state").GetProperty("properties").GetProperty("name");
+        Assert.Equal("keyword", name.GetProperty("type").GetString());
+        Assert.Equal(8191, name.GetProperty("ignore_above").GetInt32());
+    }
+
+    [Fact]
+    public async Task SetupAppliesAttributeSettings()
+    {
+        var attr = new ElasticIndexAttribute { Shards = 2, Replicas = 1, RefreshIntervalMs = 500, MaxResultWindow = 20000 };
+        using var doc = await RunSetupAsync<Snapshot<SetupPlainState>>(attr);
+
+        var settings = doc.RootElement.GetProperty("settings");
+        Assert.Equal(2, settings.GetProperty("number_of_shards").GetInt32());
+        Assert.Equal(1, settings.GetProperty("number_of_replicas").GetInt32());
+        Assert.Equal(20000, settings.GetProperty("max_result_window").GetInt32());
+        Assert.Equal("500ms", settings.GetProperty("refresh_interval").GetString());
+    }
+
+    [Fact]
+    public async Task SetupConfigureIndexAdjustsGeneratedRequest()
+    {
+        var attr = new ElasticIndexAttribute { Replicas = 2, MaxResultWindow = 20000 };
+        using var doc = await RunSetupAsync<Snapshot<SetupMappedState>>(attr, request =>
+        {
+            request.Settings.NumberOfShards = 4;
+            request.Mappings.Properties.Add("extra", new KeywordProperty());
+        });
+
+        // The hook's changes
+        var settings = doc.RootElement.GetProperty("settings");
+        Assert.Equal(4, settings.GetProperty("number_of_shards").GetInt32());
+        var mappings = doc.RootElement.GetProperty("mappings");
+        var props = mappings.GetProperty("properties");
+        Assert.Equal("keyword", props.GetProperty("extra").GetProperty("type").GetString());
+
+        // ...alongside the attribute settings and generated mapping
+        Assert.Equal(2, settings.GetProperty("number_of_replicas").GetInt32());
+        Assert.Equal(20000, settings.GetProperty("max_result_window").GetInt32());
+        Assert.True(mappings.GetProperty("dynamic").GetBoolean());
+        Assert.Equal("text", props.GetProperty("state").GetProperty("properties")
+            .GetProperty("description").GetProperty("type").GetString());
+    }
+
+    #endregion
 }
