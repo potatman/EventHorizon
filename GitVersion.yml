@@ -1,47 +1,39 @@
-workflow: GitFlow/v1
-mode: ContinuousDeployment
+# Trunk-based, tag-driven releases: master is the only long-lived branch.
+# - Untagged master commits publish as {next}-preview.{n}; feature/* builds are not published.
+# - Stable versions come only from pushing a SemVer tag (e.g. 1.6.0) on a master commit.
+# GitHubFlow/v1 rather than TrunkBased/preview1: the latter's Mainline strategy bumps the version on every
+# master commit (each commit is a release), so previews would run ahead of the version being tagged.
+# Modes use GitVersion 6 names: ContinuousDelivery = pre-release label + incrementing number until tagged.
+workflow: GitHubFlow/v1
+mode: ContinuousDelivery
 next-version: 1.6.0
 
 branches:
   main:
-    label: ''
-    increment: Patch
-    regex: ^master$|^main$
-    is-main-branch: true
-
-  develop:
+    mode: ContinuousDelivery
     label: preview
     increment: Minor
-    regex: ^dev(elop)?(ment)?$
-    source-branches: [main]
-    tracks-release-branches: true
-
-  release:
-    mode: ContinuousDeployment
-    label: rc
-    increment: Minor
-    regex: ^releases?[/-](?<BranchName>.+)
-    source-branches: [main, develop, support]
-    is-release-branch: true
-
-  hotfix:
-    mode: ContinuousDeployment
-    label: hf
-    increment: Inherit
-    regex: ^hotfix(es)?[/-](?<BranchName>.+)
-    source-branches: [main, support]
-    is-release-branch: true
+    regex: ^master$|^main$
+    is-main-branch: true
+    prevent-increment:
+      of-merged-branch: true
+      when-current-commit-tagged: true
 
   feature:
-    mode: ContinuousDeployment
+    mode: ContinuousDelivery
     label: '{BranchName}'
     increment: Inherit
     regex: ^features?[/-](?<BranchName>.+)
-    source-branches: [develop, main, release, support, hotfix]
+    source-branches: [main]
 
   pull-request:
     mode: ContinuousDelivery
     label: PullRequest{Number}
     increment: Inherit
     regex: ^(pull-requests|pull|pr)[/-](?<Number>\d*)
-    source-branches: [develop, main, release, feature, support, hotfix]
+    source-branches: [main, feature]
+
+  # CI tag builds check out a detached HEAD, which GitVersion treats as the unknown branch.
+  unknown:
+    prevent-increment:
+      when-current-commit-tagged: true
