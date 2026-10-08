@@ -43,20 +43,20 @@
 
 ## NuGet Packages
 
-All packages are published to [NuGet.org](https://www.nuget.org/) with the `Cts.` prefix.
+All packages are published to [NuGet.org](https://www.nuget.org/).
 
 | Package | Description |
 |---|---|
-| `Cts.EventHorizon.Abstractions` | Core interfaces, models, and attributes |
-| `Cts.EventHorizon.EventStore` | Event store abstractions (CRUD stores, locks) |
-| `Cts.EventHorizon.EventStore.InMemory` | In-memory event store (great for testing) |
-| `Cts.EventHorizon.EventStore.MongoDb` | MongoDB-backed event store |
-| `Cts.EventHorizon.EventStore.ElasticSearch` | Elasticsearch-backed event store |
-| `Cts.EventHorizon.EventStore.Ignite` | Apache Ignite-backed event store |
-| `Cts.EventHorizon.EventStreaming` | Event streaming abstractions |
-| `Cts.EventHorizon.EventStreaming.InMemory` | In-memory streaming (great for testing) |
-| `Cts.EventHorizon.EventStreaming.Pulsar` | Apache Pulsar streaming provider |
-| `Cts.EventHorizon.EventSourcing` | Event sourcing orchestration (aggregates, senders, subscriptions) |
+| `EventHorizon.Abstractions` | Core interfaces, models, and attributes |
+| `EventHorizon.EventStore` | Event store abstractions (CRUD stores, locks) |
+| `EventHorizon.EventStore.InMemory` | In-memory event store (great for testing) |
+| `EventHorizon.EventStore.MongoDb` | MongoDB-backed event store |
+| `EventHorizon.EventStore.ElasticSearch` | Elasticsearch-backed event store |
+| `EventHorizon.EventStore.Ignite` | Apache Ignite-backed event store |
+| `EventHorizon.EventStreaming` | Event streaming abstractions |
+| `EventHorizon.EventStreaming.InMemory` | In-memory streaming (great for testing) |
+| `EventHorizon.EventStreaming.Pulsar` | Apache Pulsar streaming provider |
+| `EventHorizon.EventSourcing` | Event sourcing orchestration (aggregates, senders, subscriptions) |
 
 ## Quick Start
 
@@ -64,9 +64,9 @@ All packages are published to [NuGet.org](https://www.nuget.org/) with the `Cts.
 
 ```bash
 # Core + In-Memory (for getting started / testing)
-dotnet add package Cts.EventHorizon.EventSourcing
-dotnet add package Cts.EventHorizon.EventStore.InMemory
-dotnet add package Cts.EventHorizon.EventStreaming.InMemory
+dotnet add package EventHorizon.EventSourcing
+dotnet add package EventHorizon.EventStore.InMemory
+dotnet add package EventHorizon.EventStreaming.InMemory
 ```
 
 ### 2. Define your state
@@ -369,27 +369,19 @@ Integration tests use `[Collection("Integration")]` and require running Docker C
 
 ## CI/CD
 
-This project uses **GitHub Actions** (`.github/workflows/ci.yml`) with **[GitVersion](https://gitversion.net/)** for automatic semantic versioning based on the GitFlow branching model.
+This project uses **GitHub Actions** (`.github/workflows/ci.yml`) with **[GitVersion](https://gitversion.net/)** for semantic versioning. Development is **trunk-based**: `master` is the only long-lived branch, and short-lived `feature/*` branches merge into it through pull requests.
 
-Versions are derived from git history and tags — no manual version bumping required after initial setup.
-
-| Branch/Tag | Pre-release Label | Example Version |
+| Branch/Tag | Published | Example Version |
 |---|---|---|
-| `v*` tag | _(stable)_ | `1.3.0` |
-| `master` / `main` | _(stable)_ | `1.3.0` |
-| `release/*` | `rc` | `1.3.0-rc.3` |
-| `hotfix/*` | `hf` | `1.3.1-hf.1` |
-| `develop` | `preview` | `1.4.0-preview.12` |
-| `feature/*` | `{branch}` | `1.4.0-my-feature.1` |
+| SemVer tag (`1.6.0`) on `master` | stable | `1.6.0` |
+| `master` (untagged) | pre-release | `1.7.0-preview.3` |
+| `feature/*`, pull requests | build and test only | `1.7.0-my-feature.1` |
 
-### How versioning works
+### Releasing
 
-- **Tag a release** on `main`/`master` (e.g., `v1.3.0`) to set the version baseline
-- All subsequent commits on branches derive their version from git tags and merge history
-- Commit messages with `+semver: major`, `+semver: minor`, or `+semver: fix` control version increments
-- Configuration lives in `GitVersion.yml` at the repo root
-
-All packages are published with the `Cts.*` prefix (e.g., `Cts.EventHorizon.Abstractions`).
+- **Stable releases come only from tags.** Tag the commit on `master` and push the tag (`git tag 1.6.0 && git push origin 1.6.0`). CI rejects tags that are not plain `X.Y.Z` (an optional `v` prefix is accepted) or whose commit is not on `master`.
+- Every untagged `master` commit publishes `{next}-preview.{n}`, where `{next}` is the last tag with its minor version bumped. Commit messages with `+semver: major` or `+semver: patch` change the bump.
+- Configuration lives in `GitVersion.yml` at the repo root.
 
 ### Trusted Publishing
 
@@ -441,7 +433,7 @@ EventHorizon/
 1. Fork the repository
 2. Create a feature branch (`feature/my-feature`)
 3. Commit changes with clear messages
-4. Open a pull request against `develop`
+4. Open a pull request against `master`
 
 ## License
 
