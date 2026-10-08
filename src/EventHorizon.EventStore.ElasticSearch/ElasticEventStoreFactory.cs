@@ -26,6 +26,8 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
     private readonly Type _type;
     private readonly ElasticIndexAttribute _elasticAttr;
 
+    internal ElasticsearchClient Client => _client;
+
     public ElasticStoreFactory(IOptions<ElasticConfig> options, AttributeUtil attributeUtil, ILoggerFactory loggerFactory)
     {
         _type = typeof(T);
@@ -33,18 +35,7 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
         _loggerFactory = loggerFactory;
         _elasticAttr = _attributeUtil.GetOne<ElasticIndexAttribute>(_type);
 
-        // Client Configuration
-        var connectionPool = new StickyNodePool(options.Value.Uris.Select(u => new Uri(u)));
-        var settings = new ElasticsearchClientSettings(connectionPool)
-            .PingTimeout(TimeSpan.FromSeconds(10))
-            .DeadTimeout(TimeSpan.FromSeconds(60))
-            .RequestTimeout(TimeSpan.FromSeconds(60))
-            ;
-
-        if (options.Value.UserName != null && options.Value.Password != null)
-            settings = settings.Authentication(new BasicAuthentication(options.Value.UserName, options.Value.Password));
-
-        _client = new ElasticsearchClient(settings);
+        _client = ElasticClientCache.Get(options.Value);
     }
 
     public ICrudStore<Lock> GetLockStore()
