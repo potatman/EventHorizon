@@ -97,7 +97,17 @@ public class Aggregator<TParent, T>
         return responses.FirstOrDefault();
     }
 
+    /// <summary>
+    /// Loads, handles and saves the messages' aggregates once. Store failures are reported in the responses
+    /// (status 503) rather than thrown; consumers that must not lose messages should retry or nack those.
+    /// </summary>
     public async Task<Response[]> HandleAsync<TM>(TM[] messages, CancellationToken ct) where TM : ITopicMessage
+    {
+        var aggregateDict = await HandleAggregatesAsync(messages, ct);
+        return aggregateDict.Values.SelectMany(x => x.Responses).ToArray();
+    }
+
+    internal async Task<Dictionary<string, Aggregate<T>>> HandleAggregatesAsync<TM>(TM[] messages, CancellationToken ct) where TM : ITopicMessage
     {
         // Load Aggregate
         var streamIds = messages.Select(x => x.StreamId).Distinct().ToArray();
@@ -109,7 +119,65 @@ public class Aggregator<TParent, T>
         // Save Successful Aggregates and Events
         await SaveAllAsync(aggregateDict);
 
-        return  aggregateDict.Values.SelectMany(x => x.Responses).ToArray();
+        return aggregateDict;
+    }
+
+    /// <summary>
+    /// Handles a consumed batch so that no message is acknowledged unless its aggregate was saved or failed in its
+    /// own handlers. Messages whose aggregates hit a whole-store failure are retried with backoff until they
+    /// succeed or <paramref name="stopping"/> fires, which holds back the subscription and keeps per-stream
+    /// order. Messages whose documents were rejected individually are retried
+    /// <see cref="AggregateConfig{T}.MaxDocumentAttempts"/> times and then nacked. Only messages of streams
+    /// that are retried get handled again, so saved aggregates never re-apply their messages.
+    /// </summary>
+    /// <returns>The responses of every message that was not nacked.</returns>
+    internal async Task<Response[]> HandleWithRetryAsync<TM>(MessageContext<TM>[] batch, Action<MessageContext<TM>[]> nack,
+        CancellationToken stopping) where TM : class, ITopicMessage, new()
+    {
+        var responses = new List<Response>();
+        var pending = batch;
+        var documentAttempts = 0;
+        for (var attempt = 1; ; attempt++)
+        {
+            var aggregateDict = await HandleAggregatesAsync(pending.Select(x => x.Data).ToArray(), stopping);
+            responses.AddRange(aggregateDict.Values.Where(x => x.StoreFailure == StoreFailure.None).SelectMany(x => x.Responses));
+
+            var failed = aggregateDict.Values.Where(x => x.StoreFailure != StoreFailure.None).ToArray();
+            if (failed.Length == 0)
+                return responses.ToArray();
+
+            var failedIds = failed.Select(x => x.Id).ToHashSet();
+            pending = pending.Where(x => failedIds.Contains(x.Data.StreamId)).ToArray();
+
+            // Whole-store failures keep retrying; only document rejections count toward the bound.
+            var isStoreFailure = failed.Any(x => x.StoreFailure == StoreFailure.Store);
+            if (!isStoreFailure && ++documentAttempts >= _config.MaxDocumentAttempts)
+            {
+                _logger.LogError("{Type} store rejected {Count} aggregate(s) after {Attempts} attempts, nacking {Messages} message(s) => {Error}",
+                    typeof(T).Name, failed.Length, documentAttempts, pending.Length, failed[0].Error);
+                nack(pending);
+                return responses.ToArray();
+            }
+
+            var delay = GetRetryDelay(attempt);
+            _logger.LogWarning("{Type} store failure for {Count} aggregate(s), retrying {Messages} message(s) in {Delay} (attempt {Attempt}) => {Error}",
+                typeof(T).Name, failed.Length, pending.Length, delay, attempt, failed[0].Error);
+            try
+            {
+                await Task.Delay(delay, stopping);
+            }
+            catch (OperationCanceledException)
+            {
+                nack(pending);
+                return responses.ToArray();
+            }
+        }
+    }
+
+    private TimeSpan GetRetryDelay(int attempt)
+    {
+        var ms = _config.RetryBaseDelay.TotalMilliseconds * Math.Pow(2, Math.Min(attempt - 1, 16));
+        return TimeSpan.FromMilliseconds(Math.Min(ms, _config.RetryMaxDelay.TotalMilliseconds));
     }
 
     private async Task TriggerHandleAsync<TM>(TM[] messages, Dictionary<string, Aggregate<T>> aggregateDict) where TM : ITopicMessage
@@ -145,7 +213,7 @@ public class Aggregator<TParent, T>
         catch (Exception e)
         {
             foreach (var agg in passed)
-                agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
+                agg.SetStoreFailure(StoreFailure.Store, e.Message);
         }
         _logger.LogInformation("TriggerHandled {Count} {Type} Aggregate(s) in {Duration}",
             aggregateDict.Count, typeof(T).Name, sw.ElapsedMilliseconds);
@@ -185,11 +253,12 @@ public class Aggregator<TParent, T>
 
     private async Task SaveSnapshotsAsync(Dictionary<string, Aggregate<T>> aggregateDict)
     {
+        var parents = Array.Empty<TParent>();
         try
         {
             // Save Snapshots and then track failures
             var sw = Stopwatch.StartNew();
-            var parents = aggregateDict.Values
+            parents = aggregateDict.Values
                 .Where(x => x.Error == null)
                 .Where(x => x.IsDirty)
                 .Select(x => new TParent
@@ -207,7 +276,7 @@ public class Aggregator<TParent, T>
 
             var results = await _crudStore.UpsertAsync(parents, CancellationToken.None);
             foreach (var id in results.FailedIds)
-                aggregateDict[id].SetStatus(HttpStatusCode.InternalServerError, "Snapshot Failed to Save");
+                aggregateDict[id].SetStoreFailure(StoreFailure.Document, "Snapshot Failed to Save");
             foreach (var id in results.PassedIds)
             {
                 aggregateDict[id].SetStatus(aggregateDict[id].SequenceId == 1?
@@ -219,8 +288,9 @@ public class Aggregator<TParent, T>
         }
         catch (Exception ex)
         {
-            foreach (var aggregate in aggregateDict.Values)
-                aggregate.SetStatus(HttpStatusCode.InternalServerError, ex.Message);
+            _logger.LogError(ex, "Failed to save {Type} aggregate(s)", typeof(T).Name);
+            foreach (var parent in parents)
+                aggregateDict[parent.Id].SetStoreFailure(StoreFailure.Store, ex.Message);
         }
     }
 
@@ -319,7 +389,7 @@ public class Aggregator<TParent, T>
             catch (Exception e)
             {
                 foreach (var agg in passed)
-                    agg.SetStatus(HttpStatusCode.InternalServerError, e.Message);
+                    agg.SetStoreFailure(StoreFailure.Store, e.Message);
             }
             _logger.LogInformation("Loaded {Count} {Type} Aggregate(s) in {Duration}",
                 aggregateDict.Count, typeof(T).Name, sw.ElapsedMilliseconds);
@@ -333,7 +403,7 @@ public class Aggregator<TParent, T>
                 .Select(x =>
                 {
                     var agg = new Aggregate<T>(x);
-                    agg.SetStatus(HttpStatusCode.InternalServerError, ex.Message);
+                    agg.SetStoreFailure(StoreFailure.Store, ex.Message);
                     return agg;
                 })
                 .ToDictionary(x => x.Id);
