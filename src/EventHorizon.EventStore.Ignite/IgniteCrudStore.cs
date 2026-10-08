@@ -14,15 +14,38 @@ namespace EventHorizon.EventStore.Ignite;
 public class IgniteCrudStore<T> : ICrudStore<T>
     where T : ICrudEntity
 {
-    private readonly ITable _table;
-    private readonly IIgniteClient _client;
+    private readonly Func<Task<IIgniteClient>> _getClient;
     private readonly string _tableName;
+    private readonly object _tableGate = new();
+    private Task<ITable> _table;
 
     public IgniteCrudStore(IIgniteClient client, string bucketId)
+        : this(() => Task.FromResult(client), bucketId)
     {
-        _client = client;
+    }
+
+    internal IgniteCrudStore(Func<Task<IIgniteClient>> getClient, string bucketId)
+    {
+        _getClient = getClient;
         _tableName = $"{bucketId}_{typeof(T).Name}";
-        _table = client.Tables.GetTableAsync(_tableName).Result;
+    }
+
+    // Resolved on first use rather than blocking the constructor; a failed lookup is not cached.
+    private Task<ITable> GetTableAsync()
+    {
+        lock (_tableGate)
+        {
+            if (_table is null || _table.IsFaulted || _table.IsCanceled)
+                _table = LoadTableAsync();
+
+            return _table;
+        }
+    }
+
+    private async Task<ITable> LoadTableAsync()
+    {
+        var client = await _getClient();
+        return await client.Tables.GetTableAsync(_tableName);
     }
 
     public Task SetupAsync(CancellationToken ct)
@@ -33,7 +56,7 @@ public class IgniteCrudStore<T> : ICrudStore<T>
     public async Task<T[]> GetAllAsync(string[] ids, CancellationToken ct)
     {
         var result = new List<T>();
-        var keyValueView = _table.GetRecordView<T>();
+        var keyValueView = (await GetTableAsync()).GetRecordView<T>();
 
         foreach (var id in ids)
         {
@@ -57,10 +80,10 @@ public class IgniteCrudStore<T> : ICrudStore<T>
     public async Task<DbResult> InsertAsync(T[] objs, CancellationToken ct)
     {
         var result = new DbResult();
-        var keyValueView = _table.GetRecordView<T>();
+        var keyValueView = (await GetTableAsync()).GetRecordView<T>();
 
         // Try Insert with transaction
-        var transaction = await _client.Transactions.BeginAsync();
+        var transaction = await (await _getClient()).Transactions.BeginAsync();
 
         try
         {
@@ -92,10 +115,10 @@ public class IgniteCrudStore<T> : ICrudStore<T>
     public async Task<DbResult> UpsertAsync(T[] objs, CancellationToken ct)
     {
         var result = new DbResult();
-        var keyValueView = _table.GetRecordView<T>();
+        var keyValueView = (await GetTableAsync()).GetRecordView<T>();
 
         // Try Insert with transaction
-        var transaction = await _client.Transactions.BeginAsync();
+        var transaction = await (await _getClient()).Transactions.BeginAsync();
 
         try
         {
@@ -118,7 +141,7 @@ public class IgniteCrudStore<T> : ICrudStore<T>
 
     public async Task DeleteAsync(string[] ids, CancellationToken ct)
     {
-        var keyValueView = _table.GetRecordView<T>();
+        var keyValueView = (await GetTableAsync()).GetRecordView<T>();
 
         foreach (var id in ids)
         {
@@ -132,6 +155,6 @@ public class IgniteCrudStore<T> : ICrudStore<T>
 
     public async Task DropDatabaseAsync(CancellationToken ct)
     {
-        await _client.Sql.ExecuteAsync(null, $"DROP TABLE IF EXISTS {_tableName}");
+        await (await _getClient()).Sql.ExecuteAsync(null, $"DROP TABLE IF EXISTS {_tableName}");
     }
 }

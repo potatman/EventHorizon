@@ -22,6 +22,8 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
     private bool _disposed;
     private bool _running;
     private bool _stopped;
+    private Task _loop = Task.CompletedTask;
+    private CancellationTokenSource _stopping = new();
 
     public Subscription(IStreamFactory factory, SubscriptionConfig<T> config, ILogger<Subscription<T>> logger)
     {
@@ -43,7 +45,8 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         _logger.LogInformation("Subscription - Started {@Config}", _config);
 
         // Start Loop
-        Task.Run(BasicLoop);
+        _stopping = new CancellationTokenSource();
+        _loop = Task.Run(BasicLoop);
 
         return this;
     }
@@ -52,10 +55,10 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
     {
         if (!_running) return this;
 
-        // Cancel
+        // Cancel the receive/idle waits, then let an in-flight batch finish and finalize its acks/nacks
         _running = false;
-        // while (!_stopped)
-        //     await Task.Delay(TimeSpan.FromMilliseconds(250));
+        await _stopping.CancelAsync();
+        await _loop;
 
         // Cleanup
         _logger.LogInformation("Subscription - Stopped {@Config}", _config);
@@ -69,7 +72,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
             await _admin.DeleteTopicAsync(topic, CancellationToken.None);
     }
 
-    private async void BasicLoop()
+    private async Task BasicLoop()
     {
         while (_running)
         {
@@ -79,7 +82,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
                 if (batch?.Any() == true)
                     await ProcessBatch(batch);
                 else
-                    await Task.Delay(_config.NoBatchDelay);
+                    await Task.Delay(_config.NoBatchDelay, _stopping.Token);
             }
             catch (TaskCanceledException)
             {
@@ -107,7 +110,8 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
         try
         {
             var sw = Stopwatch.StartNew();
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(_stopping.Token);
+            cts.CancelAfter(TimeSpan.FromSeconds(30));
             var batch = await _consumer.NextBatchAsync(cts.Token);
             activity?.SetTag(TraceConstants.Tags.Count, batch?.Length ?? 0);
             activity?.SetStatus(ActivityStatusCode.Ok);
@@ -145,7 +149,7 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
     {
         var sw = Stopwatch.StartNew();
         using var activity = TraceConstants.ActivitySource.StartActivity();
-        var context = new SubscriptionContext<T> { Messages = batch };
+        var context = new SubscriptionContext<T> { Messages = batch, CancellationToken = _stopping.Token };
         try
         {
             if(_config.OnBatch != null)
