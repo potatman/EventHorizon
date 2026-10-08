@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -38,6 +38,12 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
     {
         var admin = await GetAdmin();
         var topic = PulsarTopicParser.Parse(str);
+
+        // Topics almost always exist already: one namespace-level list call instead of the tenant,
+        // namespace and create round-trips below, and no tenant-level admin permission needed.
+        if (await TopicExistsAsync(admin, topic, ct))
+            return;
+
         await RequireTenant(topic.Tenant, ct);
         await RequireNamespace(topic, ct);
 
@@ -65,6 +71,21 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
             // Concurrent creates can also surface AlreadyExistsException as a 500
             if (ex.StatusCode > 300 && ex.StatusCode != 409 && !ex.Message.Contains("AlreadyExistsException"))
                 throw;
+        }
+    }
+
+    // Any failure (missing namespace, no permission to list) means "unknown", and the caller takes the create path.
+    private static async Task<bool> TopicExistsAsync(IPulsarAdminRESTAPIClient admin, PulsarTopic topic, CancellationToken ct)
+    {
+        try
+        {
+            var topics = await admin.GetTopicsAsync(topic.Tenant, topic.Namespace,
+                topic.IsPersisted ? Mode.PERSISTENT : Mode.NON_PERSISTENT, false, ct);
+            return topics?.Contains(topic.ToString()) == true;
+        }
+        catch (ApiException)
+        {
+            return false;
         }
     }
 
