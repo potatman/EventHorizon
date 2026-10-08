@@ -250,10 +250,13 @@ x.AddMongoDbSnapshotStore(config.GetSection("MongoDb").Bind)
 {
   "MongoDb": {
     "ConnectionString": "mongodb://localhost:27017",
-    "Database": "my_database"
+    "Database": "my_database",
+    "IgnoreExtraElements": true
   }
 }
 ```
+
+`IgnoreExtraElements` (default `true`) lets snapshot, view and lock documents load after a property was removed or renamed on the state class (or on any class it contains), instead of throwing `FormatException`. It applies only to the types EventHorizon stores, not to other MongoDB collections in the application. Set it to `false` to keep the driver's strict default.
 
 ### Elasticsearch
 
