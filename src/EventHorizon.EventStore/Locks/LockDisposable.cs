@@ -20,6 +20,7 @@ public class LockDisposable : IAsyncDisposable
     private bool _isReleased;
     private bool _ownsLock;
     private bool _isTimeoutStarted;
+    private static readonly TimeSpan ExitTimeout = TimeSpan.FromSeconds(2);
     private readonly string _hostname;
 
     public LockDisposable(ICrudStore<Lock> crudStore, string id, string hostname, TimeSpan timeout, ILogger<LockDisposable> logger)
@@ -75,7 +76,7 @@ public class LockDisposable : IAsyncDisposable
 
         // Only an acquired lock gets an expiry timer; failed attempts must not schedule a release.
         if (_ownsLock)
-            SetTimeout();
+            _ = ExpireAsync();
 
         return _ownsLock;
     }
@@ -92,20 +93,38 @@ public class LockDisposable : IAsyncDisposable
         return this;
     }
 
-    private async void SetTimeout()
+    // Fire-and-forget: exceptions are logged here, since nothing awaits this task.
+    private async Task ExpireAsync()
     {
         if (_isTimeoutStarted)
             return;
 
         _isTimeoutStarted = true;
-        await Task.Delay(_timeout);
-        await ReleaseAsync();
+        try
+        {
+            await Task.Delay(_timeout);
+            await ReleaseAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Lock - Failed to release expired lock {Name} on {Host}", _id, _hostname);
+        }
     }
 
     private void OnExit(object sender, EventArgs e)
     {
-        if(!_isReleased)
-            ReleaseAsync().Wait();
+        // ProcessExit handlers are synchronous and time-limited, so wait briefly and never throw.
+        if (_isReleased)
+            return;
+
+        try
+        {
+            ReleaseAsync().Wait(ExitTimeout);
+        }
+        catch (Exception)
+        {
+            // Best effort: the lock expires on its own.
+        }
     }
 
     public async ValueTask DisposeAsync()
