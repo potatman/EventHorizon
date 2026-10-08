@@ -17,6 +17,7 @@ namespace EventHorizon.EventSourcing.Aggregates
     {
         private readonly Aggregator<Snapshot<TTarget>, TTarget> _aggregator;
         private readonly Subscription<Event> _subscription;
+        private readonly CancellationTokenSource _stopping = new();
 
         public AggregateMigrationHostedService(Aggregator<Snapshot<TTarget>, TTarget> aggregator,
             StreamingClient streamingClient,
@@ -28,23 +29,7 @@ namespace EventHorizon.EventSourcing.Aggregates
                 .SubscriptionName($"Migrate-{typeof(TSource).Name}-{typeof(TTarget).Name}")
                 .OnBatch(async batch =>
                 {
-                    var events = batch.Messages
-                        .Select(x => x.Data)
-                        .ToArray();
-
-                    var responses = await aggregator
-                        .HandleAsync(events, batch.CancellationToken);
-
-                    var failedIds = responses
-                        .Where(x => x.Error != null)
-                        .Select(x => x.StreamId)
-                        .ToArray();
-
-                    var failedMessages = batch.Messages
-                        .Where(x => failedIds.Contains(x.Data.StreamId))
-                        .ToArray();
-
-                    batch.Nack(failedMessages);
+                    await aggregator.HandleWithRetryAsync(batch.Messages, batch.Nack, _stopping.Token);
                 });
 
             if (onBuildSubscription != null) builder = onBuildSubscription(builder);
@@ -58,6 +43,10 @@ namespace EventHorizon.EventSourcing.Aggregates
             await _subscription.StartAsync();
         }
 
-        public Task StopAsync(CancellationToken cancellationToken) => _subscription.StopAsync();
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+            await _stopping.CancelAsync();
+            await _subscription.StopAsync();
+        }
     }
 }

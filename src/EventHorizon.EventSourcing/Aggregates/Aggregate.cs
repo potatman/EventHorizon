@@ -26,6 +26,12 @@ public class Aggregate<T>
     private Dictionary<string, object> AllStates { get; set; }
     public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
     public string Error { get; private set; }
+
+    /// <summary>
+    /// Set when the aggregate failed because of the store or middleware rather than its handlers,
+    /// meaning the same messages can succeed if retried. Cleared by <see cref="SetStatus"/>.
+    /// </summary>
+    internal StoreFailure StoreFailure { get; private set; }
     public bool IsDirty { get; private set; }
     public string Id { get; set; }
     public long SequenceId { get; set; }
@@ -124,10 +130,17 @@ public class Aggregate<T>
         UpdatedDate = DateTime.UtcNow;
     }
 
+    internal void SetStoreFailure(StoreFailure failure, string error)
+    {
+        SetStatus(HttpStatusCode.ServiceUnavailable, error);
+        StoreFailure = failure;
+    }
+
     public void SetStatus(HttpStatusCode statusCode, string error = null)
     {
         Error = error;
         StatusCode = statusCode;
+        StoreFailure = StoreFailure.None;
         foreach (var response in Responses)
         {
             response.StatusCode = (int)statusCode;

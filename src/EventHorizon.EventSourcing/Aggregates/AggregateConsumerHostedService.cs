@@ -18,6 +18,7 @@ public class AggregateConsumerHostedService<TParent, TAction, T> : IHostedServic
 {
     private readonly Aggregator<TParent, T> _aggregator;
     private readonly Subscription<TAction> _subscription;
+    private readonly CancellationTokenSource _stopping = new();
 
     public AggregateConsumerHostedService(
         StreamingClient streamingClient,
@@ -33,8 +34,7 @@ public class AggregateConsumerHostedService<TParent, TAction, T> : IHostedServic
             .AddStream<T>()
             .OnBatch(async x =>
             {
-                var messages = x.Messages.Select(m => m.Data).ToArray();
-                var responses = await aggregator.HandleAsync(messages, x.CancellationToken);
+                var responses = await aggregator.HandleWithRetryAsync(x.Messages, x.Nack, _stopping.Token);
                 await aggregator.PublishResponseAsync(responses);
             });
 
@@ -58,8 +58,10 @@ public class AggregateConsumerHostedService<TParent, TAction, T> : IHostedServic
         await _subscription.StartAsync();
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
-        return _subscription.StopAsync();
+        // Ends any in-flight store retry first; its remaining messages are nacked rather than acknowledged.
+        await _stopping.CancelAsync();
+        await _subscription.StopAsync();
     }
 }
