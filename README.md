@@ -64,9 +64,9 @@ All packages are published to [NuGet.org](https://www.nuget.org/).
 
 ```bash
 # Core + In-Memory (for getting started / testing)
-dotnet add package Cts.EventHorizon.EventSourcing
-dotnet add package Cts.EventHorizon.EventStore.InMemory
-dotnet add package Cts.EventHorizon.EventStreaming.InMemory
+dotnet add package EventHorizon.EventSourcing
+dotnet add package EventHorizon.EventStore.InMemory
+dotnet add package EventHorizon.EventStreaming.InMemory
 ```
 
 ### 2. Define your state
