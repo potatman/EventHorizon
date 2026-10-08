@@ -30,6 +30,9 @@ public class MongoCrudStore<T> : ICrudStore<T>
     private readonly IMongoClient _client;
     private readonly AttributeUtil _attributeUtil;
     private readonly IMongoCollection<T> _collection;
+    private readonly MongoCollectionAttribute _collectionAttribute;
+
+    internal IMongoCollection<T> Collection => _collection;
 
     public MongoCrudStore(IMongoClient client, AttributeUtil attributeUtil, string bucketId)
     {
@@ -39,29 +42,48 @@ public class MongoCrudStore<T> : ICrudStore<T>
         var type = typeof(T);
         var database = client.GetDatabase(bucketId);
         var typeName = type.Name.Replace(Tilda1, string.Empty);
-        _collection = database.GetCollection<T>(typeName);
+        _collectionAttribute = GetCollectionAttribute();
+        _collection = ApplyCollectionSettings(database.GetCollection<T>(typeName), _collectionAttribute);
+    }
+
+    // The attribute sits on the state class, so for Snapshot<TState>/View<TState> look at TState.
+    private MongoCollectionAttribute GetCollectionAttribute()
+    {
+        var type = typeof(T);
+        var stateType = type.IsGenericType ? type.GetGenericArguments()[0] : type;
+        return _attributeUtil.GetOne<MongoCollectionAttribute>(stateType);
+    }
+
+    // Applied per instance in the constructor: SetupAsync runs once per process on a single instance.
+    // The With* methods return a new collection object rather than modifying the receiver.
+    private static IMongoCollection<T> ApplyCollectionSettings(IMongoCollection<T> collection, MongoCollectionAttribute attr)
+    {
+        if (attr is null)
+            return collection;
+
+        if (attr.HasReadConcernLevel)
+            collection = collection.WithReadConcern(new ReadConcern(attr.ReadConcernLevel));
+        if (attr.HasReadPreferenceMode)
+            collection = collection.WithReadPreference(new ReadPreference(attr.ReadPreferenceMode));
+        if (attr.HasWriteConcernLevel)
+            collection = collection.WithWriteConcern(attr.WriteConcernLevel switch
+            {
+                WriteConcernLevel.Acknowledged => WriteConcern.Acknowledged,
+                WriteConcernLevel.Unacknowledged => WriteConcern.Unacknowledged,
+                WriteConcernLevel.W1 => WriteConcern.W1,
+                WriteConcernLevel.W2 => WriteConcern.W2,
+                WriteConcernLevel.W3 => WriteConcern.W3,
+                WriteConcernLevel.Majority => WriteConcern.WMajority,
+                _ => throw new ArgumentOutOfRangeException(nameof(attr), attr.WriteConcernLevel, "Unknown write concern level")
+            });
+
+        return collection;
     }
 
     public async Task SetupAsync(CancellationToken ct)
     {
-        var mongoAttr = _attributeUtil.GetOne<MongoCollectionAttribute>(typeof(T));
-        if (mongoAttr?.ReadConcernLevel != null) _collection.WithReadConcern(new ReadConcern(mongoAttr.ReadConcernLevel));
-        if (mongoAttr?.ReadPreferenceMode != null) _collection.WithReadPreference(new ReadPreference(mongoAttr.ReadPreferenceMode));
-        if (mongoAttr?.WriteConcernLevel != null)
-        {
-            switch (mongoAttr.WriteConcernLevel)
-            {
-                case WriteConcernLevel.Acknowledged: _collection.WithWriteConcern(WriteConcern.Acknowledged); break;
-                case WriteConcernLevel.Unacknowledged: _collection.WithWriteConcern(WriteConcern.Unacknowledged); break;
-                case WriteConcernLevel.W1: _collection.WithWriteConcern(WriteConcern.W1); break;
-                case WriteConcernLevel.W2: _collection.WithWriteConcern(WriteConcern.W2); break;
-                case WriteConcernLevel.W3: _collection.WithWriteConcern(WriteConcern.W3); break;
-                case WriteConcernLevel.Majority: _collection.WithWriteConcern(WriteConcern.WMajority); break;
-            }
-        }
-
-        if (mongoAttr?.TimeToLiveMs != null)
-            await AddIndex(CreatedDate1, Builders<T>.IndexKeys.Ascending(x => x.CreatedDate), TimeSpan.FromMilliseconds(mongoAttr.TimeToLiveMs));
+        if (_collectionAttribute?.TimeToLiveMs > 0)
+            await AddIndex(CreatedDate1, Builders<T>.IndexKeys.Ascending(x => x.CreatedDate), TimeSpan.FromMilliseconds(_collectionAttribute.TimeToLiveMs));
 
         await AddIndex(UpdatedDate1, Builders<T>.IndexKeys.Ascending(x => x.UpdatedDate));
     }
