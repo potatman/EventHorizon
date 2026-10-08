@@ -6,6 +6,7 @@ using EventHorizon.EventStore.Interfaces.Factory;
 using EventHorizon.EventStore.Interfaces.Stores;
 using EventHorizon.EventStore.Models;
 using EventHorizon.EventStore.MongoDb.Models;
+using EventHorizon.EventStore.MongoDb.Serialization;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using Lock = EventHorizon.EventStore.Models.Lock;
@@ -49,6 +50,13 @@ public class MongoStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactory<
 
 
         _client = new MongoClient(MongoUrl.Create(mongoConfig.Value.ConnectionString));
+
+        if (mongoConfig.Value.IgnoreExtraElements)
+        {
+            IgnoreExtraElementsRegistry.Register(typeof(Snapshot<T>));
+            IgnoreExtraElementsRegistry.Register(typeof(View<T>));
+            IgnoreExtraElementsRegistry.Register(typeof(Lock));
+        }
     }
 
     public ICrudStore<Lock> GetLockStore()
