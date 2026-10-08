@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -25,6 +26,7 @@ public sealed class PulsarTopicAdminUnitTest : IDisposable
     private readonly PulsarTopicAdmin<Event> _admin;
     private int _statusCode = 200;
     private string _responseBody = "{}";
+    private readonly ConcurrentQueue<string> _requests = new();
 
     public PulsarTopicAdminUnitTest()
     {
@@ -51,6 +53,7 @@ public sealed class PulsarTopicAdminUnitTest : IDisposable
             using var stream = client.GetStream();
             using var reader = new StreamReader(stream, Encoding.UTF8, false, 1024, leaveOpen: true);
 
+            _requests.Enqueue(await reader.ReadLineAsync());
             string line;
             while (!string.IsNullOrEmpty(line = await reader.ReadLineAsync())) { }
 
@@ -65,6 +68,17 @@ public sealed class PulsarTopicAdminUnitTest : IDisposable
     }
 
     public void Dispose() => _listener.Stop();
+
+    [Fact]
+    public async Task RequireTopicMakesOneListCallWhenTopicExists()
+    {
+        _responseBody = $"[\"{Topic}\"]";
+
+        await _admin.RequireTopicAsync(Topic, CancellationToken.None);
+
+        var request = Assert.Single(_requests);
+        Assert.StartsWith("GET /admin/v2/namespaces/test_tenant/test_namespace/topics", request);
+    }
 
     [Fact]
     public async Task SubscriptionExistsWhenPresentInTopicStats()
