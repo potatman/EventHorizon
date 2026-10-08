@@ -11,6 +11,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <InternalsVisibleTo Include="EventHorizon.EventStore.Test" />
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\EventHorizon.EventStore\EventHorizon.EventStore.csproj" />
     </ItemGroup>
 
