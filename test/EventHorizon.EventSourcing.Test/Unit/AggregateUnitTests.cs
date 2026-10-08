@@ -56,6 +56,33 @@ public class AggregateUnitTests
 
 
     [Fact]
+    public void TestAggregateFromSnapshotKeepsSubStates()
+    {
+        var state = new BankAccount
+        {
+            Id = _streamId,
+            User = new User { Id = _streamId, Name = "Bob" },
+            Account = new Account { Id = _streamId, Amount = 100 }
+        };
+        var snapshotWrapper = new Snapshot<BankAccount>(state.Id, 1, state, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow);
+        var aggregate = new Aggregate<BankAccount>(snapshotWrapper);
+
+        Assert.Equal("Bob", aggregate.State.User.Name);
+        Assert.Equal(100, aggregate.State.Account.Amount);
+    }
+
+    [Fact]
+    public void TestUpgradeEvent()
+    {
+        var @event = new Event(_streamId, 5, new UserNameChanged("Bob")).Upgrade();
+
+        Assert.Equal(nameof(UserNameChangedV2), @event.Type);
+        Assert.Equal(5, @event.SequenceId);
+        var payload = JsonSerializer.Deserialize<UserNameChangedV2>(@event.Payload);
+        Assert.Equal("Bob", payload.Name);
+    }
+
+    [Fact]
     public void TestAggregateFromOnlyStreamId()
     {
         var aggregate = new Aggregate<Account>(_streamId);
