@@ -44,6 +44,15 @@ public class Aggregator<TParent, T>
         return _config;
     }
 
+    /// <summary>
+    /// Runs the store setup (index creation / migration) now if it has not run in this process yet.
+    /// Optional: the first store operation does the same. Await it at startup to fail fast on store errors.
+    /// </summary>
+    public Task EnsureStoreSetupAsync(CancellationToken ct)
+    {
+        return _crudStore.SetupAsync(ct);
+    }
+
     public async Task RebuildAllAsync(CancellationToken ct)
     {
         var minDateTime = await _crudStore.GetLastUpdatedDateAsync(ct);

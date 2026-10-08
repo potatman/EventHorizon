@@ -15,12 +15,14 @@ namespace EventHorizon.EventSourcing.Aggregates
         where TSource : class, IState, new()
         where TTarget : class, IState, new()
     {
+        private readonly Aggregator<Snapshot<TTarget>, TTarget> _aggregator;
         private readonly Subscription<Event> _subscription;
 
         public AggregateMigrationHostedService(Aggregator<Snapshot<TTarget>, TTarget> aggregator,
             StreamingClient streamingClient,
             Func<SubscriptionBuilder<Event>, SubscriptionBuilder<Event>> onBuildSubscription = null)
         {
+            _aggregator = aggregator;
             var builder = streamingClient.CreateSubscription<Event>()
                 .AddStream<TSource>()
                 .SubscriptionName($"Migrate-{typeof(TSource).Name}-{typeof(TTarget).Name}")
@@ -50,7 +52,12 @@ namespace EventHorizon.EventSourcing.Aggregates
             _subscription = builder.Build();
         }
 
-        public Task StartAsync(CancellationToken cancellationToken) => _subscription.StartAsync();
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            await _aggregator.EnsureStoreSetupAsync(cancellationToken);
+            await _subscription.StartAsync();
+        }
+
         public Task StopAsync(CancellationToken cancellationToken) => _subscription.StopAsync();
     }
 }
