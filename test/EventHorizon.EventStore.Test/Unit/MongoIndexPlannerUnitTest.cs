@@ -5,6 +5,7 @@ using EventHorizon.Abstractions.Attributes;
 using EventHorizon.Abstractions.Interfaces;
 using EventHorizon.Abstractions.Util;
 using EventHorizon.EventStore.Models;
+using EventHorizon.EventStore.MongoDb.Models;
 using EventHorizon.EventStore.MongoDb;
 using EventHorizon.EventStore.MongoDb.Attributes;
 using EventHorizon.EventStore.MongoDb.Indexes;
@@ -187,6 +188,17 @@ public class MongoIndexPlannerUnitTest
         var store = new MongoCrudStore<View<PlainState>>(client, new AttributeUtil(), "test_db");
 
         Assert.Equal(new[] { "UpdatedDate_1" }, store.GetIndexSpecs(null).Select(x => x.Name));
+    }
+
+    [Fact]
+    public void AttributeWithoutTimeToLiveCreatesNoTtlIndex()
+    {
+        using var client = new MongoClient("mongodb://localhost:27017");
+        var store = new MongoCrudStore<Snapshot<PlainState>>(client, new AttributeUtil(), "test_db");
+
+        var specs = store.GetIndexSpecs(new MongoCollectionAttribute { WriteConcernLevel = WriteConcernLevel.Majority });
+
+        Assert.Equal(new[] { "UpdatedDate_1" }, specs.Select(x => x.Name));
     }
 
     #endregion
