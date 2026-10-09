@@ -125,7 +125,7 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
     public async Task<DateTime> GetLastUpdatedDateAsync(CancellationToken ct)
     {
         var res = await _client.SearchAsync<Snapshot<TE>>(x =>
-                x.Index(_dbName)
+                x.Indices(_dbName)
                     .Size(1)
                     .Source(new SourceConfig(new SourceFilter
                     {
@@ -234,6 +234,6 @@ public class ElasticCrudStore<TE> : ICrudStore<TE>
             throw ex;
         }
 
-        throw new Exception("Unknown Elastic Exception");
+        throw new TransportException("Unknown Elastic Exception");
     }
 }

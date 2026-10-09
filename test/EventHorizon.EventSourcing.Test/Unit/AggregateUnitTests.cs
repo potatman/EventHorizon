@@ -74,7 +74,10 @@ public class AggregateUnitTests
     [Fact]
     public void TestUpgradeEvent()
     {
+        // UserNameChanged is marked [Obsolete] as a legacy event; upgrading it is what this test covers.
+#pragma warning disable CS0612
         var @event = new Event(_streamId, 5, new UserNameChanged("Bob")).Upgrade();
+#pragma warning restore CS0612
 
         Assert.Equal(nameof(UserNameChangedV2), @event.Type);
         Assert.Equal(5, @event.SequenceId);

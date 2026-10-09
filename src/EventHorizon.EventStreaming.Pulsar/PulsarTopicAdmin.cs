@@ -23,7 +23,6 @@ namespace EventHorizon.EventStreaming.Pulsar;
 public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
 {
     private readonly PulsarClientResolver _clientResolver;
-    private readonly IPulsarAdminRESTAPIClient _admin;
     private readonly ILogger<PulsarTopicAdmin<T>> _logger;
     private readonly PulsarNamespaceAttribute _pulsarAttribute;
 
@@ -62,7 +61,7 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
                 if (topics.Contains(topic.ToString()))
                     break;
 
-                await Task.Delay(100);
+                await Task.Delay(100, ct);
             }
         }
         catch (ApiException ex)
@@ -109,12 +108,7 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         }
     }
 
-    private async Task<IPulsarAdminRESTAPIClient> GetAdmin()
-    {
-        if (_admin != null) return _admin;
-
-        return await _clientResolver.GetAdminClientAsync();
-    }
+    private Task<IPulsarAdminRESTAPIClient> GetAdmin() => _clientResolver.GetAdminClientAsync();
 
     private async Task<JsonElement> GetTopicStatsJson(string str, CancellationToken ct,
         bool authoritative = false, bool getPreciseBacklog = false,

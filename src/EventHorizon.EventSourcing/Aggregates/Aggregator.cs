@@ -74,8 +74,8 @@ public class Aggregator<TParent, T>
             var dict = new Dictionary<string, Aggregate<T>>();
             foreach (var streamId in streamIds)
             {
-                var agg = modelsDict.ContainsKey(streamId)
-                    ? new Aggregate<T>(modelsDict[streamId])
+                var agg = modelsDict.TryGetValue(streamId, out var model)
+                    ? new Aggregate<T>(model)
                     : new Aggregate<T>(streamId);
 
                 foreach (var message in lookup[streamId])

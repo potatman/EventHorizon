@@ -21,7 +21,6 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
     private readonly ITopicAdmin<T> _admin;
     private bool _disposed;
     private bool _running;
-    private bool _stopped;
     private Task _loop = Task.CompletedTask;
     private CancellationTokenSource _stopping = new();
 
@@ -37,7 +36,6 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
     {
         if (_running) return this;
         _running = true;
-        _stopped = false;
 
         // Initialize
         await _consumer.InitAsync();
@@ -93,7 +91,6 @@ public class Subscription<T> : IAsyncDisposable where T : class, ITopicMessage, 
                 _logger.LogError(ex, "Subscription - Unhandled Exception {Message} {Subscription}", ex.Message, _config.SubscriptionName);
             }
         }
-        _stopped = true;
     }
 
     public async Task<MessageContext<T>[]> NextBatch()
