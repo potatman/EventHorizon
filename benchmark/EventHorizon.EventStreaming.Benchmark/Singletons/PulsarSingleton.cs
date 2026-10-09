@@ -34,8 +34,8 @@ public class PulsarSingleton : IAsyncDisposable
     public Publisher<Event> GetPublisher<T>()
     {
         var type = typeof(T);
-        if (Publishers.ContainsKey(type))
-            return Publishers[type];
+        if (Publishers.TryGetValue(type, out var publisher))
+            return publisher;
 
         Publishers[type] = StreamClient.Value.CreatePublisher<Event>()
             .AddStream<T>()
@@ -46,8 +46,8 @@ public class PulsarSingleton : IAsyncDisposable
     public ITopicConsumer<Event> GetConsumer<T>()
     {
         var type = typeof(T);
-        if (Consumers.ContainsKey(type))
-            return Consumers[type];
+        if (Consumers.TryGetValue(type, out var consumer))
+            return consumer;
 
         var topics = Factory.Value.GetTopicResolver().GetTopics<Event>(type);
         Consumers[type] = Factory.Value.CreateConsumer(new SubscriptionConfig<Event>
@@ -63,8 +63,8 @@ public class PulsarSingleton : IAsyncDisposable
     public Reader<Event> GetReader<T>()
     {
         var type = typeof(T);
-        if (Readers.ContainsKey(type))
-            return Readers[type];
+        if (Readers.TryGetValue(type, out var reader))
+            return reader;
 
         Readers[type] = StreamClient.Value.CreateReader<Event>()
             .AddStream<T>()

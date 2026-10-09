@@ -1,7 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -21,7 +23,6 @@ namespace EventHorizon.EventStreaming.Pulsar;
 public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
 {
     private readonly PulsarClientResolver _clientResolver;
-    private readonly IPulsarAdminRESTAPIClient _admin;
     private readonly ILogger<PulsarTopicAdmin<T>> _logger;
     private readonly PulsarNamespaceAttribute _pulsarAttribute;
 
@@ -36,6 +37,12 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
     {
         var admin = await GetAdmin();
         var topic = PulsarTopicParser.Parse(str);
+
+        // Topics almost always exist already: one namespace-level list call instead of the tenant,
+        // namespace and create round-trips below, and no tenant-level admin permission needed.
+        if (await TopicExistsAsync(admin, topic, ct))
+            return;
+
         await RequireTenant(topic.Tenant, ct);
         await RequireNamespace(topic, ct);
 
@@ -54,14 +61,30 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
                 if (topics.Contains(topic.ToString()))
                     break;
 
-                await Task.Delay(100);
+                await Task.Delay(100, ct);
             }
         }
         catch (ApiException ex)
         {
             // 409 - Topic already exist
-            if (ex.StatusCode > 300 && ex.StatusCode != 409)
+            // Concurrent creates can also surface AlreadyExistsException as a 500
+            if (ex.StatusCode > 300 && ex.StatusCode != 409 && !ex.Message.Contains("AlreadyExistsException"))
                 throw;
+        }
+    }
+
+    // Any failure (missing namespace, no permission to list) means "unknown", and the caller takes the create path.
+    private static async Task<bool> TopicExistsAsync(IPulsarAdminRESTAPIClient admin, PulsarTopic topic, CancellationToken ct)
+    {
+        try
+        {
+            var topics = await admin.GetTopicsAsync(topic.Tenant, topic.Namespace,
+                topic.IsPersisted ? Mode.PERSISTENT : Mode.NON_PERSISTENT, false, ct);
+            return topics?.Contains(topic.ToString()) == true;
+        }
+        catch (ApiException)
+        {
+            return false;
         }
     }
 
@@ -85,12 +108,7 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         }
     }
 
-    private async Task<IPulsarAdminRESTAPIClient> GetAdmin()
-    {
-        if (_admin != null) return _admin;
-
-        return await _clientResolver.GetAdminClientAsync();
-    }
+    private Task<IPulsarAdminRESTAPIClient> GetAdmin() => _clientResolver.GetAdminClientAsync();
 
     private async Task<JsonElement> GetTopicStatsJson(string str, CancellationToken ct,
         bool authoritative = false, bool getPreciseBacklog = false,
@@ -130,6 +148,34 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         } while (++attempt < attempts);
 
         return null;
+    }
+
+    public async Task<bool> SubscriptionExistsAsync(string[] topics, string subscriptionName, CancellationToken ct)
+    {
+        var exists = false;
+        foreach (var topic in topics)
+            exists |= await SubscriptionExistsAsync(topic, subscriptionName, ct);
+
+        _logger.LogInformation("Subscription {SubscriptionName} exists: {Exists}", subscriptionName, exists);
+
+        return exists;
+    }
+
+    public async Task<bool> SubscriptionExistsAsync(string topic, string subscriptionName, CancellationToken ct)
+    {
+        JsonElement stats;
+        try
+        {
+            stats = await GetTopicStatsJson(topic, ct, subscriptionBacklogSize: false);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            // Topic doesn't exist yet, so neither does the subscription.
+            return false;
+        }
+
+        return stats.TryGetProperty("subscriptions", out var subscriptions)
+               && subscriptions.TryGetProperty(subscriptionName, out _);
     }
 
     private async Task<PulsarKeyHashRanges> TryTopicConsumerKeyHashRanges(string topic, string subscriptionName, string consumerName,

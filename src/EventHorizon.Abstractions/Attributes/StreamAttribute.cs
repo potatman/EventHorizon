@@ -18,7 +18,7 @@ namespace EventHorizon.Abstractions.Attributes
         public StreamAttribute(Type subType)
         {
             var attr = subType.GetCustomAttribute<StreamAttribute>();
-            if (attr == null) throw new Exception($"{subType.Name} is missing StreamAttribute");
+            if (attr == null) throw new ArgumentException($"{subType.Name} is missing StreamAttribute", nameof(subType));
             SubType = subType;
             Topic = attr.Topic;
         }

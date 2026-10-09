@@ -19,6 +19,8 @@ public class LockDisposable : IAsyncDisposable
     private readonly ILogger<LockDisposable> _logger;
     private bool _isReleased;
     private bool _ownsLock;
+    private bool _isTimeoutStarted;
+    private static readonly TimeSpan ExitTimeout = TimeSpan.FromSeconds(2);
     private readonly string _hostname;
 
     public LockDisposable(ICrudStore<Lock> crudStore, string id, string hostname, TimeSpan timeout, ILogger<LockDisposable> logger)
@@ -33,7 +35,12 @@ public class LockDisposable : IAsyncDisposable
         AppDomain.CurrentDomain.ProcessExit += OnExit;
     }
 
-    public async Task<LockDisposable> WaitForLockAsync()
+    public Task<LockDisposable> WaitForLockAsync()
+    {
+        return WaitForLockAsync(CancellationToken.None);
+    }
+
+    public async Task<LockDisposable> WaitForLockAsync(CancellationToken ct)
     {
         _logger.LogInformation("Lock - Try lock {Name} on {Host}", _id, _hostname);
 
@@ -41,7 +48,7 @@ public class LockDisposable : IAsyncDisposable
         {
             _ownsLock = await TryLockAsync();
             if (!_ownsLock)
-                await Task.Delay(200);
+                await Task.Delay(200, ct);
         } while (!_ownsLock);
 
         _logger.LogInformation("Lock - Acquired lock {Name} on {Host}", _id, _hostname);
@@ -56,7 +63,7 @@ public class LockDisposable : IAsyncDisposable
             var result = await _crudStore.InsertAsync(new[] { @lock }, CancellationToken.None);
             _ownsLock = result.FailedIds?.Any() != true;
         }
-        catch (Exception e)
+        catch (Exception)
         {
             // ignore
         }
@@ -64,11 +71,12 @@ public class LockDisposable : IAsyncDisposable
         if (!_ownsLock)
         {
             var current = (await _crudStore.GetAllAsync(new[] { _id }, CancellationToken.None)).FirstOrDefault();
-            if (current != null)
-                return current.Expiration < DateTime.UtcNow || current.Owner == _hostname;
+            _ownsLock = current is not null && (current.Expiration < DateTime.UtcNow || current.Owner == _hostname);
         }
 
-        SetTimeout();
+        // Only an acquired lock gets an expiry timer; failed attempts must not schedule a release.
+        if (_ownsLock)
+            _ = ExpireAsync();
 
         return _ownsLock;
     }
@@ -79,25 +87,50 @@ public class LockDisposable : IAsyncDisposable
             return this;
 
         _isReleased = true;
+        AppDomain.CurrentDomain.ProcessExit -= OnExit;
         await _crudStore.DeleteAsync(new[] { _id }, CancellationToken.None);
         _logger.LogInformation("Lock - Released lock {Name} on {Host}", _id, Environment.MachineName);
         return this;
     }
 
-    private async void SetTimeout()
+    // Fire-and-forget: exceptions are logged here, since nothing awaits this task.
+    private async Task ExpireAsync()
     {
-        await Task.Delay(_timeout);
-        await ReleaseAsync();
+        if (_isTimeoutStarted)
+            return;
+
+        _isTimeoutStarted = true;
+        try
+        {
+            await Task.Delay(_timeout);
+            await ReleaseAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Lock - Failed to release expired lock {Name} on {Host}", _id, _hostname);
+        }
     }
 
     private void OnExit(object sender, EventArgs e)
     {
-        if(!_isReleased)
-            ReleaseAsync().Wait();
+        // ProcessExit handlers are synchronous and time-limited, so wait briefly and never throw.
+        if (_isReleased)
+            return;
+
+        try
+        {
+            ReleaseAsync().Wait(ExitTimeout);
+        }
+        catch (Exception)
+        {
+            // Best effort: the lock expires on its own.
+        }
     }
 
     public async ValueTask DisposeAsync()
     {
+        // Unsubscribe even when the lock was never acquired, so the ProcessExit handler does not keep this instance alive.
+        AppDomain.CurrentDomain.ProcessExit -= OnExit;
         if(!_isReleased)
             await ReleaseAsync();
     }

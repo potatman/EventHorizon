@@ -7,11 +7,19 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Elastic.Clients.Elasticsearch" Version="9.3.6" />
+        <InternalsVisibleTo Include="EventHorizon.EventStore.Test" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Elastic.Clients.Elasticsearch" Version="9.5.3" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\EventHorizon.EventStore\EventHorizon.EventStore.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="EventHorizon.EventStore.Test" />
     </ItemGroup>
 
 </Project>

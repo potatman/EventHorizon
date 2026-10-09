@@ -82,7 +82,7 @@ public class RetryTopicReader<T>: IAsyncDisposable where T : class, ITopicMessag
     {
         var topicStreamsByTopic = topicStreams.ToLookup(ts => ts.Topic);
 
-        var contexts = topicStreamsByTopic
+        var contexts = (await Task.WhenAll(topicStreamsByTopic
             .Select(async tsl => new TopicReaderContext
             {
                 Topic = tsl.Key,
@@ -91,8 +91,7 @@ public class RetryTopicReader<T>: IAsyncDisposable where T : class, ITopicMessag
                 Reader = await GetReader(tsl.Key),
                 ReaderStartTime = tsl.Min(s => s.LastMessagePublishTime),
                 ContinueReading = true,
-            })
-            .Select(t => t.Result)
+            })))
             .ToDictionary(trc => trc.Topic);
 
         foreach (var context in contexts.Values)
