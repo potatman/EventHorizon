@@ -1,17 +1,25 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <TargetFramework>net10.0</TargetFramework>
         <LangVersion>latest</LangVersion>
         <NoWarn>$(NoWarn)</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Elastic.Clients.Elasticsearch" Version="9.3.6" />
+        <InternalsVisibleTo Include="EventHorizon.EventStore.Test" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Elastic.Clients.Elasticsearch" Version="9.5.3" />
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\EventHorizon.EventStore\EventHorizon.EventStore.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="EventHorizon.EventStore.Test" />
     </ItemGroup>
 
 </Project>

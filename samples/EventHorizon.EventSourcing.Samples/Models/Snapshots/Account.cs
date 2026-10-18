@@ -17,8 +17,7 @@ namespace EventHorizon.EventSourcing.Samples.Models.Snapshots;
 [Stream("$type")]
 [PulsarNamespace("test_bank", "account")]
 [SnapshotStore("test_bank_snapshot_account")]
-[MongoCollection(ReadPreferenceMode = ReadPreferenceMode.SecondaryPreferred,
-    ReadConcernLevel = ReadConcernLevel.Majority,
+[MongoCollection(ReadConcernLevel = ReadConcernLevel.Majority,
     WriteConcernLevel = WriteConcernLevel.Majority)]
 public class Account : IState,
     IHandleRequest<OpenAccount, AccountResponse>,

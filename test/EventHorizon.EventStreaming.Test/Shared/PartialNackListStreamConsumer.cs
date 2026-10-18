@@ -6,7 +6,7 @@ using EventHorizon.Abstractions.Models;
 using EventHorizon.Abstractions.Models.TopicMessages;
 using EventHorizon.EventStreaming.Interfaces.Streaming;
 using EventHorizon.EventStreaming.Subscriptions;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace EventHorizon.EventStreaming.Test.Shared;
 

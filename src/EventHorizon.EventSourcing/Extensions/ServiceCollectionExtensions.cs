@@ -18,7 +18,9 @@ public static class ServiceCollectionExtensions
     public static EventHorizonConfigurator AddEventSourcing(this EventHorizonConfigurator configurator)
     {
         configurator.Collection.TryAddSingleton(typeof(EventSourcingClient<>));
-        configurator.Collection.TryAddSingleton(typeof(AggregateBuilder<,>));
+        // Transient: the builder holds per-caller settings (BatchSize, middleware, ...).
+        configurator.Collection.TryAddTransient(typeof(AggregateBuilder<,>));
+        configurator.Collection.TryAddSingleton(typeof(AggregateStoreSetup<,>));
         configurator.Collection.TryAddSingleton<SenderBuilder>();
         configurator.Collection.TryAddSingleton<SenderSubscriptionTracker>();
         configurator.Collection.TryAddSingleton<ValidationUtil>();

@@ -172,7 +172,6 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             .ConsumerName(NameUtil.AssemblyNameWithGuid)
             .SubscriptionType(_config.SubscriptionType.ToPulsarSubscriptionType())
             .SubscriptionName(_config.SubscriptionName)
-            .ReceiverQueueSize(1000000000) // Allows non-persistent queues to not lose messages
             .Intercept(_intercept);
 
         if (_config.Topics != null)
@@ -185,6 +184,11 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                 _config.IsBeginning == true
                     ? SubscriptionInitialPosition.Earliest
                     : SubscriptionInitialPosition.Latest);
+
+        if (_config.BatchSize != null)
+        {
+            builder = builder.ReceiverQueueSize(_config.BatchSize.Value);
+        }
 
         if (_config.BackoffStrategy != null)
         {
@@ -199,10 +203,18 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             }
         }
 
+        // Only seek when the subscription is about to be created: seeking an existing
+        // subscription would rewind its cursor and re-deliver already-processed messages
+        // on every restart. Racing instances may both see it as new; they seek to the
+        // same timestamp, so the outcome is unchanged.
+        var seekToStartDateTime = _config.StartDateTime != null
+            && !await ((PulsarTopicAdmin<T>)_admin).SubscriptionExistsAsync(
+                _config.Topics, _config.SubscriptionName, cts.Token);
+
         var consumer = await builder.SubscribeAsync();
 
-        if (_config.StartDateTime != null)
-            await consumer.SeekAsync(_config.StartDateTime.Value.Ticks);
+        if (seekToStartDateTime)
+            await consumer.SeekAsync(PulsarMessageMapper.PublishTimestampFromDate(_config.StartDateTime.Value));
 
         // Return
         return consumer;

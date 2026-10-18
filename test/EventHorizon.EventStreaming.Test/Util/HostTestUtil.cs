@@ -8,7 +8,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
-using Xunit.Abstractions;
+using Serilog.Sinks.XUnit3;
+using Xunit;
 
 namespace EventHorizon.EventStreaming.Test.Util;
 
@@ -51,7 +52,7 @@ public static class HostTestUtil
                     .Destructure.UsingAttributes();
 
                 if(output != null)
-                    config.WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture);
+                    config.WriteTo.XUnit3TestOutput(new XUnit3TestOutputSink(new XUnit3TestOutputSinkOptions(FormatProvider: CultureInfo.InvariantCulture)) { TestOutputHelper = output }, LogEventLevel.Information);
             })
             .UseEnvironment("test");
     }

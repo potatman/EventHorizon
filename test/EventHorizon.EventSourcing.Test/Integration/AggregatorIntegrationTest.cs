@@ -24,8 +24,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
+using Serilog.Sinks.XUnit3;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace EventHorizon.EventSourcing.Test.Integration;
 
@@ -65,7 +65,7 @@ public class AggregatorIntegrationTest : IAsyncLifetime
             .UseSerilog((_, config) =>
             {
                 config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-                    .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
+                    .WriteTo.XUnit3TestOutput(new XUnit3TestOutputSink(new XUnit3TestOutputSinkOptions(FormatProvider: CultureInfo.InvariantCulture)) { TestOutputHelper = output }, LogEventLevel.Information)
                     .Destructure.UsingAttributes();
             })
             .UseEnvironment("test")
@@ -81,13 +81,13 @@ public class AggregatorIntegrationTest : IAsyncLifetime
         _snapshotStore = _host.Services.GetRequiredService<ISnapshotStoreFactory<Account>>().GetSnapshotStore();
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _host.StartAsync();
         _stopwatch = Stopwatch.StartNew();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _output.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _snapshotStore.DropDatabaseAsync(CancellationToken.None);

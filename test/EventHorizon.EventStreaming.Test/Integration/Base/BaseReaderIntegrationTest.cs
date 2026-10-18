@@ -9,7 +9,6 @@ using EventHorizon.EventStreaming.Test.Fakers;
 using EventHorizon.EventStreaming.Test.Util;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace EventHorizon.EventStreaming.Test.Integration.Base;
 
@@ -29,7 +28,7 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
         _streamingClient = provider.GetRequiredService<StreamingClient>();
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         // Note: uncomment for large dbs
         // var preEvents =_dataClassFixture.GetMessages(100000);
@@ -45,7 +44,7 @@ public abstract class BaseReaderIntegrationTest : IAsyncLifetime
         _stopwatch = Stopwatch.StartNew();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged));
