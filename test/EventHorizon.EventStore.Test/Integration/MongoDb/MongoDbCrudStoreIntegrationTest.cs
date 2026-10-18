@@ -1,7 +1,6 @@
 ﻿using EventHorizon.EventStore.Test.Integration.Base;
 using EventHorizon.EventStore.Test.Util;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace EventHorizon.EventStore.Test.Integration.MongoDb;
 

@@ -102,8 +102,9 @@ public class PulsarTopicAdmin<T> : ITopicAdmin<T> where T : ITopicMessage
         }
         catch (ApiException ex)
         {
+            // 204 - Deleted; the generated admin client throws on the broker's empty success response
             // 404 - Namespace or topic does not exist
-            if (ex.StatusCode != 404)
+            if (ex.StatusCode is not (204 or 404))
                 throw;
         }
     }

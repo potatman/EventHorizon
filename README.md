@@ -38,8 +38,6 @@
 | .NET Version | Support Level | End of Support |
 |---|---|---|
 | .NET 10 | ✅ LTS | November 2028 |
-| .NET 9 | ✅ STS | May 2026 |
-| .NET 8 | ✅ LTS | November 2026 |
 
 ## NuGet Packages
 

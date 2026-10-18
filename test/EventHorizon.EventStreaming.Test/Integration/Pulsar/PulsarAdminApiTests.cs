@@ -14,7 +14,6 @@ using EventHorizon.EventStreaming.Test.Fakers;
 using EventHorizon.EventStreaming.Test.Util;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace EventHorizon.EventStreaming.Test.Integration.Pulsar;
 
@@ -41,16 +40,16 @@ public class PulsarAdminApiTests: IAsyncLifetime
         _pulsarTopicResolver = new(attributeUtil);
     }
 
-    public Task InitializeAsync()
+    public ValueTask InitializeAsync()
     {
         int sequenceId = 0;
         _events = EventStreamingFakers.Feed1PriceChangedFaker.Generate(1000)
             .Select(x => new Event(x.Id, ++sequenceId, x)).ToArray();
         _stopwatch = Stopwatch.StartNew();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged));
@@ -77,7 +76,7 @@ public class PulsarAdminApiTests: IAsyncLifetime
         await using var subscription2 = await builder.Build().StartAsync();
         using var httpClient = _pulsarClientResolver.GetAdminHttpClient();
 
-        await Task.Delay(TimeSpan.FromSeconds(1));
+        await Task.Delay(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
 
         var cts = new CancellationTokenSource();
         cts.CancelAfter(_timeout);

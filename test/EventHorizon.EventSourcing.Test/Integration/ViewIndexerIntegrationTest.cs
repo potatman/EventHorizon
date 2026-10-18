@@ -23,8 +23,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
+using Serilog.Sinks.XUnit3;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace EventHorizon.EventSourcing.Test.Integration;
 
@@ -62,7 +62,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
             .UseSerilog((_, config) =>
             {
                 config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-                    .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
+                    .WriteTo.XUnit3TestOutput(new XUnit3TestOutputSink(new XUnit3TestOutputSinkOptions(FormatProvider: CultureInfo.InvariantCulture)) { TestOutputHelper = output }, LogEventLevel.Information)
                     .Destructure.UsingAttributes();
             })
             .UseEnvironment("test")
@@ -74,13 +74,13 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
         _userAccountStore = _host.Services.GetRequiredService<IViewStoreFactory<SearchAccountView>>().GetViewStore();
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _host.StartAsync();
         _stopwatch = Stopwatch.StartNew();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _output.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _accountStore.DropDatabaseAsync(CancellationToken.None);
@@ -104,7 +104,7 @@ public class ViewIndexerIntegrationTest : IAsyncLifetime
         await publisher.PublishAsync(new Event(streamId, new AccountOpened(100)));
 
         // Wait for Subscription
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        await Task.Delay(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken);
 
         // Assert Account
         var views = await _accountStore.GetAllAsync(new [] { streamId }, CancellationToken.None);

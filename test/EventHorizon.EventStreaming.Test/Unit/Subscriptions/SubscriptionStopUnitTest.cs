@@ -8,7 +8,6 @@ using EventHorizon.EventStreaming.Test.Fakers;
 using EventHorizon.EventStreaming.Test.Util;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace EventHorizon.EventStreaming.Test.Unit.Subscriptions;
 
@@ -57,7 +56,7 @@ public class SubscriptionStopUnitTest
             .OnBatch(_ => Task.CompletedTask)
             .Build()
             .StartAsync();
-        await Task.Delay(200);
+        await Task.Delay(200, TestContext.Current.CancellationToken);
 
         var sw = Stopwatch.StartNew();
         await subscription.StopAsync();

@@ -31,8 +31,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using Serilog.Events;
+using Serilog.Sinks.XUnit3;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace EventHorizon.EventSourcing.Test.Integration;
 
@@ -68,7 +68,7 @@ public class SenderIntegrationTest : IAsyncLifetime
             .UseSerilog((_, config) =>
             {
                 config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-                    .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
+                    .WriteTo.XUnit3TestOutput(new XUnit3TestOutputSink(new XUnit3TestOutputSinkOptions(FormatProvider: CultureInfo.InvariantCulture)) { TestOutputHelper = output }, LogEventLevel.Information)
                     .Destructure.UsingAttributes();
             })
             .UseEnvironment("test")
@@ -94,7 +94,7 @@ public class SenderIntegrationTest : IAsyncLifetime
             .UseSerilog((_, config) =>
             {
                 config.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-                    .WriteTo.TestOutput(output, LogEventLevel.Information, formatProvider: CultureInfo.InvariantCulture)
+                    .WriteTo.XUnit3TestOutput(new XUnit3TestOutputSink(new XUnit3TestOutputSinkOptions(FormatProvider: CultureInfo.InvariantCulture)) { TestOutputHelper = output }, LogEventLevel.Information)
                     .Destructure.UsingAttributes();
             })
             .UseEnvironment("test")
@@ -115,14 +115,14 @@ public class SenderIntegrationTest : IAsyncLifetime
         _streamingClient = _senderHost.Services.GetRequiredService<StreamingClient>();
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await _consumerHost.StartAsync();
         await _senderHost.StartAsync();
         _stopwatch = Stopwatch.StartNew();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _output.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _eventSourcingClient.GetSnapshotStore().DropDatabaseAsync(CancellationToken.None);

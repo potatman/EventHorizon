@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dotnet-version: ["8.0.x", "9.0.x", "10.0.x"]
+        dotnet-version: ["10.0.x"]
 
     steps:
       - name: Checkout
@@ -39,9 +39,25 @@ jobs:
       - name: Build
         run: dotnet build EventHorizon.sln --configuration ${{ env.CONFIGURATION }} --no-restore
 
+      # MTP mode (global.json "test" section): options after `--` go to every test app.
+      # Each module writes its own TRX (default name embeds the assembly name) into the
+      # shared results directory. Option values after `--` need `=` syntax: the SDK 10
+      # CLI can misparse a space-separated value naming an existing directory.
       - name: Test
-        run: dotnet test EventHorizon.sln --configuration ${{ env.CONFIGURATION }} --no-build --logger "trx;LogFileName=results.trx" --filter "Category!=Integration"
-        continue-on-error: false
+        run: |
+          dotnet test --solution EventHorizon.sln --configuration ${{ env.CONFIGURATION }} --no-build \
+            -- \
+            --results-directory="$PWD/test-results" \
+            --report-trx \
+            --filter-not-trait="Category=Integration"
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: ./test-results/*.trx
+          retention-days: 30
 
   publish:
     needs: build
