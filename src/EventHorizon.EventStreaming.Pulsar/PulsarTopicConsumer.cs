@@ -12,6 +12,8 @@ using EventHorizon.EventStreaming.Subscriptions;
 using EventHorizon.EventStreaming.Subscriptions.Backoff;
 using EventHorizon.EventStreaming.Tracing;
 using EventHorizon.EventStreaming.Util;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Pulsar.Client.Api;
 using Pulsar.Client.Common;
 using Pulsar.Client.Otel;
@@ -26,17 +28,20 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     private readonly SubscriptionConfig<T> _config;
     private readonly ITopicAdmin<T> _admin;
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
+    private readonly ILogger _logger;
     private IConsumer<T> _consumer;
     private Dictionary<string, Message<T>> _unackedMessages = new();
 
     public PulsarTopicConsumer(
         PulsarClientResolver clientResolver,
         SubscriptionConfig<T> config,
-        ITopicAdmin<T> admin)
+        ITopicAdmin<T> admin,
+        ILogger<PulsarTopicConsumer<T>> logger = null)
     {
         _clientResolver = clientResolver;
         _config = config;
         _admin = admin;
+        _logger = logger ?? NullLogger<PulsarTopicConsumer<T>>.Instance;
         _intercept = new OtelConsumerInterceptor.OTelConsumerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
     }
@@ -50,6 +55,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     {
         try
         {
+            _consumer ??= await GetConsumerAsync();
             var messages = await GetNextCustomAsync(ct);
             if (!messages.Any())
                 return null;
@@ -72,12 +78,32 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
             return contexts;
         }
-        catch (AlreadyClosedException)
+        catch (AlreadyClosedException ex)
         {
-            // Ignore AlreadyClosedException
+            // A closed consumer never reopens: without a new one the subscription would poll a
+            // dead consumer forever, holding no slot on the broker and logging nothing.
+            _logger.LogWarning(ex, "Consumer for {Subscription} was closed, resubscribing on the next batch",
+                _config.SubscriptionName);
+            await ResetConsumerAsync();
             return null;
         }
+    }
 
+    private async Task ResetConsumerAsync()
+    {
+        var consumer = _consumer;
+        _consumer = null;
+        _unackedMessages.Clear();
+        if (consumer == null) return;
+
+        try
+        {
+            await consumer.DisposeAsync();
+        }
+        catch (Exception)
+        {
+            // Best effort; the consumer is already closed.
+        }
     }
 
     private async Task<Message<T>[]> GetNextCustomAsync(CancellationToken ct)

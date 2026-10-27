@@ -48,7 +48,8 @@ public class PulsarStreamFactory : IStreamFactory
             return new OrderGuaranteedPulsarTopicConsumer<T>(_clientResolver, config,
                 this, _loggerFactory);
         }
-        return new PulsarTopicConsumer<T>(_clientResolver, config, CreateAdmin<T>());
+        return new PulsarTopicConsumer<T>(_clientResolver, config, CreateAdmin<T>(),
+            _loggerFactory.CreateLogger<PulsarTopicConsumer<T>>());
     }
 
     public ITopicReader<T> CreateReader<T>(ReaderConfig config) where T : class, ITopicMessage, new()

@@ -30,7 +30,6 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     private readonly OTelProducerInterceptor.OTelProducerInterceptor<T> _intercept;
     private readonly string _publisherName;
     private IProducer<T> _producer;
-    private readonly SemaphoreSlim _semaphoreSlim;
 
     public PulsarTopicProducer(
         PulsarClientResolver clientResolver,
@@ -45,7 +44,6 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
         _publisherName = NameUtil.AssemblyNameWithGuid;
         _intercept = new OTelProducerInterceptor.OTelProducerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
-        _semaphoreSlim = new SemaphoreSlim(1, 1);
     }
 
     public async Task SendAsync(params T[] messages)
@@ -103,17 +101,14 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
 
     private async Task<IProducer<T>> GetProducerAsync()
     {
-        // Defensive
-        if (_producer != null) return _producer;
+        return _producer ??= await _clientResolver.GetOrAddProducerAsync(
+            typeof(T), _config.Topic, _config.SendTimeout, CreateProducerAsync);
+    }
 
-        // Lock is for Parallel Requests for some Producer
-        await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(10));
-
-        // Second Release is if they got past first
-        if (_producer != null) return _producer;
-
+    private async Task<IProducer<T>> CreateProducerAsync()
+    {
         // Ensure Topic Exists
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         await _admin.RequireTopicAsync(_config.Topic, cts.Token);
 
         var client = await _clientResolver.GetPulsarClientAsync();
@@ -128,15 +123,14 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
             .Intercept(_intercept)
             .Topic(_config.Topic);
 
-        _producer = await builder.CreateAsync();
-
-        _semaphoreSlim.Release();
-        return _producer;
+        return await builder.CreateAsync();
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        if(_producer != null) await _producer.DisposeAsync();
+        // The producer is shared by every publisher of this type and topic and closes with the
+        // client; disposing it here would break the other publishers.
         _producer = null;
+        return ValueTask.CompletedTask;
     }
 }

@@ -102,9 +102,25 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
 
             return contexts;
         }
-        catch (AlreadyClosedException)
+        catch (AlreadyClosedException ex)
         {
-            // Ignore AlreadyClosedException
+            // A closed consumer never reopens; GetConsumerAsync subscribes a new one next batch.
+            _logger.LogWarning(ex, "Consumer for {Subscription} was closed, resubscribing on the next batch",
+                _config.SubscriptionName);
+            var consumer = _consumer;
+            _consumer = null;
+            if (consumer != null)
+            {
+                try
+                {
+                    await consumer.DisposeAsync();
+                }
+                catch (Exception)
+                {
+                    // Best effort; the consumer is already closed.
+                }
+            }
+
             return null;
         }
     }
