@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +16,7 @@ namespace EventHorizon.EventStreaming.Pulsar;
 public class PulsarClientResolver : IDisposable, IAsyncDisposable
 {
     private readonly SemaphoreSlim _clientSemaphore = new(1, 1);
+    private readonly ConcurrentDictionary<(Type MessageType, string Topic, TimeSpan SendTimeout), Lazy<Task<object>>> _producers = new();
     private IOptions<PulsarConfig> _options;
     private PulsarAdminRESTAPIClient _admin;
     private PulsarClient _client;
@@ -51,6 +54,46 @@ public class PulsarClientResolver : IDisposable, IAsyncDisposable
         finally
         {
             _clientSemaphore.Release();
+        }
+    }
+
+    /// <summary>
+    /// Returns the process-wide producer for a message type, topic and send timeout, creating it
+    /// on first use. Publishers are built per aggregator and sender, which callers build per
+    /// message batch or request, so a producer per publisher grows without bound, and every
+    /// idle producer keeps its batching and send-timeout timers running. Shared producers close
+    /// with the client. A failed creation is evicted so the next caller retries it.
+    /// </summary>
+    internal async Task<TProducer> GetOrAddProducerAsync<TProducer>(
+        Type messageType, string topic, TimeSpan sendTimeout, Func<Task<TProducer>> create)
+        where TProducer : class
+    {
+        var key = (messageType, topic, sendTimeout);
+        var entry = _producers.GetOrAdd(key, _ => new Lazy<Task<object>>(async () => await create()));
+        try
+        {
+            return (TProducer)await entry.Value;
+        }
+        catch
+        {
+            _producers.TryRemove(new KeyValuePair<(Type, string, TimeSpan), Lazy<Task<object>>>(key, entry));
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Drops a shared producer that can no longer send (closed or its topic terminated), so the
+    /// next caller creates a new one. Only removes the entry if it still holds that producer.
+    /// </summary>
+    internal void EvictProducer(Type messageType, string topic, TimeSpan sendTimeout, object producer)
+    {
+        var key = (messageType, topic, sendTimeout);
+        if (_producers.TryGetValue(key, out var entry)
+            && entry.IsValueCreated
+            && entry.Value.IsCompletedSuccessfully
+            && ReferenceEquals(entry.Value.Result, producer))
+        {
+            _producers.TryRemove(new KeyValuePair<(Type, string, TimeSpan), Lazy<Task<object>>>(key, entry));
         }
     }
 
@@ -143,6 +186,9 @@ public class PulsarClientResolver : IDisposable, IAsyncDisposable
                     // Best effort close; broker may already be unreachable.
                 }
             }
+
+            // Closing the client closed the shared producers.
+            _producers.Clear();
 
             // Large fields to null;
             _options = null;

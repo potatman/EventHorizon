@@ -18,4 +18,8 @@
         <ProjectReference Include="..\EventHorizon.EventStreaming\EventHorizon.EventStreaming.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="EventHorizon.EventStreaming.Test" />
+    </ItemGroup>
+
 </Project>
