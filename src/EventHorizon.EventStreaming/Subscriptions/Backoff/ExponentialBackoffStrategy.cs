@@ -23,7 +23,7 @@ public class ExponentialBackoffStrategy: IBackoffStrategy
 
     public TimeSpan NextInterval(int attempts)
     {
-        if (attempts < 0) throw new ArgumentOutOfRangeException(nameof(attempts));
+        ArgumentOutOfRangeException.ThrowIfNegative(attempts);
 
         var baseBackoff = Math.Pow(2, attempts) * BaseMs;
         var jitter = (int)(baseBackoff * JitterFactor);

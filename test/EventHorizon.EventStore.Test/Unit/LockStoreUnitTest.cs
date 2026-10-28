@@ -12,7 +12,7 @@ using EventHorizon.EventStore.Test.Models;
 using EventHorizon.EventStore.Test.Util;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
-using Xunit.Abstractions;
+using Lock = EventHorizon.EventStore.Models.Lock;
 
 namespace EventHorizon.EventStore.Test.Unit;
 
@@ -44,8 +44,8 @@ public class LockStoreUnitTest : IAsyncLifetime
         var id = _faker.Random.AlphaNumeric(10);
         await using var lock1 = _lockFactory.CreateLock(id, "host-1", TimeSpan.FromSeconds(5));
         await using var lock2 = _lockFactory.CreateLock(id, "host-2", TimeSpan.FromSeconds(1));
-        await lock1.WaitForLockAsync();
-        await lock2.WaitForLockAsync();
+        await lock1.WaitForLockAsync(TestContext.Current.CancellationToken);
+        await lock2.WaitForLockAsync(TestContext.Current.CancellationToken);
 
         // Asset
         Assert.True(sw.ElapsedMilliseconds > 3000);
@@ -130,13 +130,13 @@ public class LockStoreUnitTest : IAsyncLifetime
         Assert.True(isLocked2);
     }
 
-    public Task InitializeAsync()
+    public ValueTask InitializeAsync()
     {
         _stopwatch = Stopwatch.StartNew();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _lockStore.DropDatabaseAsync(CancellationToken.None);

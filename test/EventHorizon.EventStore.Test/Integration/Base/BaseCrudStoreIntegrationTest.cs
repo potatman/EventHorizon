@@ -13,7 +13,6 @@ using EventHorizon.EventStore.Test.Fakers;
 using EventHorizon.EventStore.Test.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace EventHorizon.EventStore.Test.Integration.Base;
 
@@ -35,14 +34,14 @@ public abstract class BaseCrudStoreIntegrationTest : IAsyncLifetime
         _states = EventStoreFakers.StateFaker.Generate(1000);
     }
 
-    public Task InitializeAsync()
+    public ValueTask InitializeAsync()
     {
         _stopwatch = Stopwatch.StartNew();
         _cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _snapshotStore.DropDatabaseAsync(_cts.Token);

@@ -11,7 +11,6 @@ using EventHorizon.EventStreaming.Test.Shared;
 using EventHorizon.EventStreaming.Test.Util;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace EventHorizon.EventStreaming.Test.Integration.Pulsar;
 
@@ -22,7 +21,7 @@ public class PulsarMultiTopicConsumerIntegrationTest : BaseMultiTopicConsumerInt
     {
     }
 
-    public override async Task DisposeAsync()
+    public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
 

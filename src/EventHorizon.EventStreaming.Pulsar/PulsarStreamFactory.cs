@@ -9,6 +9,8 @@ using EventHorizon.EventStreaming.Pulsar.Utils;
 using EventHorizon.EventStreaming.Readers;
 using EventHorizon.EventStreaming.Subscriptions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Pulsar.Client.Api;
 
 namespace EventHorizon.EventStreaming.Pulsar;
 
@@ -26,6 +28,12 @@ public class PulsarStreamFactory : IStreamFactory
         _clientResolver = clientResolver;
         _attributeUtil = attributeUtil;
         _loggerFactory = loggerFactory;
+
+        // Pulsar.Client's internal logs (connection lifecycle, corrupted-message
+        // discards) go to NullLogger unless assigned; only wire it up if the app
+        // hasn't already set its own.
+        if (PulsarClient.Logger is NullLogger)
+            PulsarClient.Logger = loggerFactory.CreateLogger("Pulsar.Client");
     }
 
     public ITopicProducer<T> CreateProducer<T>(PublisherConfig config) where T : class, ITopicMessage, new()
@@ -40,7 +48,8 @@ public class PulsarStreamFactory : IStreamFactory
             return new OrderGuaranteedPulsarTopicConsumer<T>(_clientResolver, config,
                 this, _loggerFactory);
         }
-        return new PulsarTopicConsumer<T>(_clientResolver, config, CreateAdmin<T>());
+        return new PulsarTopicConsumer<T>(_clientResolver, config, CreateAdmin<T>(),
+            _loggerFactory.CreateLogger<PulsarTopicConsumer<T>>());
     }
 
     public ITopicReader<T> CreateReader<T>(ReaderConfig config) where T : class, ITopicMessage, new()

@@ -106,7 +106,7 @@ public class PulsarTopicReader<T> : ITopicReader<T> where T : ITopicMessage, new
 
         // Move After StartDateTime
         if (_config.StartDateTime != null)
-            await _reader.SeekAsync(_config.StartDateTime.Value.Ticks);
+            await _reader.SeekAsync(PulsarMessageMapper.PublishTimestampFromDate(_config.StartDateTime.Value));
 
         return _reader;
     }

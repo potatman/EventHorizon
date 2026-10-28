@@ -15,34 +15,21 @@ namespace EventHorizon.EventSourcing.Aggregates
         where TSource : class, IState, new()
         where TTarget : class, IState, new()
     {
+        private readonly Aggregator<Snapshot<TTarget>, TTarget> _aggregator;
         private readonly Subscription<Event> _subscription;
+        private readonly CancellationTokenSource _stopping = new();
 
         public AggregateMigrationHostedService(Aggregator<Snapshot<TTarget>, TTarget> aggregator,
             StreamingClient streamingClient,
             Func<SubscriptionBuilder<Event>, SubscriptionBuilder<Event>> onBuildSubscription = null)
         {
+            _aggregator = aggregator;
             var builder = streamingClient.CreateSubscription<Event>()
                 .AddStream<TSource>()
                 .SubscriptionName($"Migrate-{typeof(TSource).Name}-{typeof(TTarget).Name}")
                 .OnBatch(async batch =>
                 {
-                    var events = batch.Messages
-                        .Select(x => x.Data)
-                        .ToArray();
-
-                    var responses = await aggregator
-                        .HandleAsync(events, batch.CancellationToken);
-
-                    var failedIds = responses
-                        .Where(x => x.Error != null)
-                        .Select(x => x.StreamId)
-                        .ToArray();
-
-                    var failedMessages = batch.Messages
-                        .Where(x => failedIds.Contains(x.Data.StreamId))
-                        .ToArray();
-
-                    batch.Nack(failedMessages);
+                    await aggregator.HandleWithRetryAsync(batch.Messages, batch.Nack, _stopping.Token);
                 });
 
             if (onBuildSubscription != null) builder = onBuildSubscription(builder);
@@ -50,7 +37,16 @@ namespace EventHorizon.EventSourcing.Aggregates
             _subscription = builder.Build();
         }
 
-        public Task StartAsync(CancellationToken cancellationToken) => _subscription.StartAsync();
-        public Task StopAsync(CancellationToken cancellationToken) => _subscription.StopAsync();
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            await _aggregator.EnsureStoreSetupAsync(cancellationToken);
+            await _subscription.StartAsync();
+        }
+
+        public async Task StopAsync(CancellationToken cancellationToken)
+        {
+            await _stopping.CancelAsync();
+            await _subscription.StopAsync();
+        }
     }
 }

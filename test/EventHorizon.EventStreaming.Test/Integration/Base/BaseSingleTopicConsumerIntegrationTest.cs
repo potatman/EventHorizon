@@ -12,7 +12,6 @@ using EventHorizon.EventStreaming.Test.Shared;
 using EventHorizon.EventStreaming.Test.Util;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace EventHorizon.EventStreaming.Test.Integration.Base;
 
@@ -46,7 +45,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
 
     protected IServiceProvider Provider { get; init; }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         // Publish Events
         int sequenceId = 0;
@@ -59,7 +58,7 @@ public abstract class BaseSingleTopicConsumerIntegrationTest : IAsyncLifetime
         _stopwatch = Stopwatch.StartNew();
     }
 
-    public virtual async Task DisposeAsync()
+    public virtual async ValueTask DisposeAsync()
     {
         _outputHelper.WriteLine($"Test Ran in {_stopwatch.ElapsedMilliseconds}ms");
         await _streamingClient.GetAdmin<Event>().DeleteTopicAsync(typeof(Feed1PriceChanged));

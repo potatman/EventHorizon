@@ -1,7 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project>
   <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <NoWarn>$(NoWarn);1591;1701;1702;NU5105;CA1300;CA1301;CA1303;CA1306;CA1307;CA1308;CA1309;CA2007;</NoWarn>
+  </PropertyGroup>
+
+  <!-- Solution-level `dotnet test` (MTP) runs all modules against one results directory, and
+       coverlet.MTP's default output name has no per-module component, so give each a prefix. -->
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Test'))">
+    <TestingPlatformCommandLineArguments>--coverlet-file-prefix=$(MSBuildProjectName)</TestingPlatformCommandLineArguments>
   </PropertyGroup>
 
   <!-- NuGet packaging properties for src projects -->

@@ -25,6 +25,9 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
     private readonly ILoggerFactory _loggerFactory;
     private readonly Type _type;
     private readonly ElasticIndexAttribute _elasticAttr;
+    private readonly ElasticConfig _config;
+
+    internal ElasticsearchClient Client => _client;
 
     public ElasticStoreFactory(IOptions<ElasticConfig> options, AttributeUtil attributeUtil, ILoggerFactory loggerFactory)
     {
@@ -32,19 +35,9 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
         _attributeUtil = attributeUtil;
         _loggerFactory = loggerFactory;
         _elasticAttr = _attributeUtil.GetOne<ElasticIndexAttribute>(_type);
+        _config = options.Value;
 
-        // Client Configuration
-        var connectionPool = new StickyNodePool(options.Value.Uris.Select(u => new Uri(u)));
-        var settings = new ElasticsearchClientSettings(connectionPool)
-            .PingTimeout(TimeSpan.FromSeconds(10))
-            .DeadTimeout(TimeSpan.FromSeconds(60))
-            .RequestTimeout(TimeSpan.FromSeconds(60))
-            ;
-
-        if (options.Value.UserName != null && options.Value.Password != null)
-            settings = settings.Authentication(new BasicAuthentication(options.Value.UserName, options.Value.Password));
-
-        _client = new ElasticsearchClient(settings);
+        _client = ElasticClientCache.Get(options.Value);
     }
 
     public ICrudStore<Lock> GetLockStore()
@@ -59,7 +52,8 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
     {
         var store = new ElasticCrudStore<Snapshot<T>>(_elasticAttr, _client,
             _attributeUtil.GetOne<SnapshotStoreAttribute>(_type).BucketId,
-            _loggerFactory.CreateLogger<ElasticCrudStore<Snapshot<T>>>());
+            _loggerFactory.CreateLogger<ElasticCrudStore<Snapshot<T>>>(),
+            _config.GetIndexOverride(_type));
 
         return store;
     }
@@ -68,6 +62,7 @@ public class ElasticStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStoreFactor
     {
         return new ElasticCrudStore<View<T>>(_elasticAttr, _client,
             _attributeUtil.GetOne<ViewStoreAttribute>(_type).Database,
-            _loggerFactory.CreateLogger<ElasticCrudStore<View<T>>>());
+            _loggerFactory.CreateLogger<ElasticCrudStore<View<T>>>(),
+            _config.GetIndexOverride(_type));
     }
 }

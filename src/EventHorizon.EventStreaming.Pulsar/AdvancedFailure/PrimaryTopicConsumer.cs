@@ -102,9 +102,25 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
 
             return contexts;
         }
-        catch (AlreadyClosedException)
+        catch (AlreadyClosedException ex)
         {
-            // Ignore AlreadyClosedException
+            // A closed consumer never reopens; GetConsumerAsync subscribes a new one next batch.
+            _logger.LogWarning(ex, "Consumer for {Subscription} was closed, resubscribing on the next batch",
+                _config.SubscriptionName);
+            var consumer = _consumer;
+            _consumer = null;
+            if (consumer != null)
+            {
+                try
+                {
+                    await consumer.DisposeAsync();
+                }
+                catch (Exception)
+                {
+                    // Best effort; the consumer is already closed.
+                }
+            }
+
             return null;
         }
     }
@@ -243,10 +259,18 @@ internal sealed class PrimaryTopicConsumer<T>: ITopicConsumer<T> where T : ITopi
         if (_config.BatchSize != null)
             builder = builder.ReceiverQueueSize(_config.BatchSize.Value);
 
+        // Only seek when the subscription is about to be created: seeking an existing
+        // subscription would rewind its cursor and re-deliver already-processed messages
+        // on every restart. Racing instances may both see it as new; they seek to the
+        // same timestamp, so the outcome is unchanged.
+        var seekToStartDateTime = _config.StartDateTime != null
+            && !await ((PulsarTopicAdmin<T>)_admin).SubscriptionExistsAsync(
+                _config.Topics, _config.SubscriptionName, cts.Token);
+
         var consumer = await builder.SubscribeAsync();
 
-        if (_config.StartDateTime != null)
-            await consumer.SeekAsync(_config.StartDateTime.Value.Ticks);
+        if (seekToStartDateTime)
+            await consumer.SeekAsync(PulsarMessageMapper.PublishTimestampFromDate(_config.StartDateTime.Value));
 
         // Return
         return _consumer = consumer;

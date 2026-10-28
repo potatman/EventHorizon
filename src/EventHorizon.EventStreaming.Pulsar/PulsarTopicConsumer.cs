@@ -12,6 +12,8 @@ using EventHorizon.EventStreaming.Subscriptions;
 using EventHorizon.EventStreaming.Subscriptions.Backoff;
 using EventHorizon.EventStreaming.Tracing;
 using EventHorizon.EventStreaming.Util;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Pulsar.Client.Api;
 using Pulsar.Client.Common;
 using Pulsar.Client.Otel;
@@ -26,20 +28,25 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     private readonly SubscriptionConfig<T> _config;
     private readonly ITopicAdmin<T> _admin;
     private readonly OtelConsumerInterceptor.OTelConsumerInterceptor<T> _intercept;
+    private readonly ILogger _logger;
     private IConsumer<T> _consumer;
     private Dictionary<string, Message<T>> _unackedMessages = new();
 
     public PulsarTopicConsumer(
         PulsarClientResolver clientResolver,
         SubscriptionConfig<T> config,
-        ITopicAdmin<T> admin)
+        ITopicAdmin<T> admin,
+        ILogger<PulsarTopicConsumer<T>> logger = null)
     {
         _clientResolver = clientResolver;
         _config = config;
         _admin = admin;
+        _logger = logger ?? NullLogger<PulsarTopicConsumer<T>>.Instance;
         _intercept = new OtelConsumerInterceptor.OTelConsumerInterceptor<T>(
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
     }
+
+    internal IConsumer<T> Consumer => _consumer;
 
     public async Task InitAsync()
     {
@@ -50,6 +57,7 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
     {
         try
         {
+            _consumer ??= await GetConsumerAsync();
             var messages = await GetNextCustomAsync(ct);
             if (!messages.Any())
                 return null;
@@ -72,12 +80,32 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
 
             return contexts;
         }
-        catch (AlreadyClosedException)
+        catch (AlreadyClosedException ex)
         {
-            // Ignore AlreadyClosedException
+            // A closed consumer never reopens: without a new one the subscription would poll a
+            // dead consumer forever, holding no slot on the broker and logging nothing.
+            _logger.LogWarning(ex, "Consumer for {Subscription} was closed, resubscribing on the next batch",
+                _config.SubscriptionName);
+            await ResetConsumerAsync();
             return null;
         }
+    }
 
+    private async Task ResetConsumerAsync()
+    {
+        var consumer = _consumer;
+        _consumer = null;
+        _unackedMessages.Clear();
+        if (consumer == null) return;
+
+        try
+        {
+            await consumer.DisposeAsync();
+        }
+        catch (Exception)
+        {
+            // Best effort; the consumer is already closed.
+        }
     }
 
     private async Task<Message<T>[]> GetNextCustomAsync(CancellationToken ct)
@@ -172,7 +200,6 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             .ConsumerName(NameUtil.AssemblyNameWithGuid)
             .SubscriptionType(_config.SubscriptionType.ToPulsarSubscriptionType())
             .SubscriptionName(_config.SubscriptionName)
-            .ReceiverQueueSize(1000000000) // Allows non-persistent queues to not lose messages
             .Intercept(_intercept);
 
         if (_config.Topics != null)
@@ -185,6 +212,11 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
                 _config.IsBeginning == true
                     ? SubscriptionInitialPosition.Earliest
                     : SubscriptionInitialPosition.Latest);
+
+        if (_config.BatchSize != null)
+        {
+            builder = builder.ReceiverQueueSize(_config.BatchSize.Value);
+        }
 
         if (_config.BackoffStrategy != null)
         {
@@ -199,10 +231,18 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             }
         }
 
+        // Only seek when the subscription is about to be created: seeking an existing
+        // subscription would rewind its cursor and re-deliver already-processed messages
+        // on every restart. Racing instances may both see it as new; they seek to the
+        // same timestamp, so the outcome is unchanged.
+        var seekToStartDateTime = _config.StartDateTime != null
+            && !await ((PulsarTopicAdmin<T>)_admin).SubscriptionExistsAsync(
+                _config.Topics, _config.SubscriptionName, cts.Token);
+
         var consumer = await builder.SubscribeAsync();
 
-        if (_config.StartDateTime != null)
-            await consumer.SeekAsync(_config.StartDateTime.Value.Ticks);
+        if (seekToStartDateTime)
+            await consumer.SeekAsync(PulsarMessageMapper.PublishTimestampFromDate(_config.StartDateTime.Value));
 
         // Return
         return consumer;

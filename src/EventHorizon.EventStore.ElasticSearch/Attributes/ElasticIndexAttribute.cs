@@ -6,6 +6,7 @@ namespace EventHorizon.EventStore.ElasticSearch.Attributes
     [AttributeUsage(AttributeTargets.Interface | AttributeTargets.Class, Inherited = true, AllowMultiple = false)]
     public class ElasticIndexAttribute : Attribute
     {
+        public MappingBehavior Mapping { get; set; } = MappingBehavior.Auto;
         public Refresh Refresh { get; set; } = Refresh.False;
         public int RefreshIntervalMs { get; set; }
         public int Shards { get; set; }

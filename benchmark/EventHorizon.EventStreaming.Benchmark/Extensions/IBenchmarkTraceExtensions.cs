@@ -1,6 +1,6 @@
 ﻿using EventHorizon.EventStreaming.Benchmark.Utilities;
 using NBench;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace EventHorizon.EventStreaming.Benchmark.Extensions;
 

@@ -12,14 +12,12 @@ public class InMemoryEventStoreFactory<T> : ISnapshotStoreFactory<T>, IViewStore
     where T : class, IState
 {
     private readonly CrudDatabase _crudDb;
-    private readonly LockDatabase _lockDb;
     private readonly ILoggerFactory _loggerFactory;
 
-    public InMemoryEventStoreFactory(ILoggerFactory loggerFactory)
+    public InMemoryEventStoreFactory(CrudDatabase crudDb, ILoggerFactory loggerFactory)
     {
         _loggerFactory = loggerFactory;
-        _crudDb = new CrudDatabase();
-        _lockDb = new LockDatabase();
+        _crudDb = crudDb;
     }
 
     public ICrudStore<Lock> GetLockStore()

@@ -89,8 +89,18 @@ public class SenderSubscriptionTracker : IAsyncDisposable
 
     private void OnExit(object sender, EventArgs e)
     {
-        if(!_cleaning)
-            CleanupAsync().Wait();
+        // ProcessExit handlers are synchronous and time-limited, so wait briefly and never throw.
+        if (_cleaning)
+            return;
+
+        try
+        {
+            CleanupAsync().Wait(TimeSpan.FromSeconds(2));
+        }
+        catch (Exception)
+        {
+            // Best effort: temporary response topics are also removed by DisposeAsync.
+        }
     }
 
     public async ValueTask DisposeAsync()
