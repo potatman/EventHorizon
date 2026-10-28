@@ -81,6 +81,35 @@ public class PulsarClientResolverUnitTest
     }
 
     [Fact]
+    public async Task EvictedProducerIsReplacedByTheNextCaller()
+    {
+        using var resolver = GetResolver();
+        Task<object> Create() => Task.FromResult(new object());
+
+        var first = await resolver.GetOrAddProducerAsync(typeof(string), TopicA, SendTimeout, Create);
+        resolver.EvictProducer(typeof(string), TopicA, SendTimeout, first);
+        var second = await resolver.GetOrAddProducerAsync(typeof(string), TopicA, SendTimeout, Create);
+
+        Assert.NotSame(first, second);
+    }
+
+    [Fact]
+    public async Task EvictingAStaleProducerKeepsItsReplacement()
+    {
+        using var resolver = GetResolver();
+        Task<object> Create() => Task.FromResult(new object());
+
+        var stale = await resolver.GetOrAddProducerAsync(typeof(string), TopicA, SendTimeout, Create);
+        resolver.EvictProducer(typeof(string), TopicA, SendTimeout, stale);
+        var replacement = await resolver.GetOrAddProducerAsync(typeof(string), TopicA, SendTimeout, Create);
+
+        // A second publisher still holding the stale producer must not evict the new one.
+        resolver.EvictProducer(typeof(string), TopicA, SendTimeout, stale);
+
+        Assert.Same(replacement, await resolver.GetOrAddProducerAsync(typeof(string), TopicA, SendTimeout, Create));
+    }
+
+    [Fact]
     public async Task FailedProducerCreationIsRetriedByTheNextCaller()
     {
         using var resolver = GetResolver();

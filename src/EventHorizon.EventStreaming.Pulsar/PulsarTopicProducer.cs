@@ -50,6 +50,21 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
     {
         var producer = await GetProducerAsync();
 
+        try
+        {
+            await SendAsync(producer, messages);
+        }
+        catch (Exception ex) when (ex is AlreadyClosedException or TopicTerminatedException)
+        {
+            // The shared producer can never send again; evict it so the next publish creates a new one.
+            _clientResolver.EvictProducer(typeof(T), _config.Topic, _config.SendTimeout, producer);
+            _producer = null;
+            throw;
+        }
+    }
+
+    private async Task SendAsync(IProducer<T> producer, T[] messages)
+    {
         if (_config.IsOrderGuaranteed)
         {
             var tasks = messages
@@ -96,7 +111,6 @@ public class PulsarTopicProducer<T> : ITopicProducer<T>
 
             await Task.WhenAll(tasks);
         }
-
     }
 
     private async Task<IProducer<T>> GetProducerAsync()

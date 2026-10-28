@@ -81,6 +81,22 @@ public class PulsarClientResolver : IDisposable, IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Drops a shared producer that can no longer send (closed or its topic terminated), so the
+    /// next caller creates a new one. Only removes the entry if it still holds that producer.
+    /// </summary>
+    internal void EvictProducer(Type messageType, string topic, TimeSpan sendTimeout, object producer)
+    {
+        var key = (messageType, topic, sendTimeout);
+        if (_producers.TryGetValue(key, out var entry)
+            && entry.IsValueCreated
+            && entry.Value.IsCompletedSuccessfully
+            && ReferenceEquals(entry.Value.Result, producer))
+        {
+            _producers.TryRemove(new KeyValuePair<(Type, string, TimeSpan), Lazy<Task<object>>>(key, entry));
+        }
+    }
+
     public async Task<IPulsarAdminRESTAPIClient> GetAdminClientAsync()
     {
         if (_admin != null) return _admin;
