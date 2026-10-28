@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading;
@@ -52,7 +51,7 @@ public class PulsarProducerSharingIntegrationTest(ITestOutputHelper outputHelper
 
     private string GetTopic() =>
         _host.Services.GetRequiredService<IStreamFactory>().GetTopicResolver()
-            .GetTopics<Event>(typeof(Feed1PriceChanged), _topicSuffix).First();
+            .GetTopics<Event>(typeof(Feed1PriceChanged), _topicSuffix)[0];
 
     public async ValueTask DisposeAsync()
     {

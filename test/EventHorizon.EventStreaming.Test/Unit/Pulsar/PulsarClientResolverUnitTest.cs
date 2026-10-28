@@ -12,6 +12,8 @@ namespace EventHorizon.EventStreaming.Test.Unit.Pulsar;
 [Trait("Category", "Unit")]
 public class PulsarClientResolverUnitTest
 {
+    private const string TopicA = "topic-a";
+    private const string TopicB = "topic-b";
     private static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(30);
 
     private static PulsarClientResolver GetResolver() =>
@@ -57,7 +59,7 @@ public class PulsarClientResolverUnitTest
         }
 
         var producers = await Task.WhenAll(Enumerable.Range(0, 50)
-            .Select(_ => resolver.GetOrAddProducerAsync(typeof(string), "topic-a", SendTimeout, Create)));
+            .Select(_ => resolver.GetOrAddProducerAsync(typeof(string), TopicA, SendTimeout, Create)));
 
         Assert.Equal(1, created);
         Assert.All(producers, producer => Assert.Same(producers[0], producer));
@@ -69,13 +71,13 @@ public class PulsarClientResolverUnitTest
         using var resolver = GetResolver();
         Task<object> Create() => Task.FromResult(new object());
 
-        var a = await resolver.GetOrAddProducerAsync(typeof(string), "topic-a", SendTimeout, Create);
-        var b = await resolver.GetOrAddProducerAsync(typeof(string), "topic-b", SendTimeout, Create);
-        var c = await resolver.GetOrAddProducerAsync(typeof(int), "topic-a", SendTimeout, Create);
+        var a = await resolver.GetOrAddProducerAsync(typeof(string), TopicA, SendTimeout, Create);
+        var b = await resolver.GetOrAddProducerAsync(typeof(string), TopicB, SendTimeout, Create);
+        var c = await resolver.GetOrAddProducerAsync(typeof(int), TopicA, SendTimeout, Create);
 
         Assert.NotSame(a, b);
         Assert.NotSame(a, c);
-        Assert.Same(a, await resolver.GetOrAddProducerAsync(typeof(string), "topic-a", SendTimeout, Create));
+        Assert.Same(a, await resolver.GetOrAddProducerAsync(typeof(string), TopicA, SendTimeout, Create));
     }
 
     [Fact]
@@ -89,8 +91,8 @@ public class PulsarClientResolverUnitTest
             : Task.FromResult(new object());
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => resolver.GetOrAddProducerAsync(typeof(string), "topic-a", SendTimeout, Create));
-        var producer = await resolver.GetOrAddProducerAsync(typeof(string), "topic-a", SendTimeout, Create);
+            () => resolver.GetOrAddProducerAsync(typeof(string), TopicA, SendTimeout, Create));
+        var producer = await resolver.GetOrAddProducerAsync(typeof(string), TopicA, SendTimeout, Create);
 
         Assert.NotNull(producer);
         Assert.Equal(2, attempts);

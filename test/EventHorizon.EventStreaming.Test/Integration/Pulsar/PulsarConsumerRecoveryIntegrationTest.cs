@@ -1,5 +1,4 @@
 using System;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using EventHorizon.Abstractions.Models;
@@ -42,10 +41,7 @@ public class PulsarConsumerRecoveryIntegrationTest(ITestOutputHelper outputHelpe
         });
         await consumer.InitAsync();
 
-        var inner = (IConsumer<Event>)typeof(PulsarTopicConsumer<Event>)
-            .GetField("_consumer", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .GetValue(consumer);
-        await inner!.DisposeAsync();
+        await consumer.Consumer.DisposeAsync();
 
         var publisher = _host.Services.GetRequiredService<StreamingClient>().CreatePublisher<Event>()
             .AddStream<Feed1PriceChanged>(_topicSuffix)

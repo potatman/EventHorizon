@@ -46,6 +46,8 @@ public class PulsarTopicConsumer<T> : ITopicConsumer<T> where T : ITopicMessage,
             TraceConstants.ActivitySourceName, PulsarClient.Logger);
     }
 
+    internal IConsumer<T> Consumer => _consumer;
+
     public async Task InitAsync()
     {
         _consumer = await GetConsumerAsync();
